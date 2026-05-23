@@ -13,6 +13,8 @@ import { SeekerDashboardHome } from "./components/dashboard/seeker-dashboard-hom
 import { ComparePolicies } from "./components/dashboard/compare-policies";
 import { PurchaseFlow } from "./components/dashboard/purchase-flow";
 import { SavedPolicies } from "./components/dashboard/saved-policies";
+import { MyPurchases } from "./components/dashboard/my-purchases";
+import { NotificationsPage } from "./components/dashboard/notifications-page";
 import { DashboardPlaceholder } from "./components/dashboard/dashboard-placeholder";
 import { ProviderDashboard } from "./components/dashboard/provider-dashboard";
 import { EmployeeDashboard } from "./components/dashboard/employee-dashboard";
@@ -49,15 +51,7 @@ export default function App() {
                 <Route path="compare" element={<ComparePolicies />} />
                 <Route path="purchase" element={<PurchaseFlow />} />
                 <Route path="saved" element={<SavedPolicies />} />
-                <Route
-                  path="purchases"
-                  element={
-                    <DashboardPlaceholder
-                      title="My purchases"
-                      description="Your purchased policies and post-purchase timeline will appear here."
-                    />
-                  }
-                />
+                <Route path="purchases" element={<MyPurchases />} />
                 <Route
                   path="claims"
                   element={
@@ -67,15 +61,7 @@ export default function App() {
                     />
                   }
                 />
-                <Route
-                  path="notifications"
-                  element={
-                    <DashboardPlaceholder
-                      title="Notifications"
-                      description="Payment confirmations, insurer messages, and call schedules will appear here."
-                    />
-                  }
-                />
+                <Route path="notifications" element={<NotificationsPage />} />
                 <Route
                   path="messages"
                   element={

@@ -83,7 +83,11 @@ export function SavedPolicies() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate("/dashboard/purchase", { state: { policy } })}
+                  onClick={() =>
+                    navigate("/dashboard/purchase", {
+                      state: { policy, category: policy.category },
+                    })
+                  }
                   className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
                 >
                   Review purchase details

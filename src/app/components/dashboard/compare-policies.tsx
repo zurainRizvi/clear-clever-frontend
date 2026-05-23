@@ -380,7 +380,13 @@ export function ComparePolicies() {
                           <button
                             type="button"
                             onClick={() =>
-                              navigate("/dashboard/purchase", { state: { policy: rec.policy } })
+                              navigate("/dashboard/purchase", {
+                                state: {
+                                  policy: rec.policy,
+                                  answers,
+                                  category: selectedCategory?.slug,
+                                },
+                              })
                             }
                             className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all text-sm font-medium"
                           >
