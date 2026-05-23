@@ -48,7 +48,7 @@ This must be set **before** the Vite build runs (it's baked into the bundle).
 | **Vercel** | Project → **Settings** → **Environment Variables** → add `VITE_API_URL` = your Render API URL (Production scope) |
 | **GitHub Actions** | Repo → **Settings** → **Secrets and variables** → **Actions** → **Variables** tab → add `VITE_API_URL` (so PR build artifacts use the same URL) |
 
-If you don't set the GitHub variable, CI falls back to `https://clearclever-api.onrender.com` so the build still works.
+If you don't set the GitHub variable, CI falls back to `https://clear-clever-backend.onrender.com` so the build still works.
 
 ### Optional: drive Vercel from CI instead of Git integration
 

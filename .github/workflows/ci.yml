@@ -20,7 +20,7 @@ jobs:
     env:
       # Use the production API URL for build-time replacement of import.meta.env.
       # Vercel sets this in its own dashboard; CI just needs a value so the build doesn't bake "undefined".
-      VITE_API_URL: ${{ vars.VITE_API_URL || 'https://clearclever-api.onrender.com' }}
+      VITE_API_URL: ${{ vars.VITE_API_URL || 'https://clear-clever-backend.onrender.com' }}
 
     steps:
       - name: Checkout
