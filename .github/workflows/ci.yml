@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (Vite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # Use the production API URL for build-time replacement of import.meta.env.
+      # Vercel sets this in its own dashboard; CI just needs a value so the build doesn't bake "undefined".
+      VITE_API_URL: ${{ vars.VITE_API_URL || 'https://clearclever-api.onrender.com' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Vite build
+        run: npm run build
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy-trigger:
+    name: Vercel auto-deploys
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Note
+        run: |
+          echo "Build passed on main."
+          echo "Vercel auto-deploys this repo's main branch via the Git integration."
+          echo "If you also want the workflow to run a Vercel CLI deploy, set VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID as GitHub secrets and uncomment the step below."
+
+      # Uncomment to drive Vercel from CI instead of the Git integration:
+      # - name: Vercel deploy via CLI
+      #   env:
+      #     VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      #     VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      #     VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      #   run: |
+      #     npx --yes vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      #     npx --yes vercel build --prod --token="$VERCEL_TOKEN"
+      #     npx --yes vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
