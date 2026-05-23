@@ -9,6 +9,11 @@ import { SignUp } from "./components/auth/signup";
 import { OTPVerification } from "./components/auth/otp-verification";
 import { RoleSelection } from "./components/auth/role-selection";
 import { PolicySeekerDashboard } from "./components/dashboard/policy-seeker-dashboard";
+import { SeekerDashboardHome } from "./components/dashboard/seeker-dashboard-home";
+import { ComparePolicies } from "./components/dashboard/compare-policies";
+import { PurchaseFlow } from "./components/dashboard/purchase-flow";
+import { SavedPolicies } from "./components/dashboard/saved-policies";
+import { DashboardPlaceholder } from "./components/dashboard/dashboard-placeholder";
 import { ProviderDashboard } from "./components/dashboard/provider-dashboard";
 import { EmployeeDashboard } from "./components/dashboard/employee-dashboard";
 import { AdminDashboard } from "./components/dashboard/admin-dashboard";
@@ -33,13 +38,73 @@ export default function App() {
                 }
               />
               <Route
-                path="/dashboard/*"
+                path="/dashboard"
                 element={
                   <ProtectedRoute>
                     <PolicySeekerDashboard />
                   </ProtectedRoute>
                 }
-              />
+              >
+                <Route index element={<SeekerDashboardHome />} />
+                <Route path="compare" element={<ComparePolicies />} />
+                <Route path="purchase" element={<PurchaseFlow />} />
+                <Route path="saved" element={<SavedPolicies />} />
+                <Route
+                  path="purchases"
+                  element={
+                    <DashboardPlaceholder
+                      title="My purchases"
+                      description="Your purchased policies and post-purchase timeline will appear here."
+                    />
+                  }
+                />
+                <Route
+                  path="claims"
+                  element={
+                    <DashboardPlaceholder
+                      title="Claims"
+                      description="Track and manage your insurance claims in one place."
+                    />
+                  }
+                />
+                <Route
+                  path="notifications"
+                  element={
+                    <DashboardPlaceholder
+                      title="Notifications"
+                      description="Payment confirmations, insurer messages, and call schedules will appear here."
+                    />
+                  }
+                />
+                <Route
+                  path="messages"
+                  element={
+                    <DashboardPlaceholder
+                      title="Messages"
+                      description="Conversations with insurers and ClearClever support."
+                    />
+                  }
+                />
+                <Route
+                  path="support"
+                  element={
+                    <DashboardPlaceholder
+                      title="Support"
+                      description="Get help from our insurance advisors."
+                      actionLabel="Contact support"
+                    />
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <DashboardPlaceholder
+                      title="Settings"
+                      description="Manage your profile, security, and notification preferences."
+                    />
+                  }
+                />
+              </Route>
               <Route
                 path="/provider-dashboard"
                 element={

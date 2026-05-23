@@ -6,6 +6,25 @@ import { motion } from "motion/react";
 
 export function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [showDemo, setShowDemo] = useState(false);
+
+  const previewCards = [
+    {
+      title: "Auto coverage comparison",
+      subtitle: "Compare premiums from TPL, Jubilee, and Adamjee",
+      image: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      title: "Home protection plans",
+      subtitle: "Review coverage for apartments and independent houses",
+      image: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      title: "Life & family security",
+      subtitle: "Transparent recommendations for long-term peace of mind",
+      image: "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=900&q=80",
+    },
+  ];
   const features = [
     {
       icon: <Zap className="w-6 h-6" />,
@@ -44,22 +63,25 @@ export function LandingPage() {
   const testimonials = [
     {
       name: "Ahmed Khan",
-      role: "Small Business Owner",
-      content: "ClearClever helped me find comprehensive business insurance at 30% less than I was paying before. The AI recommendations were spot on!",
-      rating: 5
+      role: "Auto policyholder, Lahore",
+      content:
+        "ClearClever helped me compare auto policies in minutes. The recommendations felt personal and the premiums were easy to understand.",
+      rating: 5,
     },
     {
       name: "Sara Malik",
-      role: "Healthcare Professional",
-      content: "The comparison tool is incredibly intuitive. I found the perfect health insurance for my family in minutes, not days.",
-      rating: 5
+      role: "Family coverage seeker",
+      content:
+        "The comparison flow is calm and clear. I found life coverage that fits our family budget without days of back-and-forth.",
+      rating: 5,
     },
     {
       name: "Usman Ali",
-      role: "Entrepreneur",
-      content: "Finally, an insurance platform that actually makes sense. The side-by-side comparisons made my decision so much easier.",
-      rating: 5
-    }
+      role: "Home insurance customer",
+      content:
+        "Side-by-side coverage details made the decision simple. It feels like a real product, not a student demo.",
+      rating: 5,
+    },
   ];
 
   return (
@@ -140,37 +162,51 @@ export function LandingPage() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
               </Link>
-              <button className="px-8 py-4 bg-card border border-border text-foreground rounded-xl hover:bg-accent transition-all duration-300 flex items-center gap-2 group">
+              <button
+                type="button"
+                onClick={() => setShowDemo(true)}
+                className="px-8 py-4 bg-card border border-border text-foreground rounded-xl hover:bg-accent transition-all duration-300 flex items-center gap-2 group"
+              >
                 <Play className="w-5 h-5" />
-                Watch Demo
+                Watch demo
               </button>
             </div>
 
-            {/* Floating Dashboard Preview */}
+            {/* Product preview */}
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8 }}
               className="relative mx-auto max-w-5xl"
             >
-              <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-3xl blur-2xl" />
-              <div className="relative bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-6 shadow-2xl">
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="h-3 bg-gradient-to-r from-primary/30 to-primary/10 rounded-full" />
-                  <div className="h-3 bg-gradient-to-r from-secondary/30 to-secondary/10 rounded-full" />
-                  <div className="h-3 bg-gradient-to-r from-success/30 to-success/10 rounded-full" />
+              <div className="absolute -inset-4 bg-primary/10 rounded-3xl blur-2xl" />
+              <div className="relative bg-card border border-border rounded-2xl p-4 md:p-6 shadow-lg overflow-hidden">
+                <div className="flex items-center gap-2 mb-4 px-1">
+                  <span className="w-3 h-3 rounded-full bg-destructive/80" />
+                  <span className="w-3 h-3 rounded-full bg-warning/80" />
+                  <span className="w-3 h-3 rounded-full bg-success/80" />
+                  <span className="ml-3 text-xs text-muted-foreground">ClearClever comparison preview</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="aspect-video bg-gradient-to-br from-primary/20 to-transparent rounded-xl border border-border p-4">
-                    <div className="h-2 bg-foreground/10 rounded mb-2 w-3/4" />
-                    <div className="h-2 bg-foreground/10 rounded mb-2 w-1/2" />
-                    <div className="h-2 bg-foreground/10 rounded w-2/3" />
-                  </div>
-                  <div className="aspect-video bg-gradient-to-br from-secondary/20 to-transparent rounded-xl border border-border p-4">
-                    <div className="h-2 bg-foreground/10 rounded mb-2 w-2/3" />
-                    <div className="h-2 bg-foreground/10 rounded mb-2 w-3/4" />
-                    <div className="h-2 bg-foreground/10 rounded w-1/2" />
-                  </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  {previewCards.map((card) => (
+                    <div
+                      key={card.title}
+                      className="group rounded-xl overflow-hidden border border-border bg-muted/20 hover:shadow-md transition-shadow"
+                    >
+                      <div className="aspect-[4/3] overflow-hidden">
+                        <img
+                          src={card.image}
+                          alt={card.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="p-4 text-left">
+                        <p className="font-semibold text-sm mb-1">{card.title}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{card.subtitle}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </motion.div>
@@ -478,6 +514,47 @@ export function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {showDemo ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Product demo"
+        >
+          <div className="relative w-full max-w-4xl bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowDemo(false)}
+              className="absolute top-3 right-3 z-10 px-3 py-1.5 text-sm bg-background/90 border border-border rounded-lg hover:bg-accent"
+            >
+              Close
+            </button>
+            <div className="aspect-video bg-black">
+              <video
+                className="w-full h-full object-cover"
+                controls
+                autoPlay
+                playsInline
+                poster={previewCards[0]?.image}
+              >
+                <source
+                  src="https://assets.mixkit.co/videos/preview/mixkit-family-walking-on-the-beach-1246-large.mp4"
+                  type="video/mp4"
+                />
+                Your browser does not support video playback.
+              </video>
+            </div>
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-2">See how ClearClever works</h3>
+              <p className="text-sm text-muted-foreground">
+                Compare policies, answer a short questionnaire, and get transparent recommendations
+                from trusted Pakistani insurers.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -97,6 +97,14 @@ export function RoleSelection() {
           })}
         </div>
 
+        <p className="text-sm text-muted-foreground text-center mb-6">
+          Staff accounts (admin / super admin) should use{" "}
+          <Link to="/signin" className="text-primary hover:underline">
+            Sign in
+          </Link>{" "}
+          and select the matching role.
+        </p>
+
         <button
           type="button"
           disabled={!selectedRole || submitting}
