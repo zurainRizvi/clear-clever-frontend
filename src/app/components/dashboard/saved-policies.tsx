@@ -1,37 +1,47 @@
 import { useNavigate } from "react-router";
-import { Heart, Star, TrendingDown, Trash2 } from "lucide-react";
+import { Heart, Trash2, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useSavedPolicies } from "../saved-policies-context";
 import { toast } from "sonner";
+import { copy } from "@/lib/copy";
+import { formatPkrYearly } from "@/lib/format";
+import { ApiError } from "@/lib/api";
 
 export function SavedPolicies() {
   const navigate = useNavigate();
-  const { savedPolicies, removeSavedPolicy } = useSavedPolicies();
+  const { savedPolicies, removeSavedPolicy, isLoading } = useSavedPolicies();
 
-  const handleRemove = (policyId: number) => {
-    removeSavedPolicy(policyId);
-    toast.success("Policy removed from saved");
+  const handleRemove = async (policyId: string) => {
+    try {
+      await removeSavedPolicy(policyId);
+      toast.success(copy.saved.removed);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
+    }
   };
 
-  const handlePurchase = (policy: any) => {
-    navigate("/dashboard/purchase", { state: { policy } });
-  };
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (savedPolicies.length === 0) {
     return (
       <div className="text-center py-20">
-        <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-          <Heart className="w-12 h-12 text-muted-foreground" />
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+          <Heart className="w-10 h-10 text-muted-foreground" />
         </div>
-        <h2 className="text-2xl font-bold mb-4">No Saved Policies Yet</h2>
-        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-          Save policies you're interested in to compare them later and make an informed decision
-        </p>
+        <h2 className="text-2xl font-bold mb-3">{copy.saved.emptyTitle}</h2>
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">{copy.saved.emptyBody}</p>
         <button
+          type="button"
           onClick={() => navigate("/dashboard/compare")}
-          className="px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl hover:shadow-lg transition-all"
+          className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all"
         >
-          Browse Policies
+          {copy.saved.browseCta}
         </button>
       </div>
     );
@@ -40,61 +50,52 @@ export function SavedPolicies() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Saved Policies</h1>
+        <h1 className="text-3xl font-bold mb-2">Saved policies</h1>
         <p className="text-muted-foreground">
-          You have {savedPolicies.length} saved {savedPolicies.length === 1 ? "policy" : "policies"}
+          {savedPolicies.length} {savedPolicies.length === 1 ? "policy" : "policies"} saved
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         {savedPolicies.map((policy, index) => (
           <motion.div
             key={policy.id}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-card border-2 border-border rounded-2xl p-6 hover:shadow-xl transition-all"
+            transition={{ delay: index * 0.05 }}
+            className="bg-card border border-border rounded-xl p-6 hover:shadow-md transition-all"
           >
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="flex-1">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="text-5xl">{policy.logo}</div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-1">{policy.name}</h3>
-                    <p className="text-muted-foreground text-sm mb-2">{policy.provider}</p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 fill-warning text-warning" />
-                        <span className="font-medium">{policy.rating}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <h3 className="text-xl font-bold mb-1">{policy.name}</h3>
+                <p className="text-muted-foreground text-sm mb-3">
+                  {policy.insurer.companyName}
+                </p>
+                <p className="text-sm text-muted-foreground">{policy.coverageSummary}</p>
               </div>
 
-              <div className="lg:w-64 flex flex-col justify-between">
-                <div className="bg-accent/50 rounded-xl p-4 mb-4">
-                  <div className="text-sm text-muted-foreground mb-1">Premium</div>
-                  <div className="text-2xl font-bold mb-3">{policy.premium}</div>
-                  <div className="text-sm text-muted-foreground mb-1">Coverage</div>
-                  <div className="text-lg font-semibold">{policy.coverage}</div>
+              <div className="lg:w-56 flex flex-col gap-2">
+                <div className="bg-muted/30 rounded-lg p-4 border border-border mb-2">
+                  <p className="text-xs text-muted-foreground mb-1">Premium</p>
+                  <p className="text-lg font-bold">
+                    {formatPkrYearly(policy.premiumMonthlyPkr, policy.premiumYearlyPkr)}
+                  </p>
                 </div>
-
-                <div className="space-y-2">
-                  <button
-                    onClick={() => handlePurchase(policy)}
-                    className="w-full py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl hover:shadow-lg transition-all"
-                  >
-                    Purchase Now
-                  </button>
-                  <button
-                    onClick={() => handleRemove(policy.id)}
-                    className="w-full py-3 border border-destructive/50 text-destructive rounded-xl hover:bg-destructive/10 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Remove
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/dashboard/purchase", { state: { policy } })}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+                >
+                  Review purchase details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleRemove(policy.id)}
+                  className="w-full py-2.5 border border-border rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all text-sm inline-flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Remove
+                </button>
               </div>
             </div>
           </motion.div>

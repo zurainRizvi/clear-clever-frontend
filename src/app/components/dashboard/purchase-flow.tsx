@@ -3,6 +3,17 @@ import { useNavigate, useLocation } from "react-router";
 import { ArrowLeft, CheckCircle2, CreditCard, FileText, Shield, Upload, User } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
+import type { PublicPolicy } from "@/lib/types";
+import { formatPkrYearly } from "@/lib/format";
+
+function isPublicPolicy(policy: unknown): policy is PublicPolicy {
+  return (
+    typeof policy === "object" &&
+    policy !== null &&
+    "insurer" in policy &&
+    "premiumMonthlyPkr" in policy
+  );
+}
 
 export function PurchaseFlow() {
   const navigate = useNavigate();
@@ -82,20 +93,36 @@ export function PurchaseFlow() {
         {/* Policy Summary */}
         <div className="mb-8 p-6 bg-accent/50 rounded-xl">
           <div className="flex items-center gap-4 mb-4">
-            <div className="text-5xl">{policy.logo}</div>
+            {!isPublicPolicy(policy) && policy.logo ? (
+              <div className="text-5xl">{policy.logo}</div>
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Shield className="w-6 h-6 text-primary" />
+              </div>
+            )}
             <div>
               <h3 className="text-xl font-bold">{policy.name}</h3>
-              <p className="text-muted-foreground">{policy.provider}</p>
+              <p className="text-muted-foreground">
+                {isPublicPolicy(policy)
+                  ? policy.insurer.companyName
+                  : policy.provider}
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="text-sm text-muted-foreground mb-1">Premium</div>
-              <div className="text-2xl font-bold">{policy.premium}</div>
+              <div className="text-2xl font-bold">
+                {isPublicPolicy(policy)
+                  ? formatPkrYearly(policy.premiumMonthlyPkr, policy.premiumYearlyPkr)
+                  : policy.premium}
+              </div>
             </div>
             <div>
               <div className="text-sm text-muted-foreground mb-1">Coverage</div>
-              <div className="text-2xl font-bold">{policy.coverage}</div>
+              <div className="text-2xl font-bold">
+                {isPublicPolicy(policy) ? policy.coverageSummary : policy.coverage}
+              </div>
             </div>
           </div>
         </div>

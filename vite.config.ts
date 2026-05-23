@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import type { UserConfig } from 'vitest/config'
 
 
 function figmaAssetResolver() {
@@ -33,4 +34,16 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      exclude: ['node_modules/', 'src/test/'],
+    },
+  } satisfies UserConfig['test'],
 })
