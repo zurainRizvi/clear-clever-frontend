@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import type { ProviderOutletContext } from "./provider-dashboard";
-import { CheckCircle2, Edit, Eye, Loader2, Plus } from "lucide-react";
+import { CheckCircle2, Eye, Loader2, Plus } from "lucide-react";
 import { fetchInsurerPolicy, type InsurerPolicyDetail } from "@/lib/insurer-api";
 import { statusClass } from "@/lib/provider-utils";
 import { useProvider } from "./provider-context";
@@ -97,9 +97,9 @@ export function ProviderPoliciesPage() {
                 <button
                   type="button"
                   onClick={() => onEditPolicy(policy.id)}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm"
                 >
-                  <Edit className="w-4 h-4" />
+                  {policy.status === "rejected" ? "Revise & resubmit" : "Edit"}
                 </button>
               </div>
             </div>

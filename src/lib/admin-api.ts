@@ -97,6 +97,13 @@ export async function deactivateUser(id: string): Promise<{ user: AuthUser }> {
   });
 }
 
+export async function reactivateUser(id: string): Promise<{ user: AuthUser }> {
+  return apiRequest(`/api/admin/users/${id}/reactivate`, {
+    method: "PATCH",
+    auth: true,
+  });
+}
+
 export interface HealthStatus {
   service: string;
   environment: string;

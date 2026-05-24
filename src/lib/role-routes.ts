@@ -26,7 +26,7 @@ export const SIGN_IN_ROLES: {
   },
   {
     id: "employee",
-    title: "Employee",
+    title: "Admin",
     description: "Platform operations and insurer approvals",
     expectedApiRole: "admin",
     route: "/employee-dashboard",

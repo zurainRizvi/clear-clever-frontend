@@ -82,8 +82,8 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
     return location.pathname.startsWith(path);
   };
 
-  const portalLabel = variant === "employee" ? "Employee dashboard" : "Super admin control center";
-  const profileLabel = variant === "employee" ? "Platform employee" : "Super admin";
+  const portalLabel = variant === "employee" ? "Admin dashboard" : "Super admin control center";
+  const profileLabel = variant === "employee" ? "Platform admin" : "Super admin";
 
   return (
     <div className="min-h-screen flex bg-background">

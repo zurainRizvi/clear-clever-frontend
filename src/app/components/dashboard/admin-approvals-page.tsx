@@ -2,25 +2,34 @@ import { useState } from "react";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useAdmin } from "./admin-context";
 import { titleCase } from "@/lib/admin-utils";
+import { ActionConfirmDialog } from "./action-confirm-dialog";
+import type { PendingPolicySummary } from "@/lib/admin-api";
 
 export function AdminApprovalsPage({ heading = "Pending approvals" }: { heading?: string }) {
   const { pendingPolicies, loading, approvePolicy, rejectPolicy } = useAdmin();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [approveTarget, setApproveTarget] = useState<PendingPolicySummary | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<PendingPolicySummary | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
-  const handleApprove = async (id: string) => {
-    setBusyId(id);
+  const confirmApprove = async () => {
+    if (!approveTarget) return;
+    setBusyId(approveTarget.id);
     try {
-      await approvePolicy(id);
+      await approvePolicy(approveTarget.id);
+      setApproveTarget(null);
     } finally {
       setBusyId(null);
     }
   };
 
-  const handleReject = async (id: string) => {
-    const reason = window.prompt("Optional rejection reason") ?? undefined;
-    setBusyId(id);
+  const confirmReject = async () => {
+    if (!rejectTarget) return;
+    setBusyId(rejectTarget.id);
     try {
-      await rejectPolicy(id, reason);
+      await rejectPolicy(rejectTarget.id, rejectReason.trim() || undefined);
+      setRejectTarget(null);
+      setRejectReason("");
     } finally {
       setBusyId(null);
     }
@@ -39,7 +48,8 @@ export function AdminApprovalsPage({ heading = "Pending approvals" }: { heading?
       <div>
         <h1 className="text-3xl font-bold mb-1">{heading}</h1>
         <p className="text-muted-foreground">
-          Review insurer policy submissions before they appear to policy seekers
+          Review insurer policy submissions before they appear to policy seekers. Rejected policies
+          notify the insurer so they can revise and resubmit.
         </p>
       </div>
 
@@ -63,9 +73,7 @@ export function AdminApprovalsPage({ heading = "Pending approvals" }: { heading?
                     {new Date(approval.createdAt).toLocaleDateString()}
                   </div>
                   {approval.description ? (
-                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                      {approval.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">{approval.description}</p>
                   ) : null}
                 </div>
                 <span className="px-3 py-1 bg-warning/10 text-warning rounded-full text-sm w-fit">
@@ -75,7 +83,7 @@ export function AdminApprovalsPage({ heading = "Pending approvals" }: { heading?
                   <button
                     type="button"
                     disabled={busyId === approval.id}
-                    onClick={() => void handleApprove(approval.id)}
+                    onClick={() => setApproveTarget(approval)}
                     className="px-4 py-2 bg-success text-white rounded-xl hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-4 h-4" />
@@ -84,7 +92,10 @@ export function AdminApprovalsPage({ heading = "Pending approvals" }: { heading?
                   <button
                     type="button"
                     disabled={busyId === approval.id}
-                    onClick={() => void handleReject(approval.id)}
+                    onClick={() => {
+                      setRejectTarget(approval);
+                      setRejectReason("");
+                    }}
                     className="px-4 py-2 bg-destructive text-white rounded-xl hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50"
                   >
                     <XCircle className="w-4 h-4" />
@@ -96,6 +107,49 @@ export function AdminApprovalsPage({ heading = "Pending approvals" }: { heading?
           </div>
         )}
       </div>
+
+      <ActionConfirmDialog
+        open={approveTarget !== null}
+        title="Approve this policy?"
+        description={
+          approveTarget
+            ? `"${approveTarget.name}" by ${approveTarget.insurer?.companyName ?? "Unknown insurer"} will go live for policy seekers immediately.`
+            : ""
+        }
+        confirmLabel="Approve policy"
+        confirmTone="success"
+        loading={busyId === approveTarget?.id}
+        onCancel={() => setApproveTarget(null)}
+        onConfirm={() => void confirmApprove()}
+      />
+
+      <ActionConfirmDialog
+        open={rejectTarget !== null}
+        title="Reject this policy?"
+        description={
+          rejectTarget
+            ? `The insurer will be notified and can edit "${rejectTarget.name}" before resubmitting it for review.`
+            : ""
+        }
+        confirmLabel="Reject policy"
+        confirmTone="destructive"
+        loading={busyId === rejectTarget?.id}
+        onCancel={() => {
+          setRejectTarget(null);
+          setRejectReason("");
+        }}
+        onConfirm={() => void confirmReject()}
+      >
+        <label className="block text-sm">
+          <span className="font-medium">Feedback for the insurer (optional)</span>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Explain what needs to change before approval…"
+            className="mt-2 w-full min-h-24 px-3 py-2 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+          />
+        </label>
+      </ActionConfirmDialog>
     </div>
   );
 }

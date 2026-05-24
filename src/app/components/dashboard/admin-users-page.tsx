@@ -2,13 +2,14 @@ import { useMemo, useState } from "react";
 import { Loader2, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
-import { changeUserRole, deactivateUser } from "@/lib/admin-api";
+import { changeUserRole, deactivateUser, reactivateUser } from "@/lib/admin-api";
 import { titleCase } from "@/lib/admin-utils";
-import type { UserRole } from "@/lib/types";
+import type { AuthUser, UserRole } from "@/lib/types";
 import { useAdmin } from "./admin-context";
 import { useAuth } from "../auth-context";
+import { ActionConfirmDialog } from "./action-confirm-dialog";
 
-const ASSIGNABLE_ROLES: UserRole[] = ["user", "insurer", "admin", "superadmin"];
+const ASSIGNABLE_ROLES: UserRole[] = ["user", "insurer", "admin"];
 
 interface AdminUsersPageProps {
   mode: "employee" | "superadmin";
@@ -19,20 +20,23 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
   const { user: currentUser } = useAuth();
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<AuthUser | null>(null);
+
+  const visibleUsers = useMemo(
+    () => users.filter((user) => user.role !== "superadmin"),
+    [users]
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
+    if (!q) return visibleUsers;
+    return visibleUsers.filter(
       (user) =>
         user.fullName.toLowerCase().includes(q) ||
         user.email.toLowerCase().includes(q) ||
         user.role.toLowerCase().includes(q)
     );
-  }, [users, query]);
-
-  const canManageRole = mode === "superadmin";
-  const canDeactivate = true;
+  }, [visibleUsers, query]);
 
   const handleRoleChange = async (userId: string, role: UserRole) => {
     setBusyId(userId);
@@ -47,16 +51,31 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
     }
   };
 
-  const handleDeactivate = async (userId: string) => {
-    if (!window.confirm("Deactivate this user? They will not be able to sign in.")) return;
-    setBusyId(userId);
+  const confirmDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setBusyId(deactivateTarget.id);
     try {
-      const data = await deactivateUser(userId);
-      setUsers(users.map((user) => (user.id === userId ? data.user : user)));
+      const data = await deactivateUser(deactivateTarget.id);
+      setUsers(users.map((user) => (user.id === deactivateTarget.id ? data.user : user)));
       toast.success("User deactivated");
+      setDeactivateTarget(null);
       await refresh();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not deactivate user");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleReactivate = async (userId: string) => {
+    setBusyId(userId);
+    try {
+      const data = await reactivateUser(userId);
+      setUsers(users.map((user) => (user.id === userId ? data.user : user)));
+      toast.success("User reactivated");
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not reactivate user");
     } finally {
       setBusyId(null);
     }
@@ -75,9 +94,10 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
       <div>
         <h1 className="text-3xl font-bold mb-1">User management</h1>
         <p className="text-muted-foreground">
+          Deactivated users keep their account but cannot sign in until you reactivate them.
           {mode === "superadmin"
-            ? "Full control including role changes and account deactivation"
-            : "View users and deactivate accounts (super admin required for privileged roles)"}
+            ? " Super admin accounts are managed separately and are not listed here."
+            : " Super admin accounts are hidden from this view."}
         </p>
       </div>
 
@@ -101,8 +121,8 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
               const isSelf = user.id === currentUser?.id;
               const roleOptions =
                 mode === "superadmin"
-                  ? ASSIGNABLE_ROLES
-                  : ASSIGNABLE_ROLES.filter((role) => role !== "superadmin");
+                  ? [...ASSIGNABLE_ROLES, "superadmin" as UserRole]
+                  : ASSIGNABLE_ROLES;
 
               return (
                 <div
@@ -130,7 +150,7 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
                     >
                       {titleCase(user.status)}
                     </span>
-                    {canManageRole && !isSelf && user.role !== "superadmin" ? (
+                    {mode === "superadmin" && !isSelf ? (
                       <select
                         value={user.role}
                         disabled={busyId === user.id}
@@ -150,14 +170,24 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
                         {titleCase(user.role)}
                       </span>
                     )}
-                    {canDeactivate && !isSelf && user.status === "active" ? (
+                    {!isSelf && user.status === "active" ? (
                       <button
                         type="button"
                         disabled={busyId === user.id}
-                        onClick={() => void handleDeactivate(user.id)}
+                        onClick={() => setDeactivateTarget(user)}
                         className="px-4 py-2 border border-destructive/30 text-destructive rounded-xl hover:bg-destructive/10 text-sm disabled:opacity-50"
                       >
                         Deactivate
+                      </button>
+                    ) : null}
+                    {!isSelf && user.status === "inactive" ? (
+                      <button
+                        type="button"
+                        disabled={busyId === user.id}
+                        onClick={() => void handleReactivate(user.id)}
+                        className="px-4 py-2 border border-success/30 text-success rounded-xl hover:bg-success/10 text-sm disabled:opacity-50"
+                      >
+                        Reactivate
                       </button>
                     ) : null}
                   </div>
@@ -167,6 +197,21 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
           </div>
         )}
       </div>
+
+      <ActionConfirmDialog
+        open={deactivateTarget !== null}
+        title="Deactivate this user?"
+        description={
+          deactivateTarget
+            ? `${deactivateTarget.fullName} (${deactivateTarget.email}) will lose access immediately. Their account stays in ClearClever — they cannot sign in until you reactivate them. They do not need to sign up again.`
+            : ""
+        }
+        confirmLabel="Deactivate account"
+        confirmTone="destructive"
+        loading={busyId === deactivateTarget?.id}
+        onCancel={() => setDeactivateTarget(null)}
+        onConfirm={() => void confirmDeactivate()}
+      />
     </div>
   );
 }

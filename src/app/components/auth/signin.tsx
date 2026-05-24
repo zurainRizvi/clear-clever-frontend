@@ -132,10 +132,9 @@ export function SignIn() {
           transition={{ duration: 0.4 }}
           className="w-full max-w-md"
         >
-          <ClearCleverLogo className="mb-8" />
-
           {step === "role" ? (
             <>
+              <ClearCleverLogo className="mb-8" />
               <h1 className="text-3xl font-bold mb-2">{copy.auth.signInTitle}</h1>
               <p className="text-muted-foreground mb-8">Select your role to continue</p>
               <div className="space-y-3">
@@ -176,14 +175,17 @@ export function SignIn() {
             </>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={() => setStep("role")}
-                className="text-sm text-primary hover:underline mb-4 inline-flex items-center gap-1"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Change role
-              </button>
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setStep("role")}
+                  className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Change role
+                </button>
+              </div>
+              <ClearCleverLogo linkToHome={false} className="mb-6" />
               <h1 className="text-3xl font-bold mb-2">{copy.auth.signInTitle}</h1>
               <p className="text-muted-foreground mb-2">{copy.auth.signInSubtitle}</p>
               {selectedRole ? (

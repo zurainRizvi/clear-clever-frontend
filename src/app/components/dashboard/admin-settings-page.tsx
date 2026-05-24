@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Loader2, Mail, Shield, User } from "lucide-react";
+import { Loader2, Mail, Moon, Shield, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, useLogout } from "../auth-context";
+import { DarkModeToggle } from "../dark-mode-toggle";
 import { updateMeProfile } from "@/lib/auth-api";
 import { titleCase } from "@/lib/admin-utils";
 
@@ -87,6 +88,17 @@ export function AdminSettingsPage({ variant }: AdminSettingsPageProps) {
     reader.readAsDataURL(file);
   };
 
+  const removePhoto = async () => {
+    setProfilePhoto(null);
+    try {
+      await updateMeProfile({ profilePhotoDataUrl: null });
+      await refreshUser();
+      toast.success("Profile photo removed");
+    } catch {
+      toast.error("Could not remove profile photo");
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex justify-center py-20">
@@ -102,7 +114,7 @@ export function AdminSettingsPage({ variant }: AdminSettingsPageProps) {
         <p className="text-muted-foreground">
           {variant === "superadmin"
             ? "Manage your super admin account preferences"
-            : "Manage your employee account preferences"}
+            : "Manage your admin account preferences"}
         </p>
       </div>
 
@@ -125,13 +137,35 @@ export function AdminSettingsPage({ variant }: AdminSettingsPageProps) {
               onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
             />
           </label>
-          <div>
+          <div className="flex-1">
             <div className="font-semibold">{userName}</div>
             <div className="text-sm text-muted-foreground">{userEmail}</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Role: {titleCase(user.role)}
-            </div>
+            <div className="text-xs text-muted-foreground mt-1">Role: {titleCase(user.role)}</div>
           </div>
+          {profilePhoto ? (
+            <button
+              type="button"
+              onClick={() => void removePhoto()}
+              className="px-3 py-2 text-sm border border-destructive/30 text-destructive rounded-xl hover:bg-destructive/10 inline-flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Remove photo
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="bg-card border border-border rounded-xl p-6 space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Moon className="w-5 h-5 text-primary" />
+          Appearance
+        </h2>
+        <div className="flex items-center justify-between p-4 bg-accent/30 rounded-xl">
+          <div>
+            <div className="font-medium text-sm">Theme</div>
+            <div className="text-xs text-muted-foreground">Switch between light and dark mode</div>
+          </div>
+          <DarkModeToggle />
         </div>
       </section>
 
