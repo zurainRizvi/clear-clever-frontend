@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import {
+  ArrowLeft,
   LayoutDashboard,
   FileText,
   Heart,
@@ -13,7 +14,6 @@ import {
   Menu,
   X,
   LogOut,
-  Search,
   User,
   Camera,
   Gift,
@@ -22,7 +22,7 @@ import {
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { useAuth, useLogout } from "../auth-context";
-import { Toaster } from "sonner";
+import { toast, Toaster } from "sonner";
 import { NotificationsProvider, useNotifications } from "./notifications-context";
 
 interface MenuItem {
@@ -44,6 +44,10 @@ const menuItems: MenuItem[] = [
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
 
+const PROFILE_PHOTO_KEY = "clearclever.profilePhoto";
+const REFERRAL_MESSAGE =
+  "Join me on ClearClever to compare insurance in one place. New users get a joining reward with specialized insurance offers, discounts, and useful add-ons. Try it here: https://clear-clever-frontend.vercel.app";
+
 export function PolicySeekerDashboard() {
   return (
     <NotificationsProvider>
@@ -58,12 +62,46 @@ function PolicySeekerDashboardInner() {
   const handleLogout = useLogout();
   const { userName, userEmail } = useAuth();
   const { unreadCount } = useNotifications();
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const isDashboardHome = location.pathname === "/dashboard" || location.pathname === "/dashboard/";
+
+  useEffect(() => {
+    setProfilePhoto(localStorage.getItem(PROFILE_PHOTO_KEY));
+  }, []);
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
       return location.pathname === "/dashboard" || location.pathname === "/dashboard/";
     }
     return location.pathname.startsWith(path);
+  };
+
+  const handleProfilePhotoUpload = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Profile photo must be under 2 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const nextPhoto = String(reader.result);
+      localStorage.setItem(PROFILE_PHOTO_KEY, nextPhoto);
+      setProfilePhoto(nextPhoto);
+      toast.success("Profile photo updated");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const shareReferral = () => {
+    void navigator.clipboard?.writeText(REFERRAL_MESSAGE).catch(() => undefined);
+    toast.message("Invite message ready", {
+      description: "Opening your messages app. The invite text was also copied.",
+    });
   };
 
   return (
@@ -117,12 +155,13 @@ function PolicySeekerDashboardInner() {
                 })}
               </div>
 
-              <Link
-                to="/dashboard/support"
-                className="mt-6 block rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sidebar-foreground hover:bg-primary/15 transition-colors"
+              <a
+                href={`sms:?&body=${encodeURIComponent(REFERRAL_MESSAGE)}`}
+                onClick={shareReferral}
+                className="mt-6 block rounded-2xl border border-success/25 bg-success/10 p-4 text-sidebar-foreground hover:bg-success/15 transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-success text-white flex items-center justify-center shrink-0">
                     <Gift className="w-5 h-5" />
                   </div>
                   <div>
@@ -130,26 +169,22 @@ function PolicySeekerDashboardInner() {
                     <p className="text-xs text-muted-foreground mt-1">
                       Invite friends and unlock insurance discounts or add-ons.
                     </p>
-                    <span className="mt-3 inline-flex text-xs font-medium text-primary">
+                    <span className="mt-3 inline-flex text-xs font-medium text-success">
                       Invite now →
                     </span>
                   </div>
                 </div>
-              </Link>
+              </a>
             </nav>
 
             <div className="p-4 border-t border-sidebar-border">
-              <div className="flex items-center gap-3 px-4 py-3">
-                <Link
-                  to="/dashboard/settings"
-                  className="relative w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group"
-                  title="Add profile photo"
-                >
-                  <User className="w-5 h-5 text-primary" />
-                  <span className="absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-sidebar group-hover:scale-105 transition-transform">
-                    <Camera className="w-3 h-3" />
-                  </span>
-                </Link>
+              <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sidebar-accent/40">
+                <ProfilePhotoPicker
+                  id="sidebar-profile-photo"
+                  photo={profilePhoto}
+                  sizeClass="w-14 h-14"
+                  onUpload={handleProfilePhotoUpload}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{userName ?? "Policy seeker"}</div>
                   <div className="text-xs text-muted-foreground truncate">{userEmail ?? ""}</div>
@@ -178,19 +213,20 @@ function PolicySeekerDashboardInner() {
                 >
                   {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                 </button>
-                <div className="relative hidden sm:block">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    type="search"
-                    placeholder="Search policies, claims…"
-                    className="pl-10 pr-4 py-2 w-64 lg:w-80 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                </div>
+                {!isDashboardHome && (
+                  <Link
+                    to="/dashboard"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-sm hover:bg-accent transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to dashboard
+                  </Link>
+                )}
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="hidden lg:flex items-center gap-2 rounded-xl bg-success/10 px-3 py-2 text-success">
-                  <div className="w-7 h-7 rounded-lg bg-success/15 flex items-center justify-center">
+                <div className="hidden lg:flex items-center gap-2 rounded-xl border border-success/25 bg-success/10 px-3 py-2 text-success">
+                  <div className="w-7 h-7 rounded-lg bg-success text-white flex items-center justify-center">
                     <Shield className="w-4 h-4" />
                   </div>
                   <div className="leading-tight">
@@ -208,16 +244,14 @@ function PolicySeekerDashboardInner() {
                   ) : null}
                 </Link>
                 <DarkModeToggle />
-                <Link
-                  to="/dashboard/settings"
-                  className="relative w-10 h-10 rounded-full bg-primary/10 hidden sm:flex items-center justify-center hover:bg-primary/15 transition-colors"
-                  title="Add profile photo"
-                >
-                  <User className="w-5 h-5 text-primary" />
-                  <span className="absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background">
-                    <Camera className="w-3 h-3" />
-                  </span>
-                </Link>
+                <div className="hidden sm:block">
+                  <ProfilePhotoPicker
+                    id="header-profile-photo"
+                    photo={profilePhoto}
+                    sizeClass="w-12 h-12"
+                    onUpload={handleProfilePhotoUpload}
+                  />
+                </div>
               </div>
             </div>
           </header>
@@ -228,5 +262,41 @@ function PolicySeekerDashboardInner() {
         </div>
       </div>
     </>
+  );
+}
+
+function ProfilePhotoPicker({
+  id,
+  photo,
+  sizeClass,
+  onUpload,
+}: {
+  id: string;
+  photo: string | null;
+  sizeClass: string;
+  onUpload: (file: File | undefined) => void;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className={`relative ${sizeClass} rounded-full bg-success/10 flex items-center justify-center shrink-0 cursor-pointer group overflow-visible`}
+      title="Upload profile photo"
+    >
+      {photo ? (
+        <img src={photo} alt="Profile" className="w-full h-full rounded-full object-cover" />
+      ) : (
+        <User className="w-6 h-6 text-success" />
+      )}
+      <span className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-success text-white flex items-center justify-center border-2 border-background group-hover:scale-105 transition-transform">
+        <Camera className="w-3.5 h-3.5" />
+      </span>
+      <input
+        id={id}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={(event) => onUpload(event.target.files?.[0])}
+      />
+    </label>
   );
 }

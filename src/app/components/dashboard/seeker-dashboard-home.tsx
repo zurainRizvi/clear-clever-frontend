@@ -278,17 +278,25 @@ function inferCrossSells(
   );
   const answerText = (value: unknown) =>
     Array.isArray(value) ? value.join(" ").toLowerCase() : String(value ?? "").toLowerCase();
+  const answerHasPositiveSignal = (value: unknown, reject = ['no', 'none']) => {
+    const values = Array.isArray(value) ? value.map(answerText) : [answerText(value)];
+    return values.some(
+      (item) => item.trim() !== "" && !reject.some((word) => item.includes(word))
+    );
+  };
   const hasSignal = (keys: string[], reject = ['no', 'none']) =>
     allAnswers.some(([key, value]) => {
       if (!keys.includes(key)) return false;
-      const normalized = answerText(value);
-      return !reject.some((word) => normalized.includes(word));
+      return answerHasPositiveSignal(value, reject);
     });
-  const firstAnswerText = (keys: string[]) =>
-    answerText(allAnswers.find(([key]) => keys.includes(key))?.[1]);
+  const signalText = (keys: string[]) =>
+    allAnswers
+      .filter(([key, value]) => keys.includes(key) && answerHasPositiveSignal(value))
+      .map(([, value]) => answerText(value))
+      .join(" ");
 
   const suggestions: CrossSell[] = [];
-  const vehicleSignal = firstAnswerText(["owns_vehicle", "vehicle_type", "vehicle_make_model"]);
+  const vehicleSignal = signalText(["owns_vehicle", "vehicle_type", "vehicle_make_model"]);
   if (hasSignal(["owns_vehicle", "vehicle_type", "vehicle_make_model"])) {
     if (vehicleSignal.includes("motorcycle") || vehicleSignal.includes("bike")) {
       suggestions.push({
@@ -312,12 +320,12 @@ function inferCrossSells(
     }
   }
   if (!activeCategories.has("pet") && hasSignal(["has_pet", "pet_type"])) {
-    const petSignal = firstAnswerText(["has_pet", "pet_type"]);
+    const petSignal = signalText(["has_pet", "pet_type"]);
     const pet = petSignal.includes("dog") ? "dog" : petSignal.includes("cat") ? "cat" : "pet";
     suggestions.push({
       category: "pet",
       label: pet === "pet" ? "Pet insurance" : `${pet[0].toUpperCase()}${pet.slice(1)} insurance`,
-      reason: `you mentioned a ${pet}, so vet visits and emergency care should be compared.`,
+      reason: `you mentioned a ${pet}, so compare pet cover for vet visits, emergency care, and ClearClever special add-ons.`,
       to: "/dashboard/compare",
       icon: PawPrint,
     });

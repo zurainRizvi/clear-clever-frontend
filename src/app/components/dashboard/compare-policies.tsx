@@ -626,27 +626,35 @@ function inferCrossCategorySuggestions(
   answers: Record<string, unknown>,
   currentCategory?: string
 ): { category: string; reason: string }[] {
+  const answerText = (value: unknown) =>
+    Array.isArray(value) ? value.join(" ").toLowerCase() : String(value ?? "").toLowerCase();
+  const answerHasPositiveSignal = (value: unknown) => {
+    const values = Array.isArray(value) ? value.map(answerText) : [answerText(value)];
+    return values.some((item) => item.trim() !== "" && !item.includes("no") && !item.includes("none"));
+  };
   const signal = (keys: string[]) =>
     Object.entries(answers).some(([key, value]) => {
       if (!keys.includes(key)) return false;
-      const normalized = Array.isArray(value)
-        ? value.join(" ").toLowerCase()
-        : String(value).toLowerCase();
-      return !normalized.includes("no") && !normalized.includes("none");
+      return answerHasPositiveSignal(value);
     });
+  const signalText = (keys: string[]) =>
+    Object.entries(answers)
+      .filter(([key, value]) => keys.includes(key) && answerHasPositiveSignal(value))
+      .map(([, value]) => answerText(value))
+      .join(" ");
 
   return [
     {
-      category: signal(["owns_vehicle"]) && String(answers.owns_vehicle).toLowerCase().includes("motorcycle")
+      category: signalText(["owns_vehicle", "vehicle_type", "vehicle_make_model"]).includes("motorcycle")
         ? "motorcycle"
         : "vehicle",
       reason: "based on the vehicle details you shared",
-      show: currentCategory !== "auto" && signal(["owns_vehicle"]),
+      show: currentCategory !== "auto" && signal(["owns_vehicle", "vehicle_type", "vehicle_make_model"]),
     },
     {
       category: "pet",
       reason: petReason(answers),
-      show: currentCategory !== "pet" && signal(["has_pet"]),
+      show: currentCategory !== "pet" && signal(["has_pet", "pet_type"]),
     },
     {
       category: "life",
@@ -664,9 +672,11 @@ function inferCrossCategorySuggestions(
 }
 
 function petReason(answers: Record<string, unknown>): string {
-  const raw = answers.has_pet;
-  const value = Array.isArray(raw) ? raw.join(" ").toLowerCase() : String(raw ?? "").toLowerCase();
-  if (value.includes("dog")) return "dog care signal from your answers";
-  if (value.includes("cat")) return "cat care signal from your answers";
-  return "pet ownership signal";
+  const petValues = [answers.has_pet, answers.pet_type]
+    .map((value) => (Array.isArray(value) ? value.join(" ") : String(value ?? "")))
+    .join(" ")
+    .toLowerCase();
+  if (petValues.includes("dog")) return "dog insurance with vet-care add-ons";
+  if (petValues.includes("cat")) return "cat insurance with vet-care add-ons";
+  return "pet insurance with ClearClever special add-ons";
 }
