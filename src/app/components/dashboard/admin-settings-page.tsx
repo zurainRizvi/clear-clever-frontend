@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Mail, Moon, Shield, Trash2, User } from "lucide-react";
+import { HelpCircle, ImageIcon, Loader2, Mail, Moon, Phone, Shield, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, useLogout } from "../auth-context";
 import { DarkModeToggle } from "../dark-mode-toggle";
@@ -107,13 +107,15 @@ export function AdminSettingsPage({ variant }: AdminSettingsPageProps) {
     );
   }
 
+  const displayName = variant === "superadmin" ? "Super Admin" : userName;
+
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
+    <div className="w-full space-y-6 xl:grid xl:grid-cols-2 xl:gap-6 xl:items-start xl:[&>section]:h-fit">
+      <div className="xl:col-span-2">
         <h1 className="text-3xl font-bold mb-1">Settings</h1>
         <p className="text-muted-foreground">
           {variant === "superadmin"
-            ? "Manage your super admin account preferences"
+            ? "Super Admin account preferences, appearance, and session controls"
             : "Manage your admin account preferences"}
         </p>
       </div>
@@ -123,50 +125,75 @@ export function AdminSettingsPage({ variant }: AdminSettingsPageProps) {
           <User className="w-5 h-5 text-primary" />
           Profile
         </h2>
-        <div className="flex items-center gap-4">
-          <label className="relative w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center cursor-pointer overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
             {profilePhoto ? (
               <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <User className="w-7 h-7 text-primary" />
             )}
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
-            />
-          </label>
-          <div className="flex-1">
-            <div className="font-semibold">{userName}</div>
-            <div className="text-sm text-muted-foreground">{userEmail}</div>
-            <div className="text-xs text-muted-foreground mt-1">Role: {titleCase(user.role)}</div>
           </div>
-          {profilePhoto ? (
-            <button
-              type="button"
-              onClick={() => void removePhoto()}
-              className="px-3 py-2 text-sm border border-destructive/30 text-destructive rounded-xl hover:bg-destructive/10 inline-flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Remove photo
-            </button>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg cursor-pointer hover:bg-primary/90">
+              <ImageIcon className="w-4 h-4" />
+              Upload photo
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
+              />
+            </label>
+            {profilePhoto ? (
+              <button
+                type="button"
+                onClick={() => void removePhoto()}
+                className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent"
+              >
+                Remove photo
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <User className="w-4 h-4 shrink-0" />
+            <span>{displayName ?? "—"}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Mail className="w-4 h-4 shrink-0" />
+            <span>{userEmail ?? "—"}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Phone className="w-4 h-4 shrink-0" />
+            <span>{user?.phone ?? "—"}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Shield className="w-4 h-4 shrink-0" />
+            <span>Role: {variant === "superadmin" ? "Super Admin" : titleCase(user.role)}</span>
+          </div>
         </div>
       </section>
 
       <section className="bg-card border border-border rounded-xl p-6 space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Moon className="w-5 h-5 text-primary" />
-          Appearance
+          {variant === "superadmin" ? "Appearance & theme" : "Appearance"}
         </h2>
         <div className="flex items-center justify-between p-4 bg-accent/30 rounded-xl">
           <div>
-            <div className="font-medium text-sm">Theme</div>
-            <div className="text-xs text-muted-foreground">Switch between light and dark mode</div>
+            <div className="font-medium text-sm">Dark mode</div>
+            <div className="text-xs text-muted-foreground">
+              Switch between light and dark themes across the Super Admin portal
+            </div>
           </div>
           <DarkModeToggle />
         </div>
+        {variant === "superadmin" ? (
+          <p className="text-xs text-muted-foreground">
+            Theme preference is stored on this device and applies to all admin portal screens.
+          </p>
+        ) : null}
       </section>
 
       <section className="bg-card border border-border rounded-xl p-6 space-y-4">
@@ -200,14 +227,30 @@ export function AdminSettingsPage({ variant }: AdminSettingsPageProps) {
         ))}
       </section>
 
-      <section className="bg-card border border-border rounded-xl p-6 space-y-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
-          Account
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Signed in as {userEmail}. Use sign out to end your admin session on this device.
-        </p>
+      {variant === "superadmin" ? (
+        <section className="bg-card border border-border rounded-xl p-6 space-y-3 xl:col-span-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <HelpCircle className="w-5 h-5 text-primary" />
+            Super Admin reminders
+          </h2>
+          <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
+            <li>Provider deletion permanently removes all insurer data from the database.</li>
+            <li>Employee admins cannot access provider removal or permanent delete actions.</li>
+            <li>Use sign out when leaving a shared workstation.</li>
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="bg-card border border-border rounded-xl p-6 flex flex-wrap items-center justify-between gap-4 xl:col-span-2">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
+            <Shield className="w-5 h-5 text-primary" />
+            Account
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Signed in as {userEmail}. Use sign out to end your session on this device.
+          </p>
+        </div>
         <button
           type="button"
           onClick={handleLogout}

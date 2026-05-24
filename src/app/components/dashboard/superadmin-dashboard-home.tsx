@@ -1,31 +1,99 @@
 import { Link } from "react-router";
-import { CheckCircle2, Clock, Loader2, Shield, Users } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  Crown,
+  FileText,
+  Loader2,
+  Shield,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useAdmin } from "./admin-context";
 
 export function SuperadminDashboardHome() {
-  const { pendingPolicies, users, analytics, insurerRows, recentActivity, loading } = useAdmin();
+  const { pendingPolicies, insurers, analytics, recentActivity, loading } = useAdmin();
 
-  const stats = [
+  const pendingProviders = insurers.filter((row) => row.user.status === "pendingVerification");
+  const activeProviders = insurers.filter((row) => row.user.status === "active");
+  const platform = analytics?.platform;
+
+  const controlStats = [
     {
-      label: "Total users",
-      value: String(analytics?.users.total ?? users.length),
-      trend: `${analytics?.users.active ?? 0} active`,
+      label: "Providers on platform",
+      value: String(platform?.insurers.total ?? insurers.length),
+      sub: `${pendingProviders.length} awaiting your approval`,
+      icon: Building2,
+      tone: "text-primary",
     },
     {
-      label: "Approved policies",
-      value: String(analytics?.policies.approved ?? 0),
-      trend: `${analytics?.policies.pending ?? 0} pending`,
+      label: "Platform users",
+      value: String(analytics?.users.total ?? 0),
+      sub: `${analytics?.users.active ?? 0} active · ${analytics?.users.inactive ?? 0} inactive`,
+      icon: Users,
+      tone: "text-primary",
     },
     {
-      label: "Total leads",
-      value: String(analytics?.leads.total ?? 0),
-      trend: `${analytics?.leads.new ?? 0} new`,
+      label: "Policies in catalog",
+      value: String(analytics?.policies.total ?? 0),
+      sub: `${analytics?.policies.pending ?? 0} need policy review`,
+      icon: Shield,
+      tone: "text-warning",
     },
     {
-      label: "Insurer accounts",
-      value: String(insurerRows.length),
-      trend: `${pendingPolicies.length} policies awaiting review`,
+      label: "Commerce & claims",
+      value: String((platform?.purchases ?? 0) + (platform?.claims ?? 0)),
+      sub: `${platform?.purchases ?? 0} purchases · ${platform?.claims ?? 0} claims`,
+      icon: TrendingUp,
+      tone: "text-success",
+    },
+  ];
+
+  const governanceLinks = [
+    {
+      title: "Provider approvals",
+      description: `${pendingProviders.length} pending · ${activeProviders.length} active`,
+      href: "/admin-dashboard/approvals",
+      icon: Building2,
+    },
+    {
+      title: "Policy review",
+      description: `${pendingPolicies.length} submissions awaiting review`,
+      href: "/admin-dashboard/policies",
+      icon: CheckCircle2,
+    },
+    {
+      title: "User & role control",
+      description: "Assign roles, deactivate accounts",
+      href: "/admin-dashboard/users",
+      icon: Users,
+    },
+    {
+      title: "Platform analytics",
+      description: "Full-app metrics and provider pipeline",
+      href: "/admin-dashboard/analytics",
+      icon: Activity,
+    },
+    {
+      title: "Fraud detection",
+      description: "Review suspicious activity signals",
+      href: "/admin-dashboard/fraud",
+      icon: AlertTriangle,
+    },
+    {
+      title: "System health",
+      description: "API, database, and email readiness",
+      href: "/admin-dashboard/health",
+      icon: Activity,
+    },
+    {
+      title: "Audit logs",
+      description: "Trace administrative actions",
+      href: "/admin-dashboard/audit",
+      icon: FileText,
     },
   ];
 
@@ -39,62 +107,92 @@ export function SuperadminDashboardHome() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Super admin dashboard</h1>
-        <p className="text-muted-foreground">Monitor and manage the entire ClearClever platform</p>
-      </div>
-
-      <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shrink-0">
-            <Shield className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-1">Super admin access</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Full administrative privileges including role changes, account deactivation, and
-              platform configuration.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 bg-success/10 text-success rounded-full text-sm">
-                Full data access
-              </span>
-              <span className="px-3 py-1 bg-success/10 text-success rounded-full text-sm">
-                Role management
-              </span>
-              <span className="px-3 py-1 bg-success/10 text-success rounded-full text-sm">
-                System health
-              </span>
+      <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/15 via-primary/5 to-background p-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 text-primary text-sm font-medium mb-3">
+              <Crown className="w-4 h-4" />
+              Super Admin
             </div>
+            <h1 className="text-3xl font-bold mb-2 font-[Poppins]">Platform control center</h1>
+            <p className="text-muted-foreground max-w-xl">
+              Govern the entire ClearClever application — providers, staff roles, catalog policies,
+              fraud signals, and infrastructure health. Employee admins handle day-to-day operations;
+              you hold final authority.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="px-3 py-1 bg-card border border-border rounded-full text-sm">
+              {platform?.staff.superadmins ?? 1} super admin
+            </span>
+            <span className="px-3 py-1 bg-card border border-border rounded-full text-sm">
+              {platform?.staff.admins ?? 0} platform admins
+            </span>
+            <span className="px-3 py-1 bg-card border border-border rounded-full text-sm">
+              {platform?.conversations ?? 0} conversations
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            className="bg-card border border-border rounded-xl p-6"
-          >
-            <div className="text-3xl font-bold mb-1">{stat.value}</div>
-            <div className="text-sm text-muted-foreground mb-2">{stat.label}</div>
-            <div className="text-xs text-success">{stat.trend}</div>
-          </motion.div>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {controlStats.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.06 }}
+              className="bg-card border border-border rounded-xl p-5"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <Icon className={`w-5 h-5 ${stat.tone}`} />
+                <span className="text-2xl font-bold">{stat.value}</span>
+              </div>
+              <div className="text-sm font-medium">{stat.label}</div>
+              <div className="text-xs text-muted-foreground mt-1">{stat.sub}</div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Governance shortcuts</h2>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {governanceLinks.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className="flex items-start gap-4 p-5 bg-card border border-border rounded-xl hover:border-primary/30 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Icon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <div className="font-semibold mb-0.5">{item.title}</div>
+                  <div className="text-sm text-muted-foreground">{item.description}</div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-xl font-semibold mb-4">Recent activity</h3>
+          <h3 className="text-xl font-semibold mb-4">Recent platform activity</h3>
           {recentActivity.length === 0 ? (
             <p className="text-sm text-muted-foreground">No recent activity yet.</p>
           ) : (
             <div className="space-y-3">
               {recentActivity.slice(0, 6).map((item) => (
-                <div key={item.id} className="flex items-start justify-between gap-3 p-3 bg-accent/30 rounded-xl">
+                <div
+                  key={item.id}
+                  className="flex items-start justify-between gap-3 p-3 bg-accent/30 rounded-xl"
+                >
                   <div>
                     <div className="font-medium text-sm">{item.action}</div>
                     <div className="text-xs text-muted-foreground">{item.subject}</div>
@@ -108,76 +206,37 @@ export function SuperadminDashboardHome() {
             to="/admin-dashboard/audit"
             className="inline-block mt-4 text-sm text-primary hover:underline"
           >
-            View audit logs →
+            Open audit logs →
           </Link>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-xl font-semibold mb-4">Quick actions</h3>
-          <div className="grid gap-3">
-            <Link
-              to="/admin-dashboard/approvals"
-              className="flex items-center gap-3 p-4 bg-accent/30 rounded-xl hover:bg-accent/50"
-            >
-              <Clock className="w-5 h-5 text-warning" />
-              <span>{pendingPolicies.length} pending provider approvals</span>
-            </Link>
-            <Link
-              to="/admin-dashboard/users"
-              className="flex items-center gap-3 p-4 bg-accent/30 rounded-xl hover:bg-accent/50"
-            >
-              <Users className="w-5 h-5 text-primary" />
-              <span>Manage {users.length} platform users</span>
-            </Link>
-            <Link
-              to="/admin-dashboard/health"
-              className="flex items-center gap-3 p-4 bg-accent/30 rounded-xl hover:bg-accent/50"
-            >
-              <CheckCircle2 className="w-5 h-5 text-success" />
-              <span>Check system health</span>
-            </Link>
+          <h3 className="text-xl font-semibold mb-4">Provider pipeline</h3>
+          <div className="space-y-3 mb-4">
+            <div className="flex justify-between items-center p-3 bg-warning/10 rounded-xl text-sm">
+              <span>Pending approval</span>
+              <span className="font-bold text-warning">{pendingProviders.length}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-success/10 rounded-xl text-sm">
+              <span>Active providers</span>
+              <span className="font-bold text-success">{activeProviders.length}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-muted/50 rounded-xl text-sm">
+              <span>Inactive / rejected</span>
+              <span className="font-bold">
+                {platform?.insurers.inactive ??
+                  insurers.filter((row) => row.user.status === "inactive").length}
+              </span>
+            </div>
           </div>
+          <Link
+            to="/admin-dashboard/approvals"
+            className="text-sm text-primary hover:underline"
+          >
+            Review provider applications →
+          </Link>
         </div>
       </div>
-
-      {insurerRows.length > 0 ? (
-        <div className="bg-card border border-border rounded-xl p-6 overflow-x-auto">
-          <h3 className="text-xl font-semibold mb-4">Insurance providers</h3>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border text-sm text-muted-foreground">
-                <th className="text-left py-3 px-4">Provider</th>
-                <th className="text-left py-3 px-4">Email</th>
-                <th className="text-left py-3 px-4">Pending policies</th>
-                <th className="text-left py-3 px-4">Status</th>
-                <th className="text-left py-3 px-4">Verification</th>
-              </tr>
-            </thead>
-            <tbody>
-              {insurerRows.map((provider) => (
-                <tr key={provider.id} className="border-b border-border hover:bg-accent/30">
-                  <td className="py-4 px-4 font-medium">{provider.name}</td>
-                  <td className="py-4 px-4 text-muted-foreground">{provider.email}</td>
-                  <td className="py-4 px-4">{provider.pendingPolicies}</td>
-                  <td className="py-4 px-4">{provider.status}</td>
-                  <td className="py-4 px-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm inline-flex items-center gap-1 ${
-                        provider.verification === "Verified"
-                          ? "bg-success/10 text-success"
-                          : "bg-warning/10 text-warning"
-                      }`}
-                    >
-                      <CheckCircle2 className="w-3 h-3" />
-                      {provider.verification}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
     </div>
   );
 }

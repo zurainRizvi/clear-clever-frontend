@@ -1,4 +1,4 @@
-import type { AdminAnalytics, PendingPolicySummary } from "./admin-api";
+import type { AdminAnalytics, AdminInsurerRecord, PendingPolicySummary } from "./admin-api";
 import type { AuthUser } from "./types";
 import { titleCase } from "./provider-utils";
 
@@ -44,22 +44,24 @@ export function buildProviderSummaries(pendingPolicies: PendingPolicySummary[]):
   return [...bySlug.values()].sort((a, b) => b.pendingPolicies - a.pendingPolicies);
 }
 
-export function buildInsurerRows(users: AuthUser[], pendingPolicies: PendingPolicySummary[]): InsurerRow[] {
-  return users
-    .filter((user) => user.role === "insurer")
-    .map((user) => {
-      const pending = pendingPolicies.filter(
-        (policy) => policy.insurer?.companyName === user.fullName
-      ).length;
-      return {
-        id: user.id,
-        name: user.fullName,
-        email: user.email,
-        pendingPolicies: pending,
-        status: user.status === "active" ? "Active" : titleCase(user.status),
-        verification: user.status === "active" ? "Verified" : "Pending",
-      };
-    });
+export function buildInsurerRows(insurers: AdminInsurerRecord[]): InsurerRow[] {
+  return insurers.map((entry) => {
+    const { user, profile, pendingPolicies } = entry;
+    const verification =
+      user.status === "active"
+        ? "Approved"
+        : user.status === "pendingVerification"
+          ? "Pending approval"
+          : "Rejected / removed";
+    return {
+      id: user.id,
+      name: profile?.companyName ?? user.fullName,
+      email: user.email,
+      pendingPolicies,
+      status: titleCase(user.status),
+      verification,
+    };
+  });
 }
 
 export function buildRecentActivity(

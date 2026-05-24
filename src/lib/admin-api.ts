@@ -38,6 +38,33 @@ export interface AdminAnalytics {
     total: number;
     new: number;
   };
+  platform?: {
+    insurers: {
+      total: number;
+      pendingVerification: number;
+      active: number;
+      inactive: number;
+    };
+    staff: {
+      admins: number;
+      superadmins: number;
+    };
+    purchases: number;
+    claims: number;
+    conversations: number;
+  };
+}
+
+export interface AdminInsurerRecord {
+  user: AuthUser;
+  profile: {
+    id: string;
+    companyName: string;
+    slug: string;
+    contactEmail: string;
+    contactPhone: string;
+  } | null;
+  pendingPolicies: number;
 }
 
 export async function fetchPendingPolicies(): Promise<{
@@ -126,4 +153,46 @@ export interface HealthStatus {
 
 export async function fetchHealth(): Promise<HealthStatus> {
   return apiRequest("/api/health");
+}
+
+export async function fetchAdminInsurers(): Promise<{
+  count: number;
+  insurers: AdminInsurerRecord[];
+}> {
+  return apiRequest("/api/admin/insurers", { auth: true });
+}
+
+export async function approveInsurer(id: string): Promise<{ user: AuthUser }> {
+  return apiRequest(`/api/admin/insurers/${id}/approve`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export async function rejectInsurer(
+  id: string,
+  reason?: string
+): Promise<{ user: AuthUser }> {
+  return apiRequest(`/api/admin/insurers/${id}/reject`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function revokeInsurer(id: string): Promise<{ user: AuthUser }> {
+  return apiRequest(`/api/admin/insurers/${id}/revoke`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export async function deleteInsurerPermanently(id: string): Promise<{
+  deletedUserId: string;
+  message: string;
+}> {
+  return apiRequest(`/api/admin/insurers/${id}`, {
+    method: "DELETE",
+    auth: true,
+  });
 }

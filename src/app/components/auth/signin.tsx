@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -43,7 +43,6 @@ const ROLE_ICONS = {
 
 export function SignIn() {
   const navigate = useNavigate();
-  const location = useLocation();
   const authRedirect = useAuthRedirect();
   const [step, setStep] = useState<"role" | "credentials">("role");
   const [selectedRoleId, setSelectedRoleId] = useState<SignInRoleId | null>(null);
@@ -83,8 +82,7 @@ export function SignIn() {
         return;
       }
 
-      const from = (location.state as { from?: string } | null)?.from;
-      authRedirect(result.token, result.user, from ?? selectedRole.route);
+      authRedirect(result.token, result.user, selectedRole.route);
       toast.success("Welcome back");
     } catch (err) {
       if (err instanceof ApiError) {

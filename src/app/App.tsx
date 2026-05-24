@@ -35,6 +35,8 @@ import { AdminActivityPage } from "./components/dashboard/admin-activity-page";
 import { AdminSettingsPage } from "./components/dashboard/admin-settings-page";
 import { AdminDashboard } from "./components/dashboard/admin-dashboard";
 import { SuperadminDashboardHome } from "./components/dashboard/superadmin-dashboard-home";
+import { SuperadminProviderApprovalsPage } from "./components/dashboard/superadmin-provider-approvals-page";
+import { SuperadminReportsPage } from "./components/dashboard/superadmin-reports-page";
 import { AdminMessagesPage } from "./components/dashboard/admin-messages-page";
 import { AdminFraudPage } from "./components/dashboard/admin-fraud-page";
 import { AdminAuditPage } from "./components/dashboard/admin-audit-page";
@@ -131,16 +133,10 @@ export default function App() {
                   path="users"
                   element={<AdminUsersPage mode="superadmin" />}
                 />
-                <Route
-                  path="approvals"
-                  element={<AdminApprovalsPage heading="Provider approvals" />}
-                />
-                <Route path="messages" element={<AdminMessagesPage />} />
+                <Route path="approvals" element={<SuperadminProviderApprovalsPage />} />
+                <Route path="policies" element={<AdminApprovalsPage heading="Policy review" />} />
                 <Route path="fraud" element={<AdminFraudPage />} />
-                <Route
-                  path="analytics"
-                  element={<AdminReportsPage title="Platform analytics" />}
-                />
+                <Route path="analytics" element={<SuperadminReportsPage />} />
                 <Route path="audit" element={<AdminAuditPage />} />
                 <Route path="health" element={<AdminHealthPage />} />
                 <Route path="settings" element={<AdminSettingsPage variant="superadmin" />} />

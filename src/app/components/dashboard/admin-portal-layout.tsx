@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  MessageSquare,
   Settings,
   Shield,
   TrendingUp,
@@ -19,7 +18,6 @@ import {
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { useAuth, useLogout } from "../auth-context";
-import { useMessages } from "./messages-context";
 import { useAdmin } from "./admin-context";
 
 export type AdminPortalVariant = "employee" | "superadmin";
@@ -46,9 +44,9 @@ const SUPERADMIN_MENU: MenuItem[] = [
   { path: "/admin-dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/admin-dashboard/users", icon: Users, label: "User Management" },
   { path: "/admin-dashboard/approvals", icon: Shield, label: "Provider Approvals" },
-  { path: "/admin-dashboard/messages", icon: MessageSquare, label: "Messages" },
+  { path: "/admin-dashboard/policies", icon: CheckCircle2, label: "Policy Review" },
   { path: "/admin-dashboard/fraud", icon: AlertTriangle, label: "Fraud Detection" },
-  { path: "/admin-dashboard/analytics", icon: TrendingUp, label: "Analytics" },
+  { path: "/admin-dashboard/analytics", icon: TrendingUp, label: "Platform Analytics" },
   { path: "/admin-dashboard/audit", icon: FileText, label: "Audit Logs" },
   { path: "/admin-dashboard/health", icon: Activity, label: "System Health" },
   { path: "/admin-dashboard/settings", icon: Settings, label: "Settings" },
@@ -63,12 +61,20 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
   const location = useLocation();
   const handleLogout = useLogout();
   const { userName, userEmail } = useAuth();
-  const { pendingPolicies } = useAdmin();
-  const { unreadCount: unreadMessagesCount } = useMessages();
+  const { pendingPolicies, insurers } = useAdmin();
 
   const basePath = variant === "employee" ? "/employee-dashboard" : "/admin-dashboard";
+  const pendingProviders = insurers.filter(
+    (row) => row.user.status === "pendingVerification"
+  ).length;
   const menuItems = (variant === "employee" ? EMPLOYEE_MENU : SUPERADMIN_MENU).map((item) => {
-    if (item.path.endsWith("/approvals")) {
+    if (variant === "employee" && item.path.endsWith("/approvals")) {
+      return { ...item, badge: pendingPolicies.length || undefined };
+    }
+    if (variant === "superadmin" && item.path.endsWith("/approvals")) {
+      return { ...item, badge: pendingProviders || undefined };
+    }
+    if (variant === "superadmin" && item.path.endsWith("/policies")) {
       return { ...item, badge: pendingPolicies.length || undefined };
     }
     return item;
@@ -82,8 +88,13 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
     return location.pathname.startsWith(path);
   };
 
-  const portalLabel = variant === "employee" ? "Admin dashboard" : "Super admin control center";
-  const profileLabel = variant === "employee" ? "Platform admin" : "Super admin";
+  const portalLabel = variant === "employee" ? "Admin dashboard" : "Super Admin";
+  const profileLabel = variant === "employee" ? "Platform admin" : "Super Admin";
+  const headerTitle = variant === "superadmin" && isHome ? "Super Admin" : null;
+  const displayName =
+    variant === "superadmin" ? "Super Admin" : (userName ?? profileLabel);
+  const isSettingsRoute = location.pathname.endsWith("/settings");
+  const contentWidthClass = isSettingsRoute ? "w-full max-w-none" : "max-w-7xl mx-auto";
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -122,11 +133,6 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
                     className={`w-5 h-5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`}
                   />
                   <span className="flex-1">{item.label}</span>
-                  {item.path.endsWith("/messages") && unreadMessagesCount > 0 ? (
-                    <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
-                      {unreadMessagesCount}
-                    </span>
-                  ) : null}
                   {item.badge ? (
                     <span className="px-2 py-0.5 bg-warning text-warning-foreground text-xs rounded-full">
                       {item.badge}
@@ -143,7 +149,7 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
                 <Users className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{userName ?? profileLabel}</div>
+                <div className="font-medium truncate">{displayName}</div>
                 <div className="text-xs text-muted-foreground truncate">{userEmail ?? ""}</div>
               </div>
               <button
@@ -170,7 +176,9 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
               >
                 {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
-              {!isHome ? (
+              {headerTitle ? (
+                <h1 className="text-lg font-semibold font-[Poppins]">{headerTitle}</h1>
+              ) : !isHome ? (
                 <Link to={basePath} className="text-sm text-primary hover:underline">
                   ← Back to dashboard
                 </Link>
@@ -178,13 +186,22 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              {pendingPolicies.length > 0 ? (
+              {variant === "superadmin" && pendingProviders > 0 ? (
                 <Link
                   to={`${basePath}/approvals`}
                   className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-warning/10 text-warning rounded-xl text-sm font-medium"
                 >
+                  <Shield className="w-4 h-4" />
+                  {pendingProviders} provider{pendingProviders === 1 ? "" : "s"} awaiting approval
+                </Link>
+              ) : null}
+              {pendingPolicies.length > 0 ? (
+                <Link
+                  to={`${basePath}${variant === "superadmin" ? "/policies" : "/approvals"}`}
+                  className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-warning/10 text-warning rounded-xl text-sm font-medium"
+                >
                   <CheckCircle2 className="w-4 h-4" />
-                  {pendingPolicies.length} pending approval{pendingPolicies.length === 1 ? "" : "s"}
+                  {pendingPolicies.length} pending polic{pendingPolicies.length === 1 ? "y" : "ies"}
                 </Link>
               ) : null}
               <DarkModeToggle />
@@ -199,7 +216,7 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className={contentWidthClass}>
             <Outlet />
           </div>
         </main>

@@ -16,6 +16,7 @@ interface ActionConfirmDialogProps {
   cancelLabel?: string;
   confirmTone?: "default" | "destructive" | "success";
   loading?: boolean;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   children?: ReactNode;
@@ -29,6 +30,7 @@ export function ActionConfirmDialog({
   cancelLabel = "Cancel",
   confirmTone = "default",
   loading = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
   children,
@@ -60,7 +62,7 @@ export function ActionConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={loading}
+            disabled={loading || confirmDisabled}
             className={`px-4 py-2 rounded-xl disabled:opacity-50 ${confirmClass}`}
           >
             {loading ? "Please wait…" : confirmLabel}
