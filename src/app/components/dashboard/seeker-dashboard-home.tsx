@@ -108,6 +108,10 @@ export function SeekerDashboardHome() {
     () => inferCrossSells(questionnaireAnswers, activeCategories),
     [questionnaireAnswers, activePolicies.length]
   );
+  const protectionOpportunities = useMemo(
+    () => inferProtectionOpportunities(questionnaireAnswers, activeCategories),
+    [questionnaireAnswers, activePolicies.length]
+  );
 
   if (loading) {
     return (
@@ -192,7 +196,7 @@ export function SeekerDashboardHome() {
             <h3 className="text-xl font-semibold mb-2">AI recommendations tailored to you</h3>
             {crossSells.length > 0 ? (
               <div className="space-y-2 mb-4">
-                {crossSells.slice(0, 3).map((item) => (
+                {crossSells.map((item) => (
                   <p key={item.label} className="text-muted-foreground">
                     Consider <span className="font-medium text-foreground">{item.label}</span>:{" "}
                     {item.reason}
@@ -244,12 +248,12 @@ export function SeekerDashboardHome() {
         <div className="bg-card border border-border rounded-xl p-6">
           <h3 className="text-xl font-semibold mb-4">Protection opportunities</h3>
           <div className="space-y-3">
-            {crossSells.length === 0 ? (
+            {protectionOpportunities.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No obvious opportunities yet. Add more questionnaire answers for smarter suggestions.
               </p>
             ) : (
-              crossSells.map((item) => {
+              protectionOpportunities.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link key={item.label} to={item.to} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50">
@@ -350,4 +354,33 @@ function inferCrossSells(
   }
 
   return suggestions;
+}
+
+function inferProtectionOpportunities(
+  answersByCategory: Record<string, Record<string, unknown>>,
+  activeCategories: Set<string | undefined>
+): CrossSell[] {
+  const opportunities: CrossSell[] = [];
+  const hasAnswers = (category: string) =>
+    !!answersByCategory[category] && Object.keys(answersByCategory[category]).length > 0;
+  const queue = (category: CrossSell["category"], label: string, icon: LucideIcon, reason: string) => {
+    if (activeCategories.has(category)) return;
+    opportunities.push({ category, label, icon, reason, to: "/dashboard/compare" });
+  };
+
+  if (hasAnswers("auto")) {
+    queue("auto", "Vehicle insurance", Car, "you shared vehicle details, so auto coverage options are available.");
+    queue("auto", "Motorcycle insurance", Bike, "motorcycle answers were detected, so bike protection options are available.");
+  }
+  if (hasAnswers("life")) {
+    queue("life", "Life insurance", Shield, "you completed life-related questions.");
+  }
+  if (hasAnswers("pet")) {
+    queue("pet", "Pet insurance", PawPrint, "you completed pet profile questions.");
+  }
+  if (hasAnswers("home")) {
+    queue("home", "Home insurance", FileText, "you completed home/property questions.");
+  }
+
+  return opportunities;
 }

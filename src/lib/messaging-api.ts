@@ -38,6 +38,11 @@ export interface ConversationMessage {
   conversationId: string;
   senderUserId: string;
   body: string;
+  attachments?: {
+    fileName: string;
+    mimeType: string;
+    dataUrl: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -72,12 +77,13 @@ export async function fetchConversationMessages(
 
 export async function sendConversationMessage(
   conversationId: string,
-  body: string
+  body: string,
+  attachments?: { fileName: string; mimeType: string; dataUrl: string }[]
 ): Promise<{ message: ConversationMessage; conversation: ConversationSummary }> {
   return apiRequest(`/api/conversations/${conversationId}/messages`, {
     method: "POST",
     auth: true,
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, attachments }),
   });
 }
 

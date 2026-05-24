@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Shield, ArrowRight, Mail } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
@@ -7,22 +7,27 @@ import { toast } from "sonner";
 import { sendOtp, verifyOtp } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
-import { clearPendingEmail, getPendingEmail } from "@/lib/auth-storage";
+import { clearPendingEmail, getPendingEmail, setPendingEmail } from "@/lib/auth-storage";
 import { useAuthRedirect } from "../auth-context";
 
 export function OTPVerification() {
   const navigate = useNavigate();
+  const location = useLocation();
   const authRedirect = useAuthRedirect();
-  const email = getPendingEmail() ?? "";
+  const stateEmail = (location.state as { email?: string } | null)?.email ?? "";
+  const storedEmail = getPendingEmail() ?? "";
+  const email = storedEmail || stateEmail;
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [timer, setTimer] = useState(60);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!email) {
-      navigate("/signup", { replace: true });
+    if (email) {
+      setPendingEmail(email);
+      return;
     }
+    navigate("/signup", { replace: true });
   }, [email, navigate]);
 
   useEffect(() => {
@@ -54,7 +59,11 @@ export function OTPVerification() {
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
       if (result.debugCode) toast.message(`Dev code: ${result.debugCode}`);
-      toast.success("A new verification code was sent");
+      if (result.emailSent === false && !result.debugCode) {
+        toast.error("Could not send email. Check SMTP settings or try again shortly.");
+      } else {
+        toast.success("A new verification code was sent");
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : copy.errors.network);
     }

@@ -57,12 +57,17 @@ export function SignUp() {
         phone: data.phone,
         password: data.password,
       });
-      setPendingEmail(result.email);
+      const verifiedEmail = result.email ?? data.email;
+      setPendingEmail(verifiedEmail);
       if (result.debugCode) {
         toast.message(`Dev code: ${result.debugCode}`);
       }
-      toast.success("Verification code sent");
-      navigate("/otp-verification");
+      if (result.emailSent === false && !result.debugCode) {
+        toast.message("We couldn't email the code yet. Use Resend on the next screen.");
+      } else {
+        toast.success("Verification code sent");
+      }
+      navigate("/otp-verification", { state: { email: verifiedEmail } });
     } catch (err) {
       if (err instanceof ApiError) {
         Object.entries(err.fieldErrors).forEach(([field, message]) => {

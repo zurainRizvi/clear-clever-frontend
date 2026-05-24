@@ -20,7 +20,7 @@ export async function signup(body: {
   email: string;
   phone: string;
   password: string;
-}): Promise<{ email: string; debugCode?: string }> {
+}): Promise<{ email: string; emailSent?: boolean; debugCode?: string }> {
   return apiRequest("/api/auth/signup", {
     method: "POST",
     body: JSON.stringify(body),
@@ -39,6 +39,7 @@ export async function login(body: { email: string; password: string }): Promise<
 
 export async function sendOtp(body: { email: string; purpose: "signup" | "reset" }): Promise<{
   email: string;
+  emailSent?: boolean;
   debugCode?: string;
 }> {
   return apiRequest("/api/auth/otp/send", {

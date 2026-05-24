@@ -19,6 +19,10 @@ const CLAIM_TYPES = [
   { value: "damage", label: "Damage" },
   { value: "medical", label: "Medical" },
   { value: "pet_care", label: "Pet care" },
+  { value: "home", label: "Home" },
+  { value: "auto", label: "Auto / Vehicle" },
+  { value: "life", label: "Life" },
+  { value: "pet", label: "Pet" },
   { value: "other", label: "Other" },
 ];
 
@@ -34,6 +38,7 @@ export function ClaimsPage() {
   const [incidentDate, setIncidentDate] = useState(new Date().toISOString().slice(0, 10));
   const [estimatedAmountPkr, setEstimatedAmountPkr] = useState("");
   const [description, setDescription] = useState("");
+  const [otherClaimType, setOtherClaimType] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const focusId = searchParams.get("focus");
 
@@ -82,6 +87,10 @@ export function ClaimsPage() {
       toast.error("Add a short description so the agent knows what to review.");
       return;
     }
+    if (claimType === "other" && otherClaimType.trim().length < 2) {
+      toast.error("Please mention the other claim type.");
+      return;
+    }
     if (estimatedAmountPkr && Number(estimatedAmountPkr) < 0) {
       toast.error("Estimated amount cannot be negative.");
       return;
@@ -93,11 +102,15 @@ export function ClaimsPage() {
         claimType,
         incidentDate,
         estimatedAmountPkr: estimatedAmountPkr ? Number(estimatedAmountPkr) : undefined,
-        description: description.trim(),
+        description:
+          claimType === "other"
+            ? `[Other type: ${otherClaimType.trim()}] ${description.trim()}`
+            : description.trim(),
       });
       setClaims((prev) => [result.claim, ...prev]);
       setDescription("");
       setEstimatedAmountPkr("");
+      setOtherClaimType("");
       setSearchParams({}, { replace: true });
       toast.success("Claim request submitted and marked pending for agent review");
     } catch (err) {
@@ -170,6 +183,18 @@ export function ClaimsPage() {
                   ))}
                 </select>
               </label>
+              {claimType === "other" ? (
+                <label className="block text-sm">
+                  What is the other claim type?
+                  <input
+                    type="text"
+                    value={otherClaimType}
+                    onChange={(e) => setOtherClaimType(e.target.value)}
+                    placeholder="e.g. Fire, flood, travel, etc."
+                    className="mt-1 w-full px-3 py-2 bg-input-background border border-border rounded-lg"
+                  />
+                </label>
+              ) : null}
               <label className="block text-sm">
                 Incident date
                 <input

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router";
-import { MessageSquare, Send, Shield, User } from "lucide-react";
+import { MessageSquare, Paperclip, Send, Shield, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { ApiError } from "@/lib/api";
@@ -31,6 +31,7 @@ function typeLabel(type: ConversationType) {
 
 export function MessagesPanel({
   defaultConversation,
+  autoStartSupport = false,
 }: {
   defaultConversation?: {
     type: ConversationType;
@@ -39,12 +40,14 @@ export function MessagesPanel({
     subject?: string;
     initialMessage?: string;
   };
+  autoStartSupport?: boolean;
 }) {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [creatingSupport, setCreatingSupport] = useState(false);
@@ -134,6 +137,12 @@ export function MessagesPanel({
     };
   }, [activeConversationId]);
 
+  useEffect(() => {
+    if (!autoStartSupport || loadingConversations) return;
+    if (conversations.some((conversation) => conversation.type.includes("support"))) return;
+    void startSupportConversation();
+  }, [autoStartSupport, loadingConversations, conversations]);
+
   const startSupportConversation = async () => {
     if (!user) return;
     const type: ConversationType = user.role === "insurer" ? "insurer_support" : "user_support";
@@ -158,10 +167,20 @@ export function MessagesPanel({
   };
 
   const sendMessage = async () => {
-    if (!activeConversationId || !draft.trim()) return;
+    if (!activeConversationId || (!draft.trim() && pendingFiles.length === 0)) return;
     setSending(true);
     try {
-      const data = await sendConversationMessage(activeConversationId, draft.trim());
+      const attachments = await Promise.all(
+        pendingFiles.map(
+          async (file) =>
+            ({
+              fileName: file.name,
+              mimeType: file.type || "application/octet-stream",
+              dataUrl: await readFileAsDataUrl(file),
+            }) as const
+        )
+      );
+      const data = await sendConversationMessage(activeConversationId, draft.trim(), attachments);
       setMessages((prev) => [...prev, data.message]);
       setConversations((prev) =>
         prev.map((conversation) =>
@@ -169,6 +188,7 @@ export function MessagesPanel({
         )
       );
       setDraft("");
+      setPendingFiles([]);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not send message");
     } finally {
@@ -272,6 +292,24 @@ export function MessagesPanel({
                         }`}
                       >
                         <p className="text-sm whitespace-pre-wrap">{message.body}</p>
+                        {message.attachments?.length ? (
+                          <div className="mt-3 space-y-2">
+                            {message.attachments.map((attachment, idx) => (
+                              <a
+                                key={`${attachment.fileName}-${idx}`}
+                                href={attachment.dataUrl}
+                                download={attachment.fileName}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`block text-xs underline ${
+                                  mine ? "text-primary-foreground/90" : "text-primary"
+                                }`}
+                              >
+                                {attachment.fileName}
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
                         <div className={`text-[11px] mt-2 ${mine ? "opacity-80" : "text-muted-foreground"}`}>
                           {new Date(message.createdAt).toLocaleString()}
                         </div>
@@ -282,7 +320,17 @@ export function MessagesPanel({
               )}
             </div>
 
-            <div className="p-4 border-t border-border flex gap-3">
+            <div className="p-4 border-t border-border space-y-3">
+              {pendingFiles.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {pendingFiles.map((file) => (
+                    <span key={`${file.name}-${file.size}`} className="px-2 py-1 text-xs rounded bg-muted border border-border">
+                      {file.name}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flex gap-3">
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -295,14 +343,28 @@ export function MessagesPanel({
                 placeholder="Type a message..."
                 className="flex-1 min-h-12 max-h-32 px-4 py-3 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
               />
+              <label className="px-3 py-3 border border-border rounded-xl cursor-pointer hover:bg-accent self-end">
+                <Paperclip className="w-5 h-5" />
+                <input
+                  type="file"
+                  className="sr-only"
+                  multiple
+                  accept=".pdf,image/*"
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []).slice(0, 3);
+                    setPendingFiles(files);
+                  }}
+                />
+              </label>
               <button
                 type="button"
                 onClick={() => void sendMessage()}
-                disabled={sending || !draft.trim()}
+                disabled={sending || (!draft.trim() && pendingFiles.length === 0)}
                 className="px-5 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 self-end"
               >
                 <Send className="w-5 h-5" />
               </button>
+            </div>
             </div>
           </>
         ) : (
@@ -315,6 +377,15 @@ export function MessagesPanel({
       </div>
     </div>
   );
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function MessagesPage() {

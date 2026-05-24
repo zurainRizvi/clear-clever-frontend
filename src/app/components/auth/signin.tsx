@@ -16,7 +16,7 @@ import {
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import { login } from "@/lib/auth-api";
+import { login, sendOtp } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { useAuthRedirect } from "../auth-context";
@@ -90,12 +90,26 @@ export function SignIn() {
       if (err instanceof ApiError) {
         if (err.status === 403 && err.message.includes("verify")) {
           setPendingEmail(data.email);
-          toast.message(copy.auth.pendingVerification);
-          navigate("/otp-verification");
+          try {
+            const otpResult = await sendOtp({ email: data.email, purpose: "signup" });
+            if (otpResult.debugCode) {
+              toast.message(`Dev code: ${otpResult.debugCode}`);
+            } else if (otpResult.emailSent === false) {
+              toast.message(copy.auth.pendingVerification);
+            } else {
+              toast.success("Verification code sent to your email");
+            }
+          } catch {
+            toast.message(copy.auth.pendingVerification);
+          }
+          navigate("/otp-verification", { state: { email: data.email } });
           return;
         }
         if (err.fieldErrors.email) setError("email", { message: err.fieldErrors.email });
         if (err.fieldErrors.password) setError("password", { message: err.fieldErrors.password });
+        if (err.status === 401) {
+          setError("root", { type: "server", message: err.message });
+        }
         toast.error(err.message);
       } else {
         toast.error(copy.errors.network);
@@ -182,6 +196,15 @@ export function SignIn() {
               ) : null}
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                {errors.root ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                  >
+                    {errors.root.message}
+                  </motion.div>
+                ) : null}
                 <div>
                   <label className="block text-sm mb-2">Email address</label>
                   <div className="relative">

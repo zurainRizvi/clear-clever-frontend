@@ -16,15 +16,18 @@ import { SavedPolicies } from "./components/dashboard/saved-policies";
 import { MyPurchases } from "./components/dashboard/my-purchases";
 import { NotificationsPage } from "./components/dashboard/notifications-page";
 import { ClaimsPage } from "./components/dashboard/claims-page";
-import { DashboardPlaceholder } from "./components/dashboard/dashboard-placeholder";
 import { MessagesPage } from "./components/dashboard/messages-panel";
 import { ProviderDashboard } from "./components/dashboard/provider-dashboard";
 import { EmployeeDashboard } from "./components/dashboard/employee-dashboard";
 import { AdminDashboard } from "./components/dashboard/admin-dashboard";
+import { Toaster } from "./components/ui/sonner";
+import { SupportPage } from "./components/dashboard/support-page";
+import { SeekerSettingsPage } from "./components/dashboard/seeker-settings-page";
 
 export default function App() {
   return (
     <ThemeProvider>
+      <Toaster position="top-right" richColors />
       <AuthProvider>
         <SavedPoliciesProvider>
           <BrowserRouter>
@@ -60,25 +63,8 @@ export default function App() {
                   path="messages"
                   element={<MessagesPage />}
                 />
-                <Route
-                  path="support"
-                  element={
-                    <DashboardPlaceholder
-                      title="Support"
-                      description="Get help from our insurance advisors."
-                      actionLabel="Contact support"
-                    />
-                  }
-                />
-                <Route
-                  path="settings"
-                  element={
-                    <DashboardPlaceholder
-                      title="Settings"
-                      description="Manage your profile, security, and notification preferences."
-                    />
-                  }
-                />
+                <Route path="support" element={<SupportPage />} />
+                <Route path="settings" element={<SeekerSettingsPage />} />
               </Route>
               <Route
                 path="/provider-dashboard"
