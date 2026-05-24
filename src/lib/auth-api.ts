@@ -93,6 +93,7 @@ export async function fetchRecommendations(body: {
 }> {
   return apiRequest("/api/recommend", {
     method: "POST",
+    auth: true,
     body: JSON.stringify(body),
   });
 }

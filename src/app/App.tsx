@@ -15,6 +15,7 @@ import { PurchaseFlow } from "./components/dashboard/purchase-flow";
 import { SavedPolicies } from "./components/dashboard/saved-policies";
 import { MyPurchases } from "./components/dashboard/my-purchases";
 import { NotificationsPage } from "./components/dashboard/notifications-page";
+import { ClaimsPage } from "./components/dashboard/claims-page";
 import { DashboardPlaceholder } from "./components/dashboard/dashboard-placeholder";
 import { ProviderDashboard } from "./components/dashboard/provider-dashboard";
 import { EmployeeDashboard } from "./components/dashboard/employee-dashboard";
@@ -52,15 +53,7 @@ export default function App() {
                 <Route path="purchase" element={<PurchaseFlow />} />
                 <Route path="saved" element={<SavedPolicies />} />
                 <Route path="purchases" element={<MyPurchases />} />
-                <Route
-                  path="claims"
-                  element={
-                    <DashboardPlaceholder
-                      title="Claims"
-                      description="Track and manage your insurance claims in one place."
-                    />
-                  }
-                />
+                <Route path="claims" element={<ClaimsPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route
                   path="messages"

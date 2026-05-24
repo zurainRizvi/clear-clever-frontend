@@ -1,34 +1,39 @@
-import { useEffect, useState } from "react";
-import { Bell, Check, Loader2 } from "lucide-react";
+import { Bell, Check, Loader2, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import { ApiError } from "@/lib/api";
-import {
-  fetchNotifications,
-  markNotificationRead,
-  type AppNotification,
-} from "@/lib/purchase-api";
+import { useNotifications } from "./notifications-context";
 
 export function NotificationsPage() {
-  const [items, setItems] = useState<AppNotification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const {
+    notifications: items,
+    unreadCount,
+    isLoading: loading,
+    markRead,
+    markAllRead,
+    clearAll,
+  } = useNotifications();
 
-  useEffect(() => {
-    fetchNotifications()
-      .then((data) => setItems(data.notifications))
-      .catch((err) =>
-        toast.error(err instanceof ApiError ? err.message : "Could not load notifications")
-      )
-      .finally(() => setLoading(false));
-  }, []);
-
-  const handleMarkRead = async (id: string) => {
+  const handleOpen = async (item: (typeof items)[number]) => {
     try {
-      await markNotificationRead(id);
-      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      if (!item.read) await markRead(item.id);
+      if (item.target) {
+        navigate(`${item.target.path}?focus=${encodeURIComponent(item.target.focusId)}`);
+      }
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not update notification");
+      toast.error("Could not open notification");
     }
+  };
+
+  const handleReadAll = async () => {
+    await markAllRead();
+    toast.success("All notifications marked as read");
+  };
+
+  const handleClearAll = async () => {
+    await clearAll();
+    toast.success("Notifications cleared");
   };
 
   if (loading) {
@@ -53,7 +58,32 @@ export function NotificationsPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Notifications</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Notifications</h1>
+          <p className="text-sm text-muted-foreground">
+            {unreadCount} unread {unreadCount === 1 ? "notification" : "notifications"}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void handleReadAll()}
+            disabled={unreadCount === 0}
+            className="px-3 py-2 text-sm border border-border rounded-lg hover:bg-accent disabled:opacity-50"
+          >
+            Read all
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleClearAll()}
+            className="px-3 py-2 text-sm border border-border rounded-lg hover:bg-destructive/10 hover:text-destructive inline-flex items-center gap-1"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear all
+          </button>
+        </div>
+      </div>
       <div className="space-y-3">
         {items.map((item, index) => (
           <motion.div
@@ -61,7 +91,8 @@ export function NotificationsPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03 }}
-            className={`border rounded-xl p-4 ${item.read ? "border-border bg-card" : "border-primary/30 bg-primary/5"}`}
+            onClick={() => void handleOpen(item)}
+            className={`border rounded-xl p-4 cursor-pointer transition-all hover:border-primary/40 ${item.read ? "border-border bg-card" : "border-primary/30 bg-primary/5"}`}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -74,7 +105,10 @@ export function NotificationsPage() {
               {!item.read && (
                 <button
                   type="button"
-                  onClick={() => void handleMarkRead(item.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void markRead(item.id);
+                  }}
                   className="shrink-0 inline-flex items-center gap-1 text-xs text-primary hover:underline"
                 >
                   <Check className="w-3.5 h-3.5" />

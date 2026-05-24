@@ -68,6 +68,10 @@ export function ComparePolicies() {
     () => assignRecommendationBadges(recommendations),
     [recommendations]
   );
+  const crossCategorySuggestions = useMemo(
+    () => inferCrossCategorySuggestions(answers, selectedCategory?.slug),
+    [answers, selectedCategory?.slug]
+  );
 
   const handleCategorySelect = async (category: CategoryItem) => {
     if (!category.available || category.slug === "others") {
@@ -299,6 +303,25 @@ export function ComparePolicies() {
               </p>
             </div>
 
+            {crossCategorySuggestions.length > 0 && (
+              <div className="mb-6 bg-primary/5 border border-primary/20 rounded-xl p-5">
+                <h2 className="font-semibold mb-2">You may also need</h2>
+                <div className="flex flex-wrap gap-2">
+                  {crossCategorySuggestions.map((item) => (
+                    <button
+                      key={item.category}
+                      type="button"
+                      onClick={() => resetFlow()}
+                      className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-left"
+                    >
+                      <span className="font-medium capitalize">{item.category} insurance</span>
+                      <span className="block text-xs text-muted-foreground">{item.reason}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {recommendations.length === 0 ? (
               <div className="text-center py-16 bg-card border border-border rounded-xl">
                 <p className="text-muted-foreground">{copy.compare.emptyRecommendations}</p>
@@ -504,4 +527,41 @@ function QuestionInput({
       </button>
     </form>
   );
+}
+
+function inferCrossCategorySuggestions(
+  answers: Record<string, unknown>,
+  currentCategory?: string
+): { category: string; reason: string }[] {
+  const signal = (keys: string[]) =>
+    Object.entries(answers).some(([key, value]) => {
+      if (!keys.includes(key)) return false;
+      const normalized = String(value).toLowerCase();
+      return !normalized.includes("no") && !normalized.includes("none");
+    });
+
+  return [
+    {
+      category: "auto",
+      reason: "vehicle ownership signal",
+      show: currentCategory !== "auto" && signal(["owns_vehicle"]),
+    },
+    {
+      category: "pet",
+      reason: "pet ownership signal",
+      show: currentCategory !== "pet" && signal(["has_pet"]),
+    },
+    {
+      category: "life",
+      reason: "family/dependent signal",
+      show: currentCategory !== "life" && signal(["family_dependents", "dependents"]),
+    },
+    {
+      category: "home",
+      reason: "home ownership signal",
+      show: currentCategory !== "home" && signal(["home_owner", "ownership_status"]),
+    },
+  ]
+    .filter((item) => item.show)
+    .map(({ category, reason }) => ({ category, reason }));
 }

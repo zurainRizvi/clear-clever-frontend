@@ -16,7 +16,7 @@ import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { formatPkrYearly } from "@/lib/format";
 import { isValidPkPhone, normalizePkPhone } from "@/lib/phone";
-import { createPurchase } from "@/lib/purchase-api";
+import { createPurchase, fetchStoredQuestionnaireAnswers } from "@/lib/purchase-api";
 import {
   clearPurchaseDraft,
   loadPurchaseDraft,
@@ -63,6 +63,18 @@ function requiredQuestionsAnswered(
       if (typeof value === "number" && !Number.isFinite(value)) return false;
       return true;
     });
+}
+
+function firstUnansweredQuestionIndex(
+  questions: PolicyQuestion[],
+  answers: Record<string, unknown>
+): number {
+  const index = questions.findIndex((question) => {
+    if (question.required === false) return false;
+    const value = answers[question.id];
+    return value === undefined || value === null || value === "";
+  });
+  return index === -1 ? 0 : index;
 }
 
 export function PurchaseFlow() {
@@ -112,11 +124,19 @@ export function PurchaseFlow() {
 
     let cancelled = false;
     setLoadingQuestions(true);
-    fetchCategoryQuestions(category)
-      .then((data) => {
+    Promise.all([
+      fetchCategoryQuestions(category),
+      fetchStoredQuestionnaireAnswers(category).catch(() => null),
+    ])
+      .then(([data, stored]) => {
         if (cancelled) return;
-        setQuestions(data.questions ?? []);
-        const complete = requiredQuestionsAnswered(data.questions ?? [], answers);
+        const nextQuestions = data.questions ?? [];
+        const storedAnswers = stored?.response?.answers ?? {};
+        const mergedAnswers = { ...storedAnswers, ...answers };
+        setQuestions(nextQuestions);
+        setAnswers(mergedAnswers);
+        setCurrentQuestion(firstUnansweredQuestionIndex(nextQuestions, mergedAnswers));
+        const complete = requiredQuestionsAnswered(nextQuestions, mergedAnswers);
         setStep(complete ? "contact" : "questionnaire");
       })
       .catch(() => {

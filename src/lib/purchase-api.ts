@@ -14,14 +14,26 @@ export interface PurchaseSummary {
     slug: string;
     name: string;
     category: string;
+    description?: string;
     premiumMonthlyPkr: number;
+    premiumYearlyPkr?: number;
+    coverageSummary?: string;
+    features?: string[];
+    deductiblePkr?: number;
+    documentSummary?: {
+      policyNumber: string;
+      issuedAt: string;
+      coverage: string;
+    };
   };
   insurer?: {
     id: string;
     slug: string;
     companyName: string;
+    contactEmail?: string;
     contactPhone?: string;
   };
+  claims?: ClaimSummary[];
   timeline: {
     paymentProcessed: boolean;
     completed: boolean;
@@ -46,7 +58,30 @@ export interface PurchaseSummary {
       scheduledAt: string;
       status: string;
       notes?: string;
+      agentLabel?: string;
     };
+  };
+}
+
+export interface ClaimSummary {
+  id: string;
+  purchaseId: string;
+  claimType: string;
+  incidentDate: string;
+  estimatedAmountPkr?: number;
+  description: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  policy?: {
+    id: string;
+    name: string;
+    category: string;
+  };
+  insurer?: {
+    id: string;
+    companyName: string;
+    contactPhone?: string;
   };
 }
 
@@ -57,6 +92,11 @@ export interface AppNotification {
   body: string;
   read: boolean;
   metadata?: Record<string, unknown>;
+  target?: {
+    path: string;
+    focusId: string;
+    focusType: string;
+  };
   createdAt: string;
 }
 
@@ -77,6 +117,7 @@ export async function fetchPurchases(): Promise<{ count: number; purchases: Purc
 
 export async function fetchNotifications(): Promise<{
   count: number;
+  unreadCount: number;
   notifications: AppNotification[];
 }> {
   return apiRequest("/api/notifications", { auth: true });
@@ -87,6 +128,62 @@ export async function markNotificationRead(id: string): Promise<void> {
     method: "PATCH",
     auth: true,
   });
+}
+
+export async function markAllNotificationsRead(): Promise<{ modifiedCount: number }> {
+  return apiRequest("/api/notifications/read-all", {
+    method: "PATCH",
+    auth: true,
+  });
+}
+
+export async function clearNotifications(): Promise<{ deletedCount: number }> {
+  return apiRequest("/api/notifications/clear", {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+export async function rescheduleAgentCall(
+  purchaseId: string,
+  body: { scheduledDate: string; scheduledTime: string }
+): Promise<{ purchase: PurchaseSummary }> {
+  return apiRequest(`/api/purchases/${purchaseId}/call-schedule`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchClaims(): Promise<{ count: number; claims: ClaimSummary[] }> {
+  return apiRequest("/api/claims", { auth: true });
+}
+
+export async function createClaim(body: {
+  purchaseId: string;
+  claimType: string;
+  incidentDate: string;
+  estimatedAmountPkr?: number;
+  description: string;
+}): Promise<{ claim: ClaimSummary }> {
+  return apiRequest("/api/claims", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchStoredQuestionnaireAnswers(category: string): Promise<{
+  category: string;
+  available: boolean;
+  response: {
+    id: string;
+    answers: Record<string, unknown>;
+    completedQuestionIds: string[];
+    updatedAt: string;
+  } | null;
+}> {
+  return apiRequest(`/api/recommend/answers/${category}`, { auth: true });
 }
 
 export type { PublicPolicy };

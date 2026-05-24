@@ -21,6 +21,7 @@ import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { useAuth, useLogout } from "../auth-context";
 import { Toaster } from "sonner";
+import { NotificationsProvider, useNotifications } from "./notifications-context";
 
 interface MenuItem {
   icon: LucideIcon;
@@ -35,17 +36,26 @@ const menuItems: MenuItem[] = [
   { icon: Heart, label: "Saved Policies", path: "/dashboard/saved" },
   { icon: ShoppingCart, label: "My Purchases", path: "/dashboard/purchases" },
   { icon: Shield, label: "Claims", path: "/dashboard/claims" },
-  { icon: Bell, label: "Notifications", path: "/dashboard/notifications", badge: 5 },
-  { icon: MessageSquare, label: "Messages", path: "/dashboard/messages", badge: 2 },
+  { icon: Bell, label: "Notifications", path: "/dashboard/notifications" },
+  { icon: MessageSquare, label: "Messages", path: "/dashboard/messages" },
   { icon: HelpCircle, label: "Support", path: "/dashboard/support" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
 
 export function PolicySeekerDashboard() {
+  return (
+    <NotificationsProvider>
+      <PolicySeekerDashboardInner />
+    </NotificationsProvider>
+  );
+}
+
+function PolicySeekerDashboardInner() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
   const handleLogout = useLogout();
   const { userName, userEmail } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
@@ -93,9 +103,9 @@ export function PolicySeekerDashboard() {
                         }`}
                       />
                       <span className="flex-1">{item.label}</span>
-                      {item.badge ? (
+                      {item.path === "/dashboard/notifications" && unreadCount > 0 ? (
                         <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
-                          {item.badge}
+                          {unreadCount}
                         </span>
                       ) : null}
                     </div>
@@ -153,7 +163,9 @@ export function PolicySeekerDashboard() {
                   className="relative p-2 hover:bg-accent rounded-xl transition-colors"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
+                  {unreadCount > 0 ? (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
+                  ) : null}
                 </Link>
                 <DarkModeToggle />
               </div>
