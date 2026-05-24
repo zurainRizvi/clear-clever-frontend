@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router";
 import {
   ArrowLeft,
+  CheckCircle2,
   ClipboardList,
   ExternalLink,
   Loader2,
@@ -60,6 +61,7 @@ function requiredQuestionsAnswered(
     .every((q) => {
       const value = answers[q.id];
       if (value === undefined || value === null || value === "") return false;
+      if (Array.isArray(value) && value.length === 0) return false;
       if (typeof value === "number" && !Number.isFinite(value)) return false;
       return true;
     });
@@ -72,7 +74,7 @@ function firstUnansweredQuestionIndex(
   const index = questions.findIndex((question) => {
     if (question.required === false) return false;
     const value = answers[question.id];
-    return value === undefined || value === null || value === "";
+    return value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
   });
   return index === -1 ? 0 : index;
 }
@@ -506,7 +508,7 @@ export function PurchaseFlow() {
                         <span className="text-muted-foreground capitalize">
                           {key.replace(/_/g, " ")}:
                         </span>{" "}
-                        {String(value)}
+                        {Array.isArray(value) ? value.join(", ") : String(value)}
                       </li>
                     ))}
                   </ul>
@@ -611,6 +613,10 @@ function QuestionInput({
     );
   }
 
+  if (question.type === "multi" && question.options?.length) {
+    return <MultiQuestionInput question={question} value={value} onAnswer={onAnswer} />;
+  }
+
   if (question.type === "number") {
     return (
       <form
@@ -663,5 +669,62 @@ function QuestionInput({
         {copy.compare.questionnaireCta}
       </button>
     </form>
+  );
+}
+
+function MultiQuestionInput({
+  question,
+  value,
+  onAnswer,
+}: {
+  question: PolicyQuestion;
+  value: unknown;
+  onAnswer: (value: unknown) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>(Array.isArray(value) ? value.map(String) : []);
+  const toggle = (option: string) =>
+    setSelected((current) =>
+      current.includes(option)
+        ? current.filter((item) => item !== option)
+        : [...current, option]
+    );
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        {question.options?.map((option) => {
+          const checked = selected.includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => toggle(option)}
+              className={`w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-center gap-3 ${
+                checked
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/30 hover:bg-accent/50"
+              }`}
+            >
+              <span
+                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
+                  checked ? "bg-primary border-primary text-primary-foreground" : "border-border"
+                }`}
+              >
+                {checked ? <CheckCircle2 className="w-3.5 h-3.5" /> : null}
+              </span>
+              {option}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => onAnswer(selected)}
+        disabled={question.required !== false && selected.length === 0}
+        className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
+      >
+        {copy.compare.questionnaireCta}
+      </button>
+    </div>
   );
 }

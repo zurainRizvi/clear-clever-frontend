@@ -24,7 +24,7 @@ export interface CategoryItem {
 export interface PolicyQuestion {
   id: string;
   text: string;
-  type: "single" | "number" | "text";
+  type: "single" | "multi" | "number" | "text";
   options?: string[];
   required?: boolean;
 }

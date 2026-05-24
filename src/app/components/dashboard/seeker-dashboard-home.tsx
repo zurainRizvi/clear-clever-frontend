@@ -6,6 +6,11 @@ import {
   Clock,
   FileText,
   Loader2,
+  PawPrint,
+  Bike,
+  Car,
+  ShoppingCart,
+  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
@@ -26,7 +31,10 @@ const CATEGORIES: Exclude<CategorySlug, "others">[] = ["home", "auto", "life", "
 
 interface CrossSell {
   category: Exclude<CategorySlug, "others">;
+  label: string;
   reason: string;
+  to: string;
+  icon: LucideIcon;
 }
 
 export function SeekerDashboardHome() {
@@ -111,20 +119,20 @@ export function SeekerDashboardHome() {
 
   const stats = [
     {
-      label: "Active policies",
+      label: "Policies protecting you",
       value: String(activePolicies.length),
       icon: Shield,
-      trend: activePolicies.length ? "Open your policy cards" : "Complete a policy to start",
+      trend: activePolicies.length ? "View documents, claims, and agent info" : "Complete a policy to start",
       colorClass: "text-primary bg-primary/10",
       to: "/dashboard/purchases",
     },
     {
-      label: "Estimated annual savings",
-      value: formatPkr(Math.round(savings)),
-      icon: TrendingUp,
-      trend: "Compared with average recommended premiums in matching categories",
+      label: "Monthly premium spend",
+      value: formatPkr(monthlyPremium),
+      icon: ShoppingCart,
+      trend: activePolicies.length ? "Across active policies" : "No active premium yet",
       colorClass: "text-success bg-success/10",
-      to: "/dashboard/compare",
+      to: "/dashboard/purchases",
     },
     {
       label: "Pending claims",
@@ -135,10 +143,10 @@ export function SeekerDashboardHome() {
       to: "/dashboard/claims",
     },
     {
-      label: "Coverage score",
-      value: `${insuranceScore}/100`,
+      label: "AI savings opportunity",
+      value: formatPkr(Math.round(savings)),
       icon: CheckCircle2,
-      trend: `${activeCategories.size} of 4 core categories covered`,
+      trend: savings ? "Potential yearly saving from better matching" : `${insuranceScore}/100 portfolio readiness`,
       colorClass: "text-primary bg-primary/10",
       to: "/dashboard/compare",
     },
@@ -181,20 +189,20 @@ export function SeekerDashboardHome() {
             <TrendingUp className="w-6 h-6 text-primary-foreground" />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-semibold mb-2">Recommended for your profile</h3>
+            <h3 className="text-xl font-semibold mb-2">AI recommendations tailored to you</h3>
             {crossSells.length > 0 ? (
               <div className="space-y-2 mb-4">
                 {crossSells.slice(0, 3).map((item) => (
-                  <p key={item.category} className="text-muted-foreground">
-                    Consider <span className="font-medium text-foreground">{item.category}</span>{" "}
-                    insurance: {item.reason}
+                  <p key={item.label} className="text-muted-foreground">
+                    Consider <span className="font-medium text-foreground">{item.label}</span>:{" "}
+                    {item.reason}
                   </p>
                 ))}
               </div>
             ) : (
               <p className="text-muted-foreground mb-4">
                 Complete one questionnaire and we will use those answers to suggest related
-                home, auto, life, or pet coverage.
+                home, vehicle, motorcycle, life, or pet coverage.
               </p>
             )}
             <Link
@@ -234,22 +242,25 @@ export function SeekerDashboardHome() {
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-xl font-semibold mb-4">Coverage gaps</h3>
+          <h3 className="text-xl font-semibold mb-4">Protection opportunities</h3>
           <div className="space-y-3">
             {crossSells.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No obvious gaps yet. Add more questionnaire answers for smarter suggestions.
+                No obvious opportunities yet. Add more questionnaire answers for smarter suggestions.
               </p>
             ) : (
-              crossSells.map((item) => (
-                <Link key={item.category} to="/dashboard/compare" className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50">
-                  <FileText className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm capitalize">{item.category} insurance</div>
-                    <div className="text-xs text-muted-foreground">{item.reason}</div>
-                  </div>
-                </Link>
-              ))
+              crossSells.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link key={item.label} to={item.to} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50">
+                    <Icon className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{item.label}</div>
+                      <div className="text-xs text-muted-foreground">{item.reason}</div>
+                    </div>
+                  </Link>
+                );
+              })
             )}
           </div>
         </div>
@@ -265,25 +276,69 @@ function inferCrossSells(
   const allAnswers = Object.values(answersByCategory).flatMap((answers) =>
     Object.entries(answers)
   );
+  const answerText = (value: unknown) =>
+    Array.isArray(value) ? value.join(" ").toLowerCase() : String(value ?? "").toLowerCase();
   const hasSignal = (keys: string[], reject = ['no', 'none']) =>
     allAnswers.some(([key, value]) => {
       if (!keys.includes(key)) return false;
-      const normalized = String(value).toLowerCase();
+      const normalized = answerText(value);
       return !reject.some((word) => normalized.includes(word));
     });
+  const firstAnswerText = (keys: string[]) =>
+    answerText(allAnswers.find(([key]) => keys.includes(key))?.[1]);
 
   const suggestions: CrossSell[] = [];
-  if (!activeCategories.has("auto") && hasSignal(["owns_vehicle"])) {
-    suggestions.push({ category: "auto", reason: "your answers show you own or use a vehicle." });
+  const vehicleSignal = firstAnswerText(["owns_vehicle", "vehicle_type", "vehicle_make_model"]);
+  if (hasSignal(["owns_vehicle", "vehicle_type", "vehicle_make_model"])) {
+    if (vehicleSignal.includes("motorcycle") || vehicleSignal.includes("bike")) {
+      suggestions.push({
+        category: "auto",
+        label: "Motorcycle insurance",
+        reason: activeCategories.has("auto")
+          ? "your auto cover may include it, but motorcycle options deserve their own comparison."
+          : "your answers mention a motorcycle, so bike protection should be easy to compare separately.",
+        to: "/dashboard/compare",
+        icon: Bike,
+      });
+    }
+    if (!activeCategories.has("auto") && (vehicleSignal.includes("car") || vehicleSignal.includes("vehicle") || !vehicleSignal.includes("motorcycle"))) {
+      suggestions.push({
+        category: "auto",
+        label: "Vehicle insurance",
+        reason: "your answers show a car or vehicle that may need accident and theft cover.",
+        to: "/dashboard/compare",
+        icon: Car,
+      });
+    }
   }
-  if (!activeCategories.has("pet") && hasSignal(["has_pet"])) {
-    suggestions.push({ category: "pet", reason: "your household includes a pet." });
+  if (!activeCategories.has("pet") && hasSignal(["has_pet", "pet_type"])) {
+    const petSignal = firstAnswerText(["has_pet", "pet_type"]);
+    const pet = petSignal.includes("dog") ? "dog" : petSignal.includes("cat") ? "cat" : "pet";
+    suggestions.push({
+      category: "pet",
+      label: pet === "pet" ? "Pet insurance" : `${pet[0].toUpperCase()}${pet.slice(1)} insurance`,
+      reason: `you mentioned a ${pet}, so vet visits and emergency care should be compared.`,
+      to: "/dashboard/compare",
+      icon: PawPrint,
+    });
   }
   if (!activeCategories.has("life") && hasSignal(["family_dependents", "dependents"])) {
-    suggestions.push({ category: "life", reason: "you mentioned family or dependent responsibilities." });
+    suggestions.push({
+      category: "life",
+      label: "Life insurance",
+      reason: "you mentioned family or dependent responsibilities.",
+      to: "/dashboard/compare",
+      icon: Shield,
+    });
   }
   if (!activeCategories.has("home") && hasSignal(["home_owner", "ownership_status"])) {
-    suggestions.push({ category: "home", reason: "you have a home or residence to protect." });
+    suggestions.push({
+      category: "home",
+      label: "Home insurance",
+      reason: "you have a home or residence to protect.",
+      to: "/dashboard/compare",
+      icon: FileText,
+    });
   }
 
   return suggestions;

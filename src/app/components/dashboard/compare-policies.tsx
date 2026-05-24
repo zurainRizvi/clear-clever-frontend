@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import {
   Shield,
   Car,
+  Bike,
   Home,
   PawPrint,
   Layers,
@@ -41,6 +42,12 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 };
 
 type Step = "category" | "questionnaire" | "results";
+type UiCategoryItem = CategoryItem & {
+  key: string;
+  icon?: LucideIcon;
+  description?: string;
+  presetAnswers?: Record<string, unknown>;
+};
 
 export function ComparePolicies() {
   const navigate = useNavigate();
@@ -72,8 +79,33 @@ export function ComparePolicies() {
     () => inferCrossCategorySuggestions(answers, selectedCategory?.slug),
     [answers, selectedCategory?.slug]
   );
+  const visibleCategories = useMemo<UiCategoryItem[]>(
+    () =>
+      categories.flatMap((category) => {
+        if (category.slug !== "auto") return [{ ...category, key: category.slug }];
+        return [
+          {
+            ...category,
+            key: "vehicle",
+            name: "Vehicle Insurance",
+            icon: Car,
+            description: "Cover your car, SUV, or commercial vehicle",
+            presetAnswers: { vehicle_type: "Private car" },
+          },
+          {
+            ...category,
+            key: "motorcycle",
+            name: "Motorcycle Insurance",
+            icon: Bike,
+            description: "Protection for bikes, daily rides, and accidents",
+            presetAnswers: { vehicle_type: "Motorcycle" },
+          },
+        ];
+      }),
+    [categories]
+  );
 
-  const handleCategorySelect = async (category: CategoryItem) => {
+  const handleCategorySelect = async (category: UiCategoryItem) => {
     if (!category.available || category.slug === "others") {
       toast.message(copy.compare.othersTitle, {
         description: copy.compare.othersBody,
@@ -90,7 +122,7 @@ export function ComparePolicies() {
         return;
       }
       setQuestions(data.questions);
-      setAnswers({});
+      setAnswers(category.presetAnswers ?? {});
       setCurrentQuestion(0);
       setStep("questionnaire");
     } catch (err) {
@@ -190,12 +222,12 @@ export function ComparePolicies() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {categories.map((category, index) => {
-                  const Icon = CATEGORY_ICONS[category.slug] ?? Layers;
+                {visibleCategories.map((category, index) => {
+                  const Icon = category.icon ?? CATEGORY_ICONS[category.slug] ?? Layers;
                   const unavailable = !category.available;
                   return (
                     <motion.button
-                      key={category.slug}
+                      key={category.key}
                       type="button"
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -213,7 +245,7 @@ export function ComparePolicies() {
                       </div>
                       <h3 className="text-lg font-semibold mb-1">{category.name}</h3>
                       <p className="text-muted-foreground text-sm mb-4">
-                        {CATEGORY_DESCRIPTIONS[category.slug] ?? category.name}
+                        {category.description ?? CATEGORY_DESCRIPTIONS[category.slug] ?? category.name}
                       </p>
                       <span className="text-primary text-sm font-medium inline-flex items-center gap-1">
                         {unavailable ? "Coming soon" : "Get started"}
@@ -473,6 +505,10 @@ function QuestionInput({
     );
   }
 
+  if (question.type === "multi" && question.options?.length) {
+    return <MultiQuestionInput question={question} value={value} onAnswer={onAnswer} />;
+  }
+
   if (question.type === "number") {
     return (
       <form
@@ -529,6 +565,63 @@ function QuestionInput({
   );
 }
 
+function MultiQuestionInput({
+  question,
+  value,
+  onAnswer,
+}: {
+  question: PolicyQuestion;
+  value: unknown;
+  onAnswer: (value: unknown) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>(Array.isArray(value) ? value.map(String) : []);
+  const toggle = (option: string) =>
+    setSelected((current) =>
+      current.includes(option)
+        ? current.filter((item) => item !== option)
+        : [...current, option]
+    );
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        {question.options?.map((option) => {
+          const checked = selected.includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => toggle(option)}
+              className={`w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-center gap-3 ${
+                checked
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/30 hover:bg-accent/50"
+              }`}
+            >
+              <span
+                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
+                  checked ? "bg-primary border-primary text-primary-foreground" : "border-border"
+                }`}
+              >
+                {checked ? <CheckCircle2 className="w-3.5 h-3.5" /> : null}
+              </span>
+              {option}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => onAnswer(selected)}
+        disabled={question.required !== false && selected.length === 0}
+        className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
+      >
+        {copy.compare.questionnaireCta}
+      </button>
+    </div>
+  );
+}
+
 function inferCrossCategorySuggestions(
   answers: Record<string, unknown>,
   currentCategory?: string
@@ -536,19 +629,23 @@ function inferCrossCategorySuggestions(
   const signal = (keys: string[]) =>
     Object.entries(answers).some(([key, value]) => {
       if (!keys.includes(key)) return false;
-      const normalized = String(value).toLowerCase();
+      const normalized = Array.isArray(value)
+        ? value.join(" ").toLowerCase()
+        : String(value).toLowerCase();
       return !normalized.includes("no") && !normalized.includes("none");
     });
 
   return [
     {
-      category: "auto",
-      reason: "vehicle ownership signal",
+      category: signal(["owns_vehicle"]) && String(answers.owns_vehicle).toLowerCase().includes("motorcycle")
+        ? "motorcycle"
+        : "vehicle",
+      reason: "based on the vehicle details you shared",
       show: currentCategory !== "auto" && signal(["owns_vehicle"]),
     },
     {
       category: "pet",
-      reason: "pet ownership signal",
+      reason: petReason(answers),
       show: currentCategory !== "pet" && signal(["has_pet"]),
     },
     {
@@ -564,4 +661,12 @@ function inferCrossCategorySuggestions(
   ]
     .filter((item) => item.show)
     .map(({ category, reason }) => ({ category, reason }));
+}
+
+function petReason(answers: Record<string, unknown>): string {
+  const raw = answers.has_pet;
+  const value = Array.isArray(raw) ? raw.join(" ").toLowerCase() : String(raw ?? "").toLowerCase();
+  if (value.includes("dog")) return "dog care signal from your answers";
+  if (value.includes("cat")) return "cat care signal from your answers";
+  return "pet ownership signal";
 }

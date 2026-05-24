@@ -7,6 +7,7 @@ import {
   FileText,
   Loader2,
   Mail,
+  MessageSquare,
   Phone,
   ShoppingBag,
 } from "lucide-react";
@@ -59,15 +60,17 @@ export function MyPurchases() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!focusId) return;
+    if (!focusId || loading) return;
     setExpandedId(focusId);
-    window.setTimeout(() => {
-      document.getElementById(`purchase-${focusId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 100);
-  }, [focusId]);
+    requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        document.getElementById(`purchase-${focusId}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 50);
+    });
+  }, [focusId, loading, purchases.length]);
 
   const activePolicies = useMemo(
     () => purchases.filter((purchase) => purchase.status === "completed"),
@@ -274,6 +277,14 @@ export function MyPurchases() {
                   >
                     <Phone className="w-4 h-4" />
                     Reschedule agent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toast.message("Agent messaging will be available when messages are connected.")}
+                    className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Message agent
                   </button>
                   <button
                     type="button"

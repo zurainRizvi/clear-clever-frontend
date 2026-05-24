@@ -34,6 +34,7 @@ export function ClaimsPage() {
   const [incidentDate, setIncidentDate] = useState(new Date().toISOString().slice(0, 10));
   const [estimatedAmountPkr, setEstimatedAmountPkr] = useState("");
   const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const focusId = searchParams.get("focus");
 
   const load = async () => {
@@ -77,21 +78,36 @@ export function ClaimsPage() {
       toast.error("Select an active policy first");
       return;
     }
+    if (description.trim().length < 5) {
+      toast.error("Add a short description so the agent knows what to review.");
+      return;
+    }
+    if (estimatedAmountPkr && Number(estimatedAmountPkr) < 0) {
+      toast.error("Estimated amount cannot be negative.");
+      return;
+    }
+    setSubmitting(true);
     try {
       const result = await createClaim({
         purchaseId: selectedPurchaseId,
         claimType,
-        incidentDate: new Date(incidentDate).toISOString(),
+        incidentDate,
         estimatedAmountPkr: estimatedAmountPkr ? Number(estimatedAmountPkr) : undefined,
-        description,
+        description: description.trim(),
       });
       setClaims((prev) => [result.claim, ...prev]);
       setDescription("");
       setEstimatedAmountPkr("");
       setSearchParams({}, { replace: true });
-      toast.success("Claim request submitted");
+      toast.success("Claim request submitted and marked pending for agent review");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not submit claim");
+      toast.error(
+        err instanceof ApiError
+          ? err.errors[0] ?? err.message
+          : "Could not submit claim"
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -184,9 +200,10 @@ export function ClaimsPage() {
               <button
                 type="button"
                 onClick={() => void submitClaim()}
-                className="w-full py-3 bg-primary text-primary-foreground rounded-lg"
+                disabled={submitting}
+                className="w-full py-3 bg-primary text-primary-foreground rounded-lg disabled:opacity-50"
               >
-                Submit claim
+                {submitting ? "Submitting..." : "Submit claim"}
               </button>
             </div>
           )}
@@ -221,7 +238,7 @@ export function ClaimsPage() {
                     </p>
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-xs bg-primary/10 text-primary capitalize">
-                    {claim.status.replace(/_/g, " ")}
+                    {claim.status === "submitted" ? "Pending" : claim.status.replace(/_/g, " ")}
                   </span>
                 </div>
                 <p className="text-sm mt-3">{claim.description}</p>
