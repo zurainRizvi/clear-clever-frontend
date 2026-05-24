@@ -65,7 +65,9 @@ export function OTPVerification() {
       inputRefs.current[0]?.focus();
       if (result.debugCode) toast.message(`Dev code: ${result.debugCode}`);
       if (result.emailSent === false && !result.debugCode) {
-        toast.error("Could not send email. Check SMTP settings or try again shortly.");
+        toast.error(
+          "Email could not be sent from the server. Ask the admin to fix Gmail SMTP on Render, then tap Resend again."
+        );
       } else {
         toast.success("A new verification code was sent");
       }
