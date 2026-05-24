@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   Settings,
   Shield,
   TrendingUp,
