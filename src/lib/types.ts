@@ -9,6 +9,18 @@ export interface AuthUser {
   phone: string;
   role: UserRole;
   status: UserStatus;
+  profile?: {
+    id: string;
+    userId: string;
+    profilePhotoDataUrl?: string;
+    notificationPreferences: {
+      emailUpdates: boolean;
+      claimAlerts: boolean;
+      policyReminders: boolean;
+    };
+    createdAt: string;
+    updatedAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

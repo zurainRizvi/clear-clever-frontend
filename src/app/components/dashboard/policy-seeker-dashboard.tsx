@@ -24,6 +24,7 @@ import { motion } from "motion/react";
 import { useAuth, useLogout } from "../auth-context";
 import { toast } from "sonner";
 import { NotificationsProvider, useNotifications } from "./notifications-context";
+import { updateMeProfile } from "@/lib/auth-api";
 
 interface MenuItem {
   icon: LucideIcon;
@@ -60,14 +61,14 @@ function PolicySeekerDashboardInner() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
   const handleLogout = useLogout();
-  const { userName, userEmail } = useAuth();
+  const { user, userName, userEmail, refreshUser } = useAuth();
   const { unreadCount } = useNotifications();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const isDashboardHome = location.pathname === "/dashboard" || location.pathname === "/dashboard/";
 
   useEffect(() => {
-    setProfilePhoto(localStorage.getItem(PROFILE_PHOTO_KEY));
-  }, []);
+    setProfilePhoto(user?.profile?.profilePhotoDataUrl ?? localStorage.getItem(PROFILE_PHOTO_KEY));
+  }, [user?.profile?.profilePhotoDataUrl]);
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
@@ -88,19 +89,31 @@ function PolicySeekerDashboardInner() {
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const nextPhoto = String(reader.result);
       localStorage.setItem(PROFILE_PHOTO_KEY, nextPhoto);
       setProfilePhoto(nextPhoto);
-      toast.success("Profile photo updated");
+      try {
+        await updateMeProfile({ profilePhotoDataUrl: nextPhoto });
+        await refreshUser();
+        toast.success("Profile photo updated");
+      } catch {
+        toast.error("Could not save profile photo");
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleProfilePhotoRemove = () => {
+  const handleProfilePhotoRemove = async () => {
     localStorage.removeItem(PROFILE_PHOTO_KEY);
     setProfilePhoto(null);
-    toast.success("Profile photo removed");
+    try {
+      await updateMeProfile({ profilePhotoDataUrl: null });
+      await refreshUser();
+      toast.success("Profile photo removed");
+    } catch {
+      toast.error("Could not remove profile photo");
+    }
   };
 
   const shareReferral = () => {

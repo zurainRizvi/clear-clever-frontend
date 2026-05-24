@@ -63,6 +63,17 @@ export async function getMe(): Promise<{ user: AuthUser }> {
   return apiRequest("/api/auth/me", { auth: true });
 }
 
+export async function updateMeProfile(body: {
+  profilePhotoDataUrl?: string | null;
+  notificationPreferences?: Partial<NonNullable<AuthUser["profile"]>["notificationPreferences"]>;
+}): Promise<{ user: AuthUser }> {
+  return apiRequest("/api/auth/me", {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
 export async function setRole(role: "user" | "insurer"): Promise<{ user: AuthUser }> {
   return apiRequest("/api/auth/role", {
     method: "PATCH",

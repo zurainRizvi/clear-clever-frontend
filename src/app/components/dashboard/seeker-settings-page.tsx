@@ -4,6 +4,7 @@ import { Bell, HelpCircle, ImageIcon, Mail, Phone, Shield, User } from "lucide-r
 import { toast } from "sonner";
 import { useAuth, useLogout } from "../auth-context";
 import { DarkModeToggle } from "../dark-mode-toggle";
+import { updateMeProfile } from "@/lib/auth-api";
 
 const PROFILE_PHOTO_KEY = "clearclever.profilePhoto";
 const NOTIFICATIONS_KEY = "clearclever.notificationPrefs";
@@ -21,25 +22,39 @@ const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
 };
 
 export function SeekerSettingsPage() {
-  const { user, userName, userEmail } = useAuth();
+  const { user, userName, userEmail, refreshUser } = useAuth();
   const handleLogout = useLogout();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationPrefs>(DEFAULT_NOTIFICATIONS);
 
   useEffect(() => {
-    setProfilePhoto(localStorage.getItem(PROFILE_PHOTO_KEY));
+    const savedPhoto = user?.profile?.profilePhotoDataUrl ?? localStorage.getItem(PROFILE_PHOTO_KEY);
+    setProfilePhoto(savedPhoto ?? null);
     try {
       const stored = localStorage.getItem(NOTIFICATIONS_KEY);
-      if (stored) setNotifications({ ...DEFAULT_NOTIFICATIONS, ...JSON.parse(stored) });
+      setNotifications({
+        ...DEFAULT_NOTIFICATIONS,
+        ...JSON.parse(stored ?? "{}"),
+        ...user?.profile?.notificationPreferences,
+      });
     } catch {
-      /* ignore invalid stored prefs */
+      setNotifications({
+        ...DEFAULT_NOTIFICATIONS,
+        ...user?.profile?.notificationPreferences,
+      });
     }
-  }, []);
+  }, [user?.profile?.profilePhotoDataUrl, user?.profile?.notificationPreferences]);
 
-  const saveNotifications = (next: NotificationPrefs) => {
+  const saveNotifications = async (next: NotificationPrefs) => {
     setNotifications(next);
     localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(next));
-    toast.success("Notification preferences saved");
+    try {
+      await updateMeProfile({ notificationPreferences: next });
+      await refreshUser();
+      toast.success("Notification preferences saved");
+    } catch {
+      toast.error("Could not save notification preferences");
+    }
   };
 
   const handlePhotoUpload = (file: File | undefined) => {
@@ -53,19 +68,31 @@ export function SeekerSettingsPage() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const nextPhoto = String(reader.result);
       localStorage.setItem(PROFILE_PHOTO_KEY, nextPhoto);
       setProfilePhoto(nextPhoto);
-      toast.success("Profile photo updated");
+      try {
+        await updateMeProfile({ profilePhotoDataUrl: nextPhoto });
+        await refreshUser();
+        toast.success("Profile photo updated");
+      } catch {
+        toast.error("Could not save profile photo");
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  const removePhoto = () => {
+  const removePhoto = async () => {
     localStorage.removeItem(PROFILE_PHOTO_KEY);
     setProfilePhoto(null);
-    toast.success("Profile photo removed");
+    try {
+      await updateMeProfile({ profilePhotoDataUrl: null });
+      await refreshUser();
+      toast.success("Profile photo removed");
+    } catch {
+      toast.error("Could not remove profile photo");
+    }
   };
 
   return (
@@ -147,7 +174,7 @@ export function SeekerSettingsPage() {
               type="checkbox"
               checked={notifications[key]}
               onChange={(e) =>
-                saveNotifications({ ...notifications, [key]: e.target.checked })
+                void saveNotifications({ ...notifications, [key]: e.target.checked })
               }
               className="mt-1 h-4 w-4 accent-primary"
             />
