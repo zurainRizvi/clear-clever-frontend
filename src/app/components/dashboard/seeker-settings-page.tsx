@@ -6,7 +6,6 @@ import { useAuth, useLogout } from "../auth-context";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { updateMeProfile } from "@/lib/auth-api";
 
-const PROFILE_PHOTO_KEY = "clearclever.profilePhoto";
 const NOTIFICATIONS_KEY = "clearclever.notificationPrefs";
 
 interface NotificationPrefs {
@@ -28,8 +27,7 @@ export function SeekerSettingsPage() {
   const [notifications, setNotifications] = useState<NotificationPrefs>(DEFAULT_NOTIFICATIONS);
 
   useEffect(() => {
-    const savedPhoto = user?.profile?.profilePhotoDataUrl ?? localStorage.getItem(PROFILE_PHOTO_KEY);
-    setProfilePhoto(savedPhoto ?? null);
+    setProfilePhoto(user?.profile?.profilePhotoDataUrl ?? null);
     try {
       const stored = localStorage.getItem(NOTIFICATIONS_KEY);
       setNotifications({
@@ -43,7 +41,7 @@ export function SeekerSettingsPage() {
         ...user?.profile?.notificationPreferences,
       });
     }
-  }, [user?.profile?.profilePhotoDataUrl, user?.profile?.notificationPreferences]);
+  }, [user?.id, user?.profile?.profilePhotoDataUrl, user?.profile?.notificationPreferences]);
 
   const saveNotifications = async (next: NotificationPrefs) => {
     setNotifications(next);
@@ -70,7 +68,6 @@ export function SeekerSettingsPage() {
     const reader = new FileReader();
     reader.onload = async () => {
       const nextPhoto = String(reader.result);
-      localStorage.setItem(PROFILE_PHOTO_KEY, nextPhoto);
       setProfilePhoto(nextPhoto);
       try {
         await updateMeProfile({ profilePhotoDataUrl: nextPhoto });
@@ -84,7 +81,6 @@ export function SeekerSettingsPage() {
   };
 
   const removePhoto = async () => {
-    localStorage.removeItem(PROFILE_PHOTO_KEY);
     setProfilePhoto(null);
     try {
       await updateMeProfile({ profilePhotoDataUrl: null });

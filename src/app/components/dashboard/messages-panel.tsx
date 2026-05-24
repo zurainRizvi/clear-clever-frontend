@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { MessageSquare, Paperclip, Send, Shield, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
+import { useMessagesOptional } from "./messages-context";
 import { ApiError } from "@/lib/api";
 import {
   createConversation,
@@ -14,6 +15,9 @@ import {
   type ConversationSummary,
   type ConversationType,
 } from "@/lib/messaging-api";
+import { isConversationUnread } from "@/lib/messaging-unread";
+
+const MESSAGE_POLL_MS = 20_000;
 
 function titleForConversation(conversation: ConversationSummary, currentUserId?: string) {
   if (conversation.insurer?.companyName) return conversation.insurer.companyName;
@@ -32,6 +36,7 @@ function typeLabel(type: ConversationType) {
 export function MessagesPanel({
   defaultConversation,
   autoStartSupport = false,
+  focusConversationId,
 }: {
   defaultConversation?: {
     type: ConversationType;
@@ -41,39 +46,70 @@ export function MessagesPanel({
     initialMessage?: string;
   };
   autoStartSupport?: boolean;
+  focusConversationId?: string | null;
 }) {
   const { user } = useAuth();
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const messagesContext = useMessagesOptional();
+  const [localConversations, setLocalConversations] = useState<ConversationSummary[]>([]);
+  const [localLoadingConversations, setLocalLoadingConversations] = useState(!messagesContext);
+  const conversations = messagesContext?.conversations ?? localConversations;
+  const loadingConversations = messagesContext?.isLoading ?? localLoadingConversations;
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [creatingSupport, setCreatingSupport] = useState(false);
   const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const activeConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === activeConversationId) ?? null,
     [activeConversationId, conversations]
   );
 
-  const loadConversations = async () => {
-    setLoadingConversations(true);
-    try {
-      const data = await fetchConversations();
-      setConversations(data.conversations);
-      setActiveConversationId((current) => current ?? data.conversations[0]?.id ?? null);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not load messages");
-    } finally {
-      setLoadingConversations(false);
-    }
-  };
+  const refreshConversations = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (messagesContext) {
+        await messagesContext.refreshConversations(options);
+        return;
+      }
+      const silent = options?.silent ?? false;
+      if (!silent) setLocalLoadingConversations(true);
+      try {
+        const data = await fetchConversations();
+        setLocalConversations(data.conversations);
+      } catch (err) {
+        if (!silent) {
+          toast.error(err instanceof ApiError ? err.message : "Could not load messages");
+        }
+      } finally {
+        if (!silent) setLocalLoadingConversations(false);
+      }
+    },
+    [messagesContext]
+  );
 
   useEffect(() => {
-    void loadConversations();
-  }, []);
+    if (!messagesContext) {
+      void refreshConversations();
+      const interval = window.setInterval(
+        () => void refreshConversations({ silent: true }),
+        MESSAGE_POLL_MS
+      );
+      return () => window.clearInterval(interval);
+    }
+    return undefined;
+  }, [messagesContext, refreshConversations]);
+
+  useEffect(() => {
+    if (focusConversationId) {
+      setActiveConversationId(focusConversationId);
+      return;
+    }
+    if (conversations.length === 0) return;
+    setActiveConversationId((current) => current ?? conversations[0]?.id ?? null);
+  }, [conversations, focusConversationId]);
 
   useEffect(() => {
     if (!defaultConversation) return;
@@ -83,11 +119,7 @@ export function MessagesPanel({
       try {
         const data = await createConversation(defaultConversation);
         if (cancelled) return;
-        setConversations((prev) =>
-          prev.some((conversation) => conversation.id === data.conversation.id)
-            ? prev
-            : [data.conversation, ...prev]
-        );
+        await refreshConversations({ silent: true });
         setActiveConversationId(data.conversation.id);
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : "Could not start conversation");
@@ -106,36 +138,54 @@ export function MessagesPanel({
     defaultConversation?.initialMessage,
   ]);
 
+  const loadMessages = useCallback(
+    async (conversationId: string, options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
+      if (!silent) setLoadingMessages(true);
+      try {
+        const data = await fetchConversationMessages(conversationId);
+        setMessages((prev) => {
+          if (silent && prev.length > 0 && data.messages.length >= prev.length) {
+            const lastPrev = prev[prev.length - 1]?.id;
+            const lastNext = data.messages[data.messages.length - 1]?.id;
+            if (lastPrev === lastNext && data.messages.length === prev.length) {
+              return prev;
+            }
+          }
+          return data.messages;
+        });
+        await markConversationRead(conversationId).catch(() => undefined);
+        await refreshConversations({ silent: true });
+      } catch (err) {
+        if (!silent) {
+          toast.error(err instanceof ApiError ? err.message : "Could not load conversation");
+        }
+      } finally {
+        if (!silent) setLoadingMessages(false);
+      }
+    },
+    [refreshConversations]
+  );
+
   useEffect(() => {
     if (!activeConversationId) {
       setMessages([]);
       return;
     }
 
-    let cancelled = false;
-    async function loadMessages() {
-      setLoadingMessages(true);
-      try {
-        const data = await fetchConversationMessages(activeConversationId);
-        if (cancelled) return;
-        setMessages(data.messages);
-        await markConversationRead(activeConversationId).catch(() => undefined);
-      } catch (err) {
-        if (!cancelled) {
-          toast.error(err instanceof ApiError ? err.message : "Could not load conversation");
-        }
-      } finally {
-        if (!cancelled) setLoadingMessages(false);
-      }
-    }
+    void loadMessages(activeConversationId);
+    const interval = window.setInterval(
+      () => void loadMessages(activeConversationId, { silent: true }),
+      MESSAGE_POLL_MS
+    );
+    return () => window.clearInterval(interval);
+  }, [activeConversationId, loadMessages]);
 
-    void loadMessages();
-    const interval = window.setInterval(() => void loadMessages(), 15000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [activeConversationId]);
+  useEffect(() => {
+    if (!loadingMessages && messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, loadingMessages, activeConversationId]);
 
   useEffect(() => {
     if (!autoStartSupport || loadingConversations) return;
@@ -153,11 +203,7 @@ export function MessagesPanel({
         subject: "ClearClever support",
         initialMessage: "Hi ClearClever support, I need help with a query.",
       });
-      setConversations((prev) =>
-        prev.some((conversation) => conversation.id === data.conversation.id)
-          ? prev
-          : [data.conversation, ...prev]
-      );
+      await refreshConversations({ silent: true });
       setActiveConversationId(data.conversation.id);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not start support chat");
@@ -182,11 +228,7 @@ export function MessagesPanel({
       );
       const data = await sendConversationMessage(activeConversationId, draft.trim(), attachments);
       setMessages((prev) => [...prev, data.message]);
-      setConversations((prev) =>
-        prev.map((conversation) =>
-          conversation.id === data.conversation.id ? data.conversation : conversation
-        )
-      );
+      await refreshConversations({ silent: true });
       setDraft("");
       setPendingFiles([]);
     } catch (err) {
@@ -224,6 +266,7 @@ export function MessagesPanel({
           ) : (
             conversations.map((conversation) => {
               const active = conversation.id === activeConversationId;
+              const unread = isConversationUnread(conversation, user?.id);
               return (
                 <button
                   key={conversation.id}
@@ -242,8 +285,13 @@ export function MessagesPanel({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate">
-                        {titleForConversation(conversation, user?.id)}
+                      <div className="font-medium truncate flex items-center gap-2">
+                        <span className="truncate">
+                          {titleForConversation(conversation, user?.id)}
+                        </span>
+                        {unread ? (
+                          <span className="shrink-0 w-2 h-2 rounded-full bg-primary" />
+                        ) : null}
                       </div>
                       <div className="text-xs text-muted-foreground mb-1">
                         {typeLabel(conversation.type)}
@@ -318,6 +366,7 @@ export function MessagesPanel({
                   );
                 })
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="p-4 border-t border-border space-y-3">
@@ -399,8 +448,20 @@ export function MessagesPage() {
           subject?: string;
           initialMessage?: string;
         };
+        focusConversationId?: string;
       }
     | null;
 
-  return <MessagesPanel defaultConversation={state?.defaultConversation} />;
+  return (
+    <MessagesPanel
+      defaultConversation={state?.defaultConversation}
+      focusConversationId={state?.focusConversationId}
+    />
+  );
+}
+
+export function ProviderMessagesPage() {
+  const location = useLocation();
+  const state = location.state as { focusConversationId?: string } | null;
+  return <MessagesPanel focusConversationId={state?.focusConversationId} />;
 }

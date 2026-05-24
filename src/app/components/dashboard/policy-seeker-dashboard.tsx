@@ -23,6 +23,7 @@ import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { useAuth, useLogout } from "../auth-context";
 import { toast } from "sonner";
+import { MessagesProvider, useMessages } from "./messages-context";
 import { NotificationsProvider, useNotifications } from "./notifications-context";
 import { updateMeProfile } from "@/lib/auth-api";
 
@@ -45,14 +46,15 @@ const menuItems: MenuItem[] = [
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
 
-const PROFILE_PHOTO_KEY = "clearclever.profilePhoto";
 const REFERRAL_MESSAGE =
   "Join me on ClearClever to compare insurance in one place. New users get a joining reward with specialized insurance offers, discounts, and useful add-ons. Try it here: https://clear-clever-frontend.vercel.app";
 
 export function PolicySeekerDashboard() {
   return (
     <NotificationsProvider>
-      <PolicySeekerDashboardInner />
+      <MessagesProvider>
+        <PolicySeekerDashboardInner />
+      </MessagesProvider>
     </NotificationsProvider>
   );
 }
@@ -63,12 +65,13 @@ function PolicySeekerDashboardInner() {
   const handleLogout = useLogout();
   const { user, userName, userEmail, refreshUser } = useAuth();
   const { unreadCount } = useNotifications();
+  const { unreadCount: unreadMessagesCount } = useMessages();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const isDashboardHome = location.pathname === "/dashboard" || location.pathname === "/dashboard/";
 
   useEffect(() => {
-    setProfilePhoto(user?.profile?.profilePhotoDataUrl ?? localStorage.getItem(PROFILE_PHOTO_KEY));
-  }, [user?.profile?.profilePhotoDataUrl]);
+    setProfilePhoto(user?.profile?.profilePhotoDataUrl ?? null);
+  }, [user?.id, user?.profile?.profilePhotoDataUrl]);
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
@@ -91,7 +94,6 @@ function PolicySeekerDashboardInner() {
     const reader = new FileReader();
     reader.onload = async () => {
       const nextPhoto = String(reader.result);
-      localStorage.setItem(PROFILE_PHOTO_KEY, nextPhoto);
       setProfilePhoto(nextPhoto);
       try {
         await updateMeProfile({ profilePhotoDataUrl: nextPhoto });
@@ -102,18 +104,6 @@ function PolicySeekerDashboardInner() {
       }
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleProfilePhotoRemove = async () => {
-    localStorage.removeItem(PROFILE_PHOTO_KEY);
-    setProfilePhoto(null);
-    try {
-      await updateMeProfile({ profilePhotoDataUrl: null });
-      await refreshUser();
-      toast.success("Profile photo removed");
-    } catch {
-      toast.error("Could not remove profile photo");
-    }
   };
 
   const shareReferral = () => {
@@ -166,6 +156,11 @@ function PolicySeekerDashboardInner() {
                             {unreadCount}
                           </span>
                         ) : null}
+                        {item.path === "/dashboard/messages" && unreadMessagesCount > 0 ? (
+                          <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
+                            {unreadMessagesCount}
+                          </span>
+                        ) : null}
                       </div>
                     </Link>
                   );
@@ -201,7 +196,6 @@ function PolicySeekerDashboardInner() {
                   photo={profilePhoto}
                   sizeClass="w-14 h-14"
                   onUpload={handleProfilePhotoUpload}
-                  onRemove={handleProfilePhotoRemove}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{userName ?? "Policy seeker"}</div>
@@ -268,7 +262,6 @@ function PolicySeekerDashboardInner() {
                     photo={profilePhoto}
                     sizeClass="w-12 h-12"
                     onUpload={handleProfilePhotoUpload}
-                    onRemove={handleProfilePhotoRemove}
                   />
                 </div>
               </div>
@@ -288,13 +281,11 @@ function ProfilePhotoPicker({
   photo,
   sizeClass,
   onUpload,
-  onRemove,
 }: {
   id: string;
   photo: string | null;
   sizeClass: string;
   onUpload: (file: File | undefined) => void;
-  onRemove?: () => void;
 }) {
   return (
     <motion.div className={`relative ${sizeClass} shrink-0`}>
@@ -319,20 +310,6 @@ function ProfilePhotoPicker({
           onChange={(event) => onUpload(event.target.files?.[0])}
         />
       </label>
-      {photo && onRemove ? (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onRemove();
-          }}
-          className="absolute -left-1 -top-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center border-2 border-background hover:scale-105 transition-transform"
-          title="Remove profile photo"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      ) : null}
     </motion.div>
   );
 }

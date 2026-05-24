@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
-  Shield,
   Mail,
   Lock,
   ArrowRight,
@@ -14,6 +13,7 @@ import {
   Crown,
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
+import { ClearCleverLogo } from "./clearclever-logo";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { login, sendOtp } from "@/lib/auth-api";
@@ -132,12 +132,7 @@ export function SignIn() {
           transition={{ duration: 0.4 }}
           className="w-full max-w-md"
         >
-          <Link to="/" className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Shield className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-xl font-[Poppins]">ClearClever</span>
-          </Link>
+          <ClearCleverLogo className="mb-8" />
 
           {step === "role" ? (
             <>
@@ -260,6 +255,7 @@ export function SignIn() {
 
       <div className="hidden lg:flex flex-1 bg-card border-l border-border items-center justify-center p-12">
         <div className="max-w-lg">
+          <ClearCleverLogo size="large" className="mb-10" />
           <h2 className="text-3xl font-bold mb-4 font-[Poppins]">
             Trusted insurance decisions, made clear
           </h2>

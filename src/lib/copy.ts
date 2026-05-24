@@ -40,7 +40,7 @@ export const copy = {
     emptyRecommendations: "No policies matched your answers yet",
     compareLimit: "You can compare up to four policies at a time.",
     badge: {
-      aiRecommended: "AI Recommended",
+      aiRecommended: "AI-assisted pick",
       bestValue: "Best Value",
       mostPopular: "Most Popular",
       lowestPremium: "Lowest Premium",

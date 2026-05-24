@@ -384,7 +384,7 @@ export function ComparePolicies() {
                           </span>
                         ))}
                         <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                          {Math.round(rec.score)}% match
+                          Recommended score: {Math.round(rec.score)}
                         </span>
                       </div>
 

@@ -78,3 +78,45 @@ export async function fetchAdminUsers(): Promise<{
 export async function fetchAdminAnalytics(): Promise<AdminAnalytics> {
   return apiRequest("/api/admin/analytics", { auth: true });
 }
+
+export async function changeUserRole(
+  id: string,
+  role: UserRole
+): Promise<{ user: AuthUser }> {
+  return apiRequest(`/api/admin/users/${id}/role`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function deactivateUser(id: string): Promise<{ user: AuthUser }> {
+  return apiRequest(`/api/admin/users/${id}/deactivate`, {
+    method: "PATCH",
+    auth: true,
+  });
+}
+
+export interface HealthStatus {
+  service: string;
+  environment: string;
+  database: {
+    connected: boolean;
+    readyState?: number;
+    host?: string;
+    name?: string;
+  };
+  email: {
+    provider: string;
+    configured: boolean;
+    ready: boolean;
+    error?: string;
+    hint?: string;
+    renderFreeTierNote?: string;
+  };
+  timestamp: string;
+}
+
+export async function fetchHealth(): Promise<HealthStatus> {
+  return apiRequest("/api/health");
+}

@@ -1,91 +1,89 @@
-import { useCallback, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { useState } from "react";
+import { Link, Outlet, useLocation } from "react-router";
 import {
-  LayoutDashboard,
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
   FileText,
-  Users,
-  ShieldCheck,
-  TrendingUp,
+  LayoutDashboard,
+  LogOut,
+  Menu,
   MessageSquare,
   Settings,
-  Menu,
-  X,
-  LogOut,
   Shield,
+  TrendingUp,
+  Users,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { useAuth, useLogout } from "../auth-context";
-import { MessagesProvider, useMessages } from "./messages-context";
-import { ProviderProvider, useProvider } from "./provider-context";
-import { ProviderPolicyFormDialog } from "./provider-policy-form";
-import { fetchInsurerPolicy } from "@/lib/insurer-api";
-import type { InsurerPolicyDetail } from "@/lib/insurer-api";
-import { ApiError } from "@/lib/api";
-import { toast } from "sonner";
+import { useMessages } from "./messages-context";
+import { useAdmin } from "./admin-context";
 
-const menuItems: { path: string; icon: LucideIcon; label: string }[] = [
-  { path: "/provider-dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/provider-dashboard/policies", icon: FileText, label: "My Policies" },
-  { path: "/provider-dashboard/leads", icon: Users, label: "Customer Leads" },
-  { path: "/provider-dashboard/claims", icon: ShieldCheck, label: "Claims" },
-  { path: "/provider-dashboard/analytics", icon: TrendingUp, label: "Analytics" },
-  { path: "/provider-dashboard/messages", icon: MessageSquare, label: "Messages" },
-  { path: "/provider-dashboard/settings", icon: Settings, label: "Settings" },
-];
+export type AdminPortalVariant = "employee" | "superadmin";
 
-export function ProviderDashboard() {
-  return (
-    <ProviderProvider>
-      <MessagesProvider>
-        <ProviderDashboardInner />
-      </MessagesProvider>
-    </ProviderProvider>
-  );
+interface MenuItem {
+  path: string;
+  icon: LucideIcon;
+  label: string;
+  badge?: number;
 }
 
-function ProviderDashboardInner() {
+const EMPLOYEE_MENU: MenuItem[] = [
+  { path: "/employee-dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/employee-dashboard/approvals", icon: CheckCircle2, label: "Approvals" },
+  { path: "/employee-dashboard/users", icon: Users, label: "User Management" },
+  { path: "/employee-dashboard/providers", icon: Shield, label: "Providers" },
+  { path: "/employee-dashboard/messages", icon: MessageSquare, label: "Messages" },
+  { path: "/employee-dashboard/reports", icon: TrendingUp, label: "Reports" },
+  { path: "/employee-dashboard/activity", icon: Activity, label: "Activity Logs" },
+  { path: "/employee-dashboard/settings", icon: Settings, label: "Settings" },
+];
+
+const SUPERADMIN_MENU: MenuItem[] = [
+  { path: "/admin-dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/admin-dashboard/users", icon: Users, label: "User Management" },
+  { path: "/admin-dashboard/approvals", icon: Shield, label: "Provider Approvals" },
+  { path: "/admin-dashboard/messages", icon: MessageSquare, label: "Messages" },
+  { path: "/admin-dashboard/fraud", icon: AlertTriangle, label: "Fraud Detection" },
+  { path: "/admin-dashboard/analytics", icon: TrendingUp, label: "Analytics" },
+  { path: "/admin-dashboard/audit", icon: FileText, label: "Audit Logs" },
+  { path: "/admin-dashboard/health", icon: Activity, label: "System Health" },
+  { path: "/admin-dashboard/settings", icon: Settings, label: "Settings" },
+];
+
+interface AdminPortalLayoutProps {
+  variant: AdminPortalVariant;
+}
+
+export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingPolicy, setEditingPolicy] = useState<InsurerPolicyDetail | null>(null);
   const location = useLocation();
-  const navigate = useNavigate();
   const handleLogout = useLogout();
-  const { profile, pendingClaimsCount, refresh } = useProvider();
-  const { userEmail } = useAuth();
+  const { userName, userEmail } = useAuth();
+  const { pendingPolicies } = useAdmin();
   const { unreadCount: unreadMessagesCount } = useMessages();
 
+  const basePath = variant === "employee" ? "/employee-dashboard" : "/admin-dashboard";
+  const menuItems = (variant === "employee" ? EMPLOYEE_MENU : SUPERADMIN_MENU).map((item) => {
+    if (item.path.endsWith("/approvals")) {
+      return { ...item, badge: pendingPolicies.length || undefined };
+    }
+    return item;
+  });
+
   const isHome =
-    location.pathname === "/provider-dashboard" ||
-    location.pathname === "/provider-dashboard/";
+    location.pathname === basePath || location.pathname === `${basePath}/`;
 
   const isActive = (path: string) => {
-    if (path === "/provider-dashboard") {
-      return isHome;
-    }
+    if (path === basePath) return isHome;
     return location.pathname.startsWith(path);
   };
 
-  const openCreatePolicy = () => {
-    setEditingPolicy(null);
-    setFormOpen(true);
-  };
-
-  const openEditPolicy = useCallback(async (policyId: string) => {
-    try {
-      const data = await fetchInsurerPolicy(policyId);
-      setEditingPolicy(data.policy);
-      setFormOpen(true);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not load policy");
-    }
-  }, []);
-
-  const outletContext = {
-    onAddPolicy: openCreatePolicy,
-    onEditPolicy: (id: string) => void openEditPolicy(id),
-  };
+  const portalLabel = variant === "employee" ? "Employee dashboard" : "Super admin control center";
+  const profileLabel = variant === "employee" ? "Platform employee" : "Super admin";
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -97,13 +95,13 @@ function ProviderDashboardInner() {
       >
         <div className="w-[280px] flex flex-col h-full min-h-screen">
           <div className="p-6 border-b border-sidebar-border">
-            <Link to="/provider-dashboard" className="flex items-center gap-2">
+            <Link to={basePath} className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
                 <Shield className="w-6 h-6 text-primary-foreground" />
               </div>
               <span className="font-bold text-lg font-[Poppins]">ClearClever</span>
             </Link>
-            <div className="mt-3 text-sm text-muted-foreground">Provider dashboard</div>
+            <div className="mt-3 text-sm text-muted-foreground">{portalLabel}</div>
           </div>
 
           <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
@@ -120,16 +118,18 @@ function ProviderDashboardInner() {
                       : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                   }`}
                 >
-                  <Icon className={`w-5 h-5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                  <Icon
+                    className={`w-5 h-5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`}
+                  />
                   <span className="flex-1">{item.label}</span>
-                  {item.path === "/provider-dashboard/messages" && unreadMessagesCount > 0 ? (
+                  {item.path.endsWith("/messages") && unreadMessagesCount > 0 ? (
                     <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
                       {unreadMessagesCount}
                     </span>
                   ) : null}
-                  {item.path === "/provider-dashboard/claims" && pendingClaimsCount > 0 ? (
-                    <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
-                      {pendingClaimsCount}
+                  {item.badge ? (
+                    <span className="px-2 py-0.5 bg-warning text-warning-foreground text-xs rounded-full">
+                      {item.badge}
                     </span>
                   ) : null}
                 </Link>
@@ -140,10 +140,10 @@ function ProviderDashboardInner() {
           <div className="p-4 border-t border-sidebar-border">
             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sidebar-accent/40">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Shield className="w-5 h-5 text-primary" />
+                <Users className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{profile?.companyName ?? "Provider"}</div>
+                <div className="font-medium truncate">{userName ?? profileLabel}</div>
                 <div className="text-xs text-muted-foreground truncate">{userEmail ?? ""}</div>
               </div>
               <button
@@ -171,15 +171,22 @@ function ProviderDashboardInner() {
                 {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
               {!isHome ? (
-                <Link
-                  to="/provider-dashboard"
-                  className="text-sm text-primary hover:underline"
-                >
+                <Link to={basePath} className="text-sm text-primary hover:underline">
                   ← Back to dashboard
                 </Link>
               ) : null}
             </div>
+
             <div className="flex items-center gap-3">
+              {pendingPolicies.length > 0 ? (
+                <Link
+                  to={`${basePath}/approvals`}
+                  className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-warning/10 text-warning rounded-xl text-sm font-medium"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {pendingPolicies.length} pending approval{pendingPolicies.length === 1 ? "" : "s"}
+                </Link>
+              ) : null}
               <DarkModeToggle />
               <Link
                 to="/"
@@ -193,28 +200,10 @@ function ProviderDashboardInner() {
 
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
-            <Outlet context={outletContext} />
+            <Outlet />
           </div>
         </main>
       </div>
-
-      <ProviderPolicyFormDialog
-        open={formOpen}
-        policy={editingPolicy}
-        onClose={() => {
-          setFormOpen(false);
-          setEditingPolicy(null);
-        }}
-        onSaved={() => {
-          void refresh();
-          void navigate("/provider-dashboard/policies");
-        }}
-      />
     </div>
   );
 }
-
-export type ProviderOutletContext = {
-  onAddPolicy: () => void;
-  onEditPolicy: (policyId: string) => void;
-};

@@ -33,6 +33,7 @@ interface CrossSell {
   category: Exclude<CategorySlug, "others">;
   label: string;
   reason: string;
+  score: number;
   to: string;
   icon: LucideIcon;
 }
@@ -112,6 +113,10 @@ export function SeekerDashboardHome() {
     () => inferProtectionOpportunities(questionnaireAnswers, activeCategories),
     [questionnaireAnswers, activePolicies.length]
   );
+  const relevantRecommendations = useMemo(() => {
+    const aiCategories = new Set(crossSells.map((item) => item.category));
+    return protectionOpportunities.filter((item) => !aiCategories.has(item.category));
+  }, [crossSells, protectionOpportunities]);
 
   if (loading) {
     return (
@@ -142,7 +147,7 @@ export function SeekerDashboardHome() {
       label: "Pending claims",
       value: String(pendingClaims.length),
       icon: Clock,
-      trend: pendingClaims.length ? "Needs review" : "No open claim reviews",
+      trend: pendingClaims.length ? "Awaiting insurer review" : "No open claims with insurer",
       colorClass: "text-warning bg-warning/10",
       to: "/dashboard/claims",
     },
@@ -193,20 +198,29 @@ export function SeekerDashboardHome() {
             <TrendingUp className="w-6 h-6 text-primary-foreground" />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-semibold mb-2">AI recommendations tailored to you</h3>
+            <h3 className="text-xl font-semibold mb-2">AI-assisted recommendations</h3>
             {crossSells.length > 0 ? (
-              <div className="space-y-2 mb-4">
+              <div className="grid md:grid-cols-2 gap-3 mb-4">
                 {crossSells.map((item) => (
-                  <p key={item.label} className="text-muted-foreground">
-                    Consider <span className="font-medium text-foreground">{item.label}</span>:{" "}
-                    {item.reason}
-                  </p>
+                  <Link
+                    key={item.label}
+                    to={item.to}
+                    className="rounded-lg border border-primary/15 bg-background/70 p-4 hover:border-primary/35 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <span className="font-medium text-foreground">{item.label}</span>
+                      <span className="text-xs font-semibold text-primary">
+                        Recommended score: {item.score}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{item.reason}</p>
+                  </Link>
                 ))}
               </div>
             ) : (
               <p className="text-muted-foreground mb-4">
                 Complete one questionnaire and we will use those answers to suggest related
-                home, vehicle, motorcycle, life, or pet coverage.
+                home, vehicle, motorcycle, life, or pet recommendations.
               </p>
             )}
             <Link
@@ -246,14 +260,14 @@ export function SeekerDashboardHome() {
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-xl font-semibold mb-4">Protection opportunities</h3>
+          <h3 className="text-xl font-semibold mb-4">Relevant recommendations</h3>
           <div className="space-y-3">
-            {protectionOpportunities.length === 0 ? (
+            {relevantRecommendations.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No obvious opportunities yet. Add more questionnaire answers for smarter suggestions.
+                No additional recommendations yet. Add more questionnaire answers for smarter suggestions.
               </p>
             ) : (
-              protectionOpportunities.map((item) => {
+              relevantRecommendations.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link key={item.label} to={item.to} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50">
@@ -307,8 +321,9 @@ function inferCrossSells(
         category: "auto",
         label: "Motorcycle insurance",
         reason: activeCategories.has("auto")
-          ? "your auto cover may include it, but motorcycle options deserve their own comparison."
-          : "your answers mention a motorcycle, so bike protection should be easy to compare separately.",
+          ? "Recommended because your auto policy may include it, but motorcycle-specific options deserve their own comparison."
+          : "Recommended because user owns vehicle.",
+        score: 92,
         to: "/dashboard/compare",
         icon: Bike,
       });
@@ -317,7 +332,8 @@ function inferCrossSells(
       suggestions.push({
         category: "auto",
         label: "Vehicle insurance",
-        reason: "your answers show a car or vehicle that may need accident and theft cover.",
+        reason: "Recommended because user owns vehicle.",
+        score: 92,
         to: "/dashboard/compare",
         icon: Car,
       });
@@ -329,16 +345,32 @@ function inferCrossSells(
     suggestions.push({
       category: "pet",
       label: pet === "pet" ? "Pet insurance" : `${pet[0].toUpperCase()}${pet.slice(1)} insurance`,
-      reason: `you mentioned a ${pet}, so compare pet cover for vet visits, emergency care, and ClearClever special add-ons.`,
+      reason: `Recommended because user owns ${pet === "pet" ? "a pet" : `a ${pet}`}.`,
+      score: 86,
       to: "/dashboard/compare",
       icon: PawPrint,
     });
   }
-  if (!activeCategories.has("life") && hasSignal(["family_dependents", "dependents"])) {
+  if (!activeCategories.has("life") && hasSignal(["health_condition", "occupation_risk"], ["no", "none", "office"])) {
     suggestions.push({
       category: "life",
       label: "Life insurance",
-      reason: "you mentioned family or dependent responsibilities.",
+      reason: "Recommended due to high medical risk profile.",
+      score: 90,
+      to: "/dashboard/compare",
+      icon: Shield,
+    });
+  }
+  if (
+    !activeCategories.has("life") &&
+    !suggestions.some((item) => item.category === "life") &&
+    hasSignal(["family_dependents", "dependents"])
+  ) {
+    suggestions.push({
+      category: "life",
+      label: "Life insurance",
+      reason: "Recommended because family dependency detected.",
+      score: 88,
       to: "/dashboard/compare",
       icon: Shield,
     });
@@ -347,7 +379,8 @@ function inferCrossSells(
     suggestions.push({
       category: "home",
       label: "Home insurance",
-      reason: "you have a home or residence to protect.",
+      reason: "Recommended because home ownership or residence need was detected.",
+      score: 84,
       to: "/dashboard/compare",
       icon: FileText,
     });
@@ -365,7 +398,7 @@ function inferProtectionOpportunities(
     !!answersByCategory[category] && Object.keys(answersByCategory[category]).length > 0;
   const queue = (category: CrossSell["category"], label: string, icon: LucideIcon, reason: string) => {
     if (activeCategories.has(category)) return;
-    opportunities.push({ category, label, icon, reason, to: "/dashboard/compare" });
+    opportunities.push({ category, label, icon, reason, score: 75, to: "/dashboard/compare" });
   };
 
   if (hasAnswers("auto")) {

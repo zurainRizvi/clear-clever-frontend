@@ -18,8 +18,26 @@ import { NotificationsPage } from "./components/dashboard/notifications-page";
 import { ClaimsPage } from "./components/dashboard/claims-page";
 import { MessagesPage } from "./components/dashboard/messages-panel";
 import { ProviderDashboard } from "./components/dashboard/provider-dashboard";
+import { ProviderDashboardHome } from "./components/dashboard/provider-dashboard-home";
+import { ProviderPoliciesPage } from "./components/dashboard/provider-policies-page";
+import { ProviderLeadsPage } from "./components/dashboard/provider-leads-page";
+import { ProviderClaimsPage } from "./components/dashboard/provider-claims-page";
+import { ProviderAnalyticsPage } from "./components/dashboard/provider-analytics-page";
+import { ProviderSettingsPage } from "./components/dashboard/provider-settings-page";
+import { ProviderMessagesPage } from "./components/dashboard/messages-panel";
 import { EmployeeDashboard } from "./components/dashboard/employee-dashboard";
+import { EmployeeDashboardHome } from "./components/dashboard/employee-dashboard-home";
+import { AdminApprovalsPage } from "./components/dashboard/admin-approvals-page";
+import { AdminUsersPage } from "./components/dashboard/admin-users-page";
+import { EmployeeProvidersPage } from "./components/dashboard/employee-providers-page";
+import { AdminReportsPage } from "./components/dashboard/admin-reports-page";
+import { AdminActivityPage } from "./components/dashboard/admin-activity-page";
+import { AdminSettingsPage } from "./components/dashboard/admin-settings-page";
 import { AdminDashboard } from "./components/dashboard/admin-dashboard";
+import { SuperadminDashboardHome } from "./components/dashboard/superadmin-dashboard-home";
+import { AdminFraudPage } from "./components/dashboard/admin-fraud-page";
+import { AdminAuditPage } from "./components/dashboard/admin-audit-page";
+import { AdminHealthPage } from "./components/dashboard/admin-health-page";
 import { Toaster } from "./components/ui/sonner";
 import { SupportPage } from "./components/dashboard/support-page";
 import { SeekerSettingsPage } from "./components/dashboard/seeker-settings-page";
@@ -73,7 +91,15 @@ export default function App() {
                     <ProviderDashboard />
                   </ProtectedRoute>
                 }
-              />
+              >
+                <Route index element={<ProviderDashboardHome />} />
+                <Route path="policies" element={<ProviderPoliciesPage />} />
+                <Route path="leads" element={<ProviderLeadsPage />} />
+                <Route path="claims" element={<ProviderClaimsPage />} />
+                <Route path="analytics" element={<ProviderAnalyticsPage />} />
+                <Route path="messages" element={<ProviderMessagesPage />} />
+                <Route path="settings" element={<ProviderSettingsPage />} />
+              </Route>
               <Route
                 path="/employee-dashboard"
                 element={
@@ -81,7 +107,16 @@ export default function App() {
                     <EmployeeDashboard />
                   </ProtectedRoute>
                 }
-              />
+              >
+                <Route index element={<EmployeeDashboardHome />} />
+                <Route path="approvals" element={<AdminApprovalsPage />} />
+                <Route path="users" element={<AdminUsersPage mode="employee" />} />
+                <Route path="providers" element={<EmployeeProvidersPage />} />
+                <Route path="messages" element={<MessagesPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="activity" element={<AdminActivityPage />} />
+                <Route path="settings" element={<AdminSettingsPage variant="employee" />} />
+              </Route>
               <Route
                 path="/admin-dashboard"
                 element={
@@ -89,7 +124,26 @@ export default function App() {
                     <AdminDashboard />
                   </ProtectedRoute>
                 }
-              />
+              >
+                <Route index element={<SuperadminDashboardHome />} />
+                <Route
+                  path="users"
+                  element={<AdminUsersPage mode="superadmin" />}
+                />
+                <Route
+                  path="approvals"
+                  element={<AdminApprovalsPage heading="Provider approvals" />}
+                />
+                <Route path="messages" element={<MessagesPage />} />
+                <Route path="fraud" element={<AdminFraudPage />} />
+                <Route
+                  path="analytics"
+                  element={<AdminReportsPage title="Platform analytics" />}
+                />
+                <Route path="audit" element={<AdminAuditPage />} />
+                <Route path="health" element={<AdminHealthPage />} />
+                <Route path="settings" element={<AdminSettingsPage variant="superadmin" />} />
+              </Route>
               <Route path="/compare" element={<Navigate to="/dashboard/compare" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

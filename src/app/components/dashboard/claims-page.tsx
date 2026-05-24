@@ -84,7 +84,7 @@ export function ClaimsPage() {
       return;
     }
     if (description.trim().length < 5) {
-      toast.error("Add a short description so the agent knows what to review.");
+      toast.error("Add a short description so your insurer knows what to review.");
       return;
     }
     if (claimType === "other" && otherClaimType.trim().length < 2) {
@@ -112,7 +112,7 @@ export function ClaimsPage() {
       setEstimatedAmountPkr("");
       setOtherClaimType("");
       setSearchParams({}, { replace: true });
-      toast.success("Claim request submitted and marked pending for agent review");
+      toast.success("Claim sent to your insurer for review and approval");
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -137,7 +137,7 @@ export function ClaimsPage() {
       <div>
         <h1 className="text-3xl font-bold mb-1">Claims</h1>
         <p className="text-muted-foreground">
-          Start a claim from an active policy and track its review status.
+          Submit a claim from an active policy. It is sent to your insurer for review and approval.
         </p>
       </div>
 
@@ -263,7 +263,11 @@ export function ClaimsPage() {
                     </p>
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-xs bg-primary/10 text-primary capitalize">
-                    {claim.status === "submitted" ? "Pending" : claim.status.replace(/_/g, " ")}
+                    {claim.status === "submitted"
+                      ? "Sent to insurer"
+                      : claim.status === "in_review"
+                        ? "Insurer reviewing"
+                        : claim.status.replace(/_/g, " ")}
                   </span>
                 </div>
                 <p className="text-sm mt-3">{claim.description}</p>
