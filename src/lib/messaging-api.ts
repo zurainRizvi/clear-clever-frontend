@@ -18,6 +18,7 @@ export interface ConversationSummary {
   id: string;
   type: ConversationType;
   subject?: string;
+  displayTitle?: string;
   participantUserIds: string[];
   participants: ConversationParticipant[];
   insurer?: {
@@ -92,6 +93,24 @@ export async function markConversationRead(
 ): Promise<{ conversation: ConversationSummary }> {
   return apiRequest(`/api/conversations/${conversationId}/read`, {
     method: "PATCH",
+    auth: true,
+  });
+}
+
+export async function updateConversationDisplayTitle(
+  conversationId: string,
+  displayTitle: string
+): Promise<{ conversation: ConversationSummary }> {
+  return apiRequest(`/api/conversations/${conversationId}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify({ displayTitle }),
+  });
+}
+
+export async function deleteConversation(conversationId: string): Promise<{ message: string }> {
+  return apiRequest(`/api/conversations/${conversationId}`, {
+    method: "DELETE",
     auth: true,
   });
 }

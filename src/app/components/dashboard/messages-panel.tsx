@@ -16,18 +16,10 @@ import {
   type ConversationType,
 } from "@/lib/messaging-api";
 import { isConversationUnread } from "@/lib/messaging-unread";
+import { titleForConversation } from "@/lib/messaging-display";
+import { ConversationActionsMenu } from "./conversation-actions-menu";
 
 const MESSAGE_POLL_MS = 20_000;
-
-function titleForConversation(conversation: ConversationSummary, currentUserId?: string) {
-  if (conversation.insurer?.companyName) return conversation.insurer.companyName;
-  const other = conversation.participants.find((participant) => participant.id !== currentUserId);
-  if (other) return other.fullName;
-  if (conversation.type === "user_support") return "ClearClever Support";
-  if (conversation.type === "insurer_support") return "Provider Support";
-  if (conversation.type === "internal_admin") return "Internal Staff Chat";
-  return conversation.subject ?? "Conversation";
-}
 
 function typeLabel(type: ConversationType) {
   return type.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -50,6 +42,7 @@ export function MessagesPanel({
 }) {
   const { user } = useAuth();
   const messagesContext = useMessagesOptional();
+  const refreshFromContext = messagesContext?.refreshConversations;
   const [localConversations, setLocalConversations] = useState<ConversationSummary[]>([]);
   const [localLoadingConversations, setLocalLoadingConversations] = useState(!messagesContext);
   const conversations = messagesContext?.conversations ?? localConversations;
@@ -70,8 +63,8 @@ export function MessagesPanel({
 
   const refreshConversations = useCallback(
     async (options?: { silent?: boolean }) => {
-      if (messagesContext) {
-        await messagesContext.refreshConversations(options);
+      if (refreshFromContext) {
+        await refreshFromContext(options);
         return;
       }
       const silent = options?.silent ?? false;
@@ -87,7 +80,7 @@ export function MessagesPanel({
         if (!silent) setLocalLoadingConversations(false);
       }
     },
-    [messagesContext]
+    [refreshFromContext]
   );
 
   useEffect(() => {
@@ -101,6 +94,14 @@ export function MessagesPanel({
     }
     return undefined;
   }, [messagesContext, refreshConversations]);
+
+  const handleConversationDeleted = async (conversationId: string) => {
+    if (activeConversationId === conversationId) {
+      setActiveConversationId(null);
+      setMessages([]);
+    }
+    await refreshConversations({ silent: true });
+  };
 
   useEffect(() => {
     if (focusConversationId) {
@@ -268,15 +269,18 @@ export function MessagesPanel({
               const active = conversation.id === activeConversationId;
               const unread = isConversationUnread(conversation, user?.id);
               return (
-                <button
+                <div
                   key={conversation.id}
-                  type="button"
-                  onClick={() => setActiveConversationId(conversation.id)}
-                  className={`w-full text-left p-4 hover:bg-accent transition-colors ${
+                  className={`flex items-stretch hover:bg-accent transition-colors ${
                     active ? "bg-primary/5" : ""
                   }`}
                 >
-                  <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveConversationId(conversation.id)}
+                    className="flex-1 min-w-0 text-left p-4"
+                  >
+                    <div className="flex gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                       {conversation.type.includes("support") ? (
                         <Shield className="w-5 h-5" />
@@ -300,8 +304,17 @@ export function MessagesPanel({
                         {conversation.lastMessagePreview ?? conversation.subject ?? "No messages yet"}
                       </p>
                     </div>
+                    </div>
+                  </button>
+                  <div className="flex items-start pt-4 pr-2">
+                    <ConversationActionsMenu
+                      conversation={conversation}
+                      currentUserId={user?.id}
+                      onUpdated={() => refreshConversations({ silent: true })}
+                      onDeleted={() => handleConversationDeleted(conversation.id)}
+                    />
                   </div>
-                </button>
+                </div>
               );
             })
           )}
@@ -311,13 +324,21 @@ export function MessagesPanel({
       <div className="bg-card border border-border rounded-2xl min-h-[620px] flex flex-col overflow-hidden">
         {activeConversation ? (
           <>
-            <div className="p-5 border-b border-border">
-              <h2 className="text-xl font-semibold">
-                {titleForConversation(activeConversation, user?.id)}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {activeConversation.subject ?? typeLabel(activeConversation.type)}
-              </p>
+            <div className="p-5 border-b border-border flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold truncate">
+                  {titleForConversation(activeConversation, user?.id)}
+                </h2>
+                <p className="text-sm text-muted-foreground truncate">
+                  {activeConversation.subject ?? typeLabel(activeConversation.type)}
+                </p>
+              </div>
+              <ConversationActionsMenu
+                conversation={activeConversation}
+                currentUserId={user?.id}
+                onUpdated={() => refreshConversations({ silent: true })}
+                onDeleted={() => handleConversationDeleted(activeConversation.id)}
+              />
             </div>
 
             <div className="flex-1 p-5 space-y-3 overflow-y-auto bg-muted/20">

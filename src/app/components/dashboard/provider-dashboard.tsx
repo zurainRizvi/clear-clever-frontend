@@ -192,7 +192,7 @@ function ProviderDashboardInner() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className={location.pathname.endsWith("/settings") ? "w-full max-w-none" : "max-w-7xl mx-auto"}>
             <Outlet context={outletContext} />
           </div>
         </main>

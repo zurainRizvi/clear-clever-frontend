@@ -48,8 +48,8 @@ export function ProviderSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
+    <div className="w-full space-y-6 xl:grid xl:grid-cols-2 xl:gap-6 xl:items-start xl:[&>section]:h-fit">
+      <div className="xl:col-span-2">
         <h1 className="text-3xl font-bold mb-1">Settings</h1>
         <p className="text-muted-foreground">Manage your insurer company profile</p>
       </div>
@@ -123,7 +123,7 @@ export function ProviderSettingsPage() {
         </button>
       </section>
 
-      <section className="bg-card border border-border rounded-xl p-6">
+      <section className="bg-card border border-border rounded-xl p-6 xl:col-span-2">
         <button
           type="button"
           onClick={handleLogout}

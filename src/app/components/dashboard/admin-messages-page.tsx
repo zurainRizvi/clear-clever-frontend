@@ -3,6 +3,7 @@ import { Building2, Loader2, MessageSquare, Send, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { useMessagesOptional } from "./messages-context";
+import { ConversationActionsMenu } from "./conversation-actions-menu";
 import { ApiError } from "@/lib/api";
 import {
   fetchConversationMessages,
@@ -11,32 +12,22 @@ import {
   type ConversationMessage,
   type ConversationSummary,
 } from "@/lib/messaging-api";
+import { titleForConversation } from "@/lib/messaging-display";
 import { isConversationUnread } from "@/lib/messaging-unread";
 
 type AdminMessageTab = "seekers" | "insurers";
 
 function tabForConversation(conversation: ConversationSummary): AdminMessageTab | null {
-  if (conversation.type === "user_support" || conversation.type === "user_insurer") {
-    return "seekers";
-  }
-  if (conversation.type === "insurer_support") {
-    return "insurers";
-  }
-  const other = conversation.participants.find((p) => p.role === "user" || p.role === "insurer");
-  if (other?.role === "insurer") return "insurers";
-  if (other?.role === "user") return "seekers";
-  return null;
-}
+  if (conversation.type === "internal_admin") return null;
+  if (conversation.type === "insurer_support") return "insurers";
+  if (conversation.type === "user_support" || conversation.type === "user_insurer") return "seekers";
 
-function titleForConversation(conversation: ConversationSummary, currentUserId?: string) {
-  if (conversation.insurer?.companyName && conversation.type === "user_insurer") {
-    return conversation.insurer.companyName;
-  }
-  const other = conversation.participants.find(
-    (participant) => participant.id !== currentUserId && participant.role !== "admin" && participant.role !== "superadmin"
-  );
-  if (other) return other.fullName;
-  return conversation.subject ?? "Conversation";
+  const hasUser = conversation.participants.some((participant) => participant.role === "user");
+  const hasInsurer = conversation.participants.some((participant) => participant.role === "insurer");
+
+  if (hasInsurer && !hasUser) return "insurers";
+  if (hasUser) return "seekers";
+  return null;
 }
 
 function subtitleForConversation(conversation: ConversationSummary, currentUserId?: string) {
@@ -59,6 +50,7 @@ function subtitleForConversation(conversation: ConversationSummary, currentUserI
 export function AdminMessagesPage() {
   const { user } = useAuth();
   const messagesContext = useMessagesOptional();
+  const refreshConversations = messagesContext?.refreshConversations;
   const [tab, setTab] = useState<AdminMessageTab>("seekers");
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -91,23 +83,29 @@ export function AdminMessagesPage() {
     }
   }, [filteredConversations, activeConversationId, tab]);
 
-  const loadMessages = useCallback(async (conversationId: string) => {
-    setLoadingMessages(true);
-    setMessageError(null);
-    try {
-      const data = await fetchConversationMessages(conversationId);
-      setMessages(data.messages);
-      await markConversationRead(conversationId).catch(() => undefined);
-      await messagesContext?.refreshConversations({ silent: true });
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Could not load conversation";
-      setMessageError(message);
-      setMessages([]);
-      toast.error(message);
-    } finally {
-      setLoadingMessages(false);
-    }
-  }, [messagesContext]);
+  const loadMessages = useCallback(
+    async (conversationId: string, options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
+      if (!silent) setLoadingMessages(true);
+      setMessageError(null);
+      try {
+        const data = await fetchConversationMessages(conversationId);
+        setMessages(data.messages);
+        await markConversationRead(conversationId).catch(() => undefined);
+        await refreshConversations?.({ silent: true });
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Could not load conversation";
+        if (!silent) {
+          setMessageError(message);
+          setMessages([]);
+          toast.error(message);
+        }
+      } finally {
+        if (!silent) setLoadingMessages(false);
+      }
+    },
+    [refreshConversations]
+  );
 
   useEffect(() => {
     if (!activeConversationId) {
@@ -119,8 +117,10 @@ export function AdminMessagesPage() {
   }, [activeConversationId, loadMessages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeConversationId]);
+    if (!loadingMessages && messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, loadingMessages, activeConversationId]);
 
   const sendMessage = async () => {
     if (!activeConversationId || !draft.trim()) return;
@@ -129,12 +129,20 @@ export function AdminMessagesPage() {
       const data = await sendConversationMessage(activeConversationId, draft.trim());
       setMessages((prev) => [...prev, data.message]);
       setDraft("");
-      await messagesContext?.refreshConversations({ silent: true });
+      await refreshConversations?.({ silent: true });
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not send message");
     } finally {
       setSending(false);
     }
+  };
+
+  const handleConversationDeleted = async (conversationId: string) => {
+    if (activeConversationId === conversationId) {
+      setActiveConversationId(null);
+      setMessages([]);
+    }
+    await refreshConversations?.({ silent: true });
   };
 
   const senderName = (senderUserId: string) => {
@@ -192,25 +200,37 @@ export function AdminMessagesPage() {
                 const active = conversation.id === activeConversationId;
                 const unread = isConversationUnread(conversation, user?.id);
                 return (
-                  <button
+                  <div
                     key={conversation.id}
-                    type="button"
-                    onClick={() => setActiveConversationId(conversation.id)}
-                    className={`w-full text-left p-4 hover:bg-accent/60 transition-colors ${
+                    className={`flex items-stretch hover:bg-accent/60 transition-colors ${
                       active ? "bg-primary/5 border-l-2 border-l-primary" : ""
                     }`}
                   >
-                    <div className="font-medium truncate flex items-center gap-2">
-                      <span className="truncate">{titleForConversation(conversation, user?.id)}</span>
-                      {unread ? <span className="w-2 h-2 rounded-full bg-primary shrink-0" /> : null}
+                    <button
+                      type="button"
+                      onClick={() => setActiveConversationId(conversation.id)}
+                      className="flex-1 min-w-0 text-left p-4"
+                    >
+                      <div className="font-medium truncate flex items-center gap-2">
+                        <span className="truncate">{titleForConversation(conversation, user?.id)}</span>
+                        {unread ? <span className="w-2 h-2 rounded-full bg-primary shrink-0" /> : null}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {subtitleForConversation(conversation, user?.id)}
+                      </p>
+                      <p className="text-sm text-muted-foreground truncate mt-1">
+                        {conversation.lastMessagePreview ?? "No messages yet"}
+                      </p>
+                    </button>
+                    <div className="flex items-start pt-3 pr-2">
+                      <ConversationActionsMenu
+                        conversation={conversation}
+                        currentUserId={user?.id}
+                        onUpdated={() => refreshConversations?.({ silent: true })}
+                        onDeleted={() => handleConversationDeleted(conversation.id)}
+                      />
                     </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {subtitleForConversation(conversation, user?.id)}
-                    </p>
-                    <p className="text-sm text-muted-foreground truncate mt-1">
-                      {conversation.lastMessagePreview ?? "No messages yet"}
-                    </p>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -220,13 +240,21 @@ export function AdminMessagesPage() {
         <div className="bg-card border border-border rounded-xl flex flex-col min-h-[640px] overflow-hidden">
           {activeConversation ? (
             <>
-              <div className="p-4 border-b border-border">
-                <h2 className="text-lg font-semibold">
-                  {titleForConversation(activeConversation, user?.id)}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {subtitleForConversation(activeConversation, user?.id)}
-                </p>
+              <div className="p-4 border-b border-border flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold truncate">
+                    {titleForConversation(activeConversation, user?.id)}
+                  </h2>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {subtitleForConversation(activeConversation, user?.id)}
+                  </p>
+                </div>
+                <ConversationActionsMenu
+                  conversation={activeConversation}
+                  currentUserId={user?.id}
+                  onUpdated={() => refreshConversations?.({ silent: true })}
+                  onDeleted={() => handleConversationDeleted(activeConversation.id)}
+                />
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
@@ -237,9 +265,9 @@ export function AdminMessagesPage() {
                 ) : messageError ? (
                   <div className="text-center py-16 text-destructive text-sm">{messageError}</div>
                 ) : messages.length === 0 ? (
-                  <div className="text-center py-16 text-muted-foreground text-sm">
+                  <p className="text-center py-16 text-muted-foreground text-sm">
                     No messages in this thread yet. Send the first reply below.
-                  </div>
+                  </p>
                 ) : (
                   messages.map((message) => {
                     const mine = message.senderUserId === user?.id;
