@@ -1,25 +1,57 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   LayoutDashboard, Users, Shield, AlertTriangle, FileText,
   TrendingUp, Settings, Menu, X, LogOut, Search, Activity,
-  CheckCircle2, XCircle, Clock, DollarSign, Trash2
+  CheckCircle2, XCircle, Clock, DollarSign, Trash2, MessageSquare
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { useLogout } from "../auth-context";
+import { MessagesPanel } from "./messages-panel";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
+import {
+  approvePolicy,
+  fetchAdminAnalytics,
+  fetchAdminUsers,
+  fetchPendingPolicies,
+  rejectPolicy,
+  type AdminAnalytics,
+  type PendingPolicySummary,
+} from "@/lib/admin-api";
+import type { AuthUser } from "@/lib/types";
+
+function titleCase(value: string) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 export function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const handleLogout = useLogout();
+  const [users, setUsers] = useState<AuthUser[]>([]);
+  const [pendingPolicies, setPendingPolicies] = useState<PendingPolicySummary[]>([]);
+  const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const stats = [
-    { label: "Total Users", value: "52,487", icon: <Users className="w-5 h-5" />, trend: "+2,340 this month", color: "primary" },
-    { label: "Active Policies", value: "8,924", icon: <FileText className="w-5 h-5" />, trend: "+456 this week", color: "success" },
-    { label: "Total Revenue", value: "₨125M", icon: <DollarSign className="w-5 h-5" />, trend: "+18% vs last month", color: "secondary" },
-    { label: "Security Alerts", value: "3", icon: <AlertTriangle className="w-5 h-5" />, trend: "2 resolved today", color: "warning" }
+    { label: "Total Users", value: String(analytics?.users.total ?? users.length), icon: <Users className="w-5 h-5" />, trend: `${analytics?.users.active ?? 0} active`, color: "primary" },
+    { label: "Approved Policies", value: String(analytics?.policies.approved ?? 0), icon: <FileText className="w-5 h-5" />, trend: `${analytics?.policies.pending ?? 0} pending`, color: "success" },
+    { label: "Total Leads", value: String(analytics?.leads.total ?? 0), icon: <DollarSign className="w-5 h-5" />, trend: `${analytics?.leads.new ?? 0} new`, color: "secondary" },
+    { label: "Security Alerts", value: "3", icon: <AlertTriangle className="w-5 h-5" />, trend: "Demo fraud monitor", color: "warning" }
   ];
+
+  const providers = users
+    .filter((user) => user.role === "insurer")
+    .map((user) => ({
+      name: user.fullName,
+      policies: pendingPolicies.filter((policy) => policy.insurer?.companyName === user.fullName).length,
+      customers: 0,
+      revenue: "Pending",
+      status: user.status === "active" ? "Active" : titleCase(user.status),
+      verification: user.status === "active" ? "Verified" : "Pending",
+    }));
 
   const recentActivity = [
     { type: "user", action: "New user registered", user: "Ahmed Khan", time: "5 min ago", status: "success" },
@@ -29,17 +61,56 @@ export function AdminDashboard() {
     { type: "provider", action: "New provider onboarded", user: "TPL Insurance", time: "3 hours ago", status: "success" }
   ];
 
-  const providers = [
-    { name: "Jubilee Life Insurance", policies: 248, customers: 12450, revenue: "₨45M", status: "Active", verification: "Verified" },
-    { name: "EFU Life Assurance", policies: 189, customers: 9840, revenue: "₨38M", status: "Active", verification: "Verified" },
-    { name: "Adamjee Insurance", policies: 156, customers: 7230, revenue: "₨28M", status: "Active", verification: "Verified" },
-    { name: "State Life Insurance", policies: 203, customers: 11200, revenue: "₨42M", status: "Active", verification: "Pending" }
-  ];
+  const loadDashboard = async () => {
+    setLoading(true);
+    try {
+      const [userData, pendingData, analyticsData] = await Promise.all([
+        fetchAdminUsers(),
+        fetchPendingPolicies(),
+        fetchAdminAnalytics(),
+      ]);
+      setUsers(userData.users);
+      setPendingPolicies(pendingData.policies);
+      setAnalytics(analyticsData);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not load super admin dashboard");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadDashboard();
+  }, []);
+
+  const handleApprove = async (id: string) => {
+    try {
+      await approvePolicy(id);
+      setPendingPolicies((prev) => prev.filter((policy) => policy.id !== id));
+      toast.success("Policy approved");
+      void loadDashboard();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not approve policy");
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const reason = window.prompt("Optional rejection reason") ?? undefined;
+    try {
+      await rejectPolicy(id, reason);
+      setPendingPolicies((prev) => prev.filter((policy) => policy.id !== id));
+      toast.success("Policy rejected");
+      void loadDashboard();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not reject policy");
+    }
+  };
 
   const menuItems = [
     { id: "dashboard", icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard" },
     { id: "users", icon: <Users className="w-5 h-5" />, label: "User Management" },
-    { id: "approvals", icon: <Shield className="w-5 h-5" />, label: "Provider Approvals", badge: 4 },
+    { id: "approvals", icon: <Shield className="w-5 h-5" />, label: "Provider Approvals", badge: pendingPolicies.length },
+    { id: "messages", icon: <MessageSquare className="w-5 h-5" />, label: "Messages" },
     { id: "fraud", icon: <AlertTriangle className="w-5 h-5" />, label: "Fraud Detection", badge: 3 },
     { id: "analytics", icon: <TrendingUp className="w-5 h-5" />, label: "Analytics" },
     { id: "audit", icon: <FileText className="w-5 h-5" />, label: "Audit Logs" },
@@ -337,28 +408,25 @@ export function AdminDashboard() {
                     </button>
                   </div>
                   <div className="space-y-4">
-                    {[
-                      { name: "Ahmed Khan", email: "ahmed@example.com", role: "Policy Seeker", status: "Active", joined: "2024-05-15", id: 1 },
-                      { name: "Sara Malik", email: "sara@example.com", role: "Policy Seeker", status: "Active", joined: "2024-05-14", id: 2 },
-                      { name: "Usman Ali", email: "usman@example.com", role: "Policy Seeker", status: "Suspended", joined: "2024-05-10", id: 3 },
-                      { name: "Jubilee Insurance", email: "contact@jubilee.com", role: "Provider", status: "Active", joined: "2024-04-20", id: 4 }
-                    ].map((user) => (
+                    {loading ? (
+                      <div className="py-10 text-center text-muted-foreground">Loading users...</div>
+                    ) : users.slice(0, 12).map((user) => (
                       <div key={user.id} className="flex items-center gap-4 p-4 bg-accent/30 rounded-xl">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
                           <Users className="w-6 h-6 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <div className="font-semibold">{user.name}</div>
+                          <div className="font-semibold">{user.fullName}</div>
                           <div className="text-sm text-muted-foreground">{user.email}</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-muted-foreground mb-1">{user.role}</div>
-                          <div className="text-xs text-muted-foreground">Joined {user.joined}</div>
+                          <div className="text-sm text-muted-foreground mb-1">{titleCase(user.role)}</div>
+                          <div className="text-xs text-muted-foreground">Joined {new Date(user.createdAt).toLocaleDateString()}</div>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-sm ${
-                          user.status === "Active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                          user.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
                         }`}>
-                          {user.status}
+                          {titleCase(user.status)}
                         </span>
                         <div className="flex gap-2">
                           <button className="px-4 py-2 border border-border rounded-xl hover:bg-accent transition-all">
@@ -381,26 +449,29 @@ export function AdminDashboard() {
                 <h1 className="text-3xl font-bold mb-6">Provider Approvals</h1>
                 <div className="bg-card border border-border rounded-2xl p-6">
                   <div className="space-y-4">
-                    {[
-                      { id: 1, provider: "State Life Insurance", type: "New Provider Registration", date: "2024-05-20", status: "Pending" },
-                      { id: 2, provider: "TPL Insurance", type: "Policy Update Request", date: "2024-05-20", status: "Pending" },
-                      { id: 3, provider: "IGI Insurance", type: "New Policy Submission", date: "2024-05-19", status: "Pending" },
-                      { id: 4, provider: "United Insurance", type: "Provider Verification", date: "2024-05-19", status: "Pending" }
-                    ].map((approval) => (
+                    {loading ? (
+                      <div className="py-10 text-center text-muted-foreground">Loading approvals...</div>
+                    ) : pendingPolicies.length === 0 ? (
+                      <div className="py-10 text-center text-muted-foreground">
+                        No pending provider submissions.
+                      </div>
+                    ) : pendingPolicies.map((approval) => (
                       <div key={approval.id} className="flex items-center gap-4 p-4 bg-accent/30 rounded-xl">
                         <div className="flex-1">
-                          <div className="font-semibold mb-1">{approval.provider}</div>
-                          <div className="text-sm text-muted-foreground">{approval.type} • {approval.date}</div>
+                          <div className="font-semibold mb-1">{approval.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {approval.insurer?.companyName ?? "Unknown insurer"} • {titleCase(approval.category)} • {new Date(approval.createdAt).toLocaleDateString()}
+                          </div>
                         </div>
                         <span className="px-3 py-1 bg-warning/10 text-warning rounded-full text-sm">
-                          {approval.status}
+                          Pending
                         </span>
                         <div className="flex gap-2">
-                          <button className="px-4 py-2 bg-success text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+                          <button onClick={() => handleApprove(approval.id)} className="px-4 py-2 bg-success text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4" />
                             Approve
                           </button>
-                          <button className="px-4 py-2 bg-destructive text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+                          <button onClick={() => handleReject(approval.id)} className="px-4 py-2 bg-destructive text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
                             <XCircle className="w-4 h-4" />
                             Reject
                           </button>
@@ -463,6 +534,8 @@ export function AdminDashboard() {
                 </div>
               </div>
             )}
+
+            {activeTab === "messages" && <MessagesPanel />}
 
             {activeTab === "analytics" && (
               <div>

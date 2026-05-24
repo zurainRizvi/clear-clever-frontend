@@ -280,7 +280,23 @@ export function MyPurchases() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => toast.message("Agent messaging will be available when messages are connected.")}
+                    onClick={() => {
+                      if (!purchase.insurer?.id) {
+                        toast.error("Insurer contact is not available for this purchase yet.");
+                        return;
+                      }
+                      navigate("/dashboard/messages", {
+                        state: {
+                          defaultConversation: {
+                            type: "user_insurer",
+                            insurerProfileId: purchase.insurer.id,
+                            purchaseId: purchase.id,
+                            subject: `Purchase support: ${purchase.policy?.name ?? "policy"}`,
+                            initialMessage: `Hi ${purchase.insurer.companyName}, I have a question about my ${purchase.policy?.name ?? "policy"} purchase.`,
+                          },
+                        },
+                      });
+                    }}
                     className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
                   >
                     <MessageSquare className="w-4 h-4" />

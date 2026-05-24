@@ -17,6 +17,7 @@ import { MyPurchases } from "./components/dashboard/my-purchases";
 import { NotificationsPage } from "./components/dashboard/notifications-page";
 import { ClaimsPage } from "./components/dashboard/claims-page";
 import { DashboardPlaceholder } from "./components/dashboard/dashboard-placeholder";
+import { MessagesPage } from "./components/dashboard/messages-panel";
 import { ProviderDashboard } from "./components/dashboard/provider-dashboard";
 import { EmployeeDashboard } from "./components/dashboard/employee-dashboard";
 import { AdminDashboard } from "./components/dashboard/admin-dashboard";
@@ -35,7 +36,7 @@ export default function App() {
               <Route
                 path="/role-selection"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={["user"]}>
                     <RoleSelection />
                   </ProtectedRoute>
                 }
@@ -43,7 +44,7 @@ export default function App() {
               <Route
                 path="/dashboard"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={["user"]}>
                     <PolicySeekerDashboard />
                   </ProtectedRoute>
                 }
@@ -57,12 +58,7 @@ export default function App() {
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route
                   path="messages"
-                  element={
-                    <DashboardPlaceholder
-                      title="Messages"
-                      description="Conversations with insurers and ClearClever support."
-                    />
-                  }
+                  element={<MessagesPage />}
                 />
                 <Route
                   path="support"
@@ -87,7 +83,7 @@ export default function App() {
               <Route
                 path="/provider-dashboard"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={["insurer"]}>
                     <ProviderDashboard />
                   </ProtectedRoute>
                 }
@@ -95,7 +91,7 @@ export default function App() {
               <Route
                 path="/employee-dashboard"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={["admin", "superadmin"]}>
                     <EmployeeDashboard />
                   </ProtectedRoute>
                 }
@@ -103,7 +99,7 @@ export default function App() {
               <Route
                 path="/admin-dashboard"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={["superadmin"]}>
                     <AdminDashboard />
                   </ProtectedRoute>
                 }

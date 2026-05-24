@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Shield, User, Building2, ArrowRight } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
@@ -45,10 +45,13 @@ export function RoleSelection() {
     }
   };
 
-  if (user && user.role !== "user") {
-    navigate(routeForRole(user.role), { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (user && user.role !== "user") {
+      navigate(routeForRole(user.role), { replace: true });
+    }
+  }, [navigate, user]);
+
+  if (user && user.role !== "user") return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-8 bg-background relative">

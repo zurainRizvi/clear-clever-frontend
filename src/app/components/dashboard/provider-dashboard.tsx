@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Routes, Route } from "react-router";
 import {
   LayoutDashboard, FileText, Users, TrendingUp, DollarSign,
@@ -8,24 +8,102 @@ import {
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { useLogout } from "../auth-context";
+import { MessagesPanel } from "./messages-panel";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
+import { formatPkr } from "@/lib/format";
+import {
+  fetchInsurerLeads,
+  fetchInsurerPolicies,
+  type InsurerLeadSummary,
+  type InsurerPolicySummary,
+} from "@/lib/insurer-api";
+
+function titleCase(value: string) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function statusClass(status: string) {
+  if (status === "approved" || status === "converted") return "bg-success/10 text-success";
+  if (status === "rejected") return "bg-destructive/10 text-destructive";
+  if (status === "pending" || status === "new") return "bg-warning/10 text-warning";
+  return "bg-secondary/10 text-secondary";
+}
 
 export function ProviderDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const handleLogout = useLogout();
+  const [policies, setPolicies] = useState<InsurerPolicySummary[]>([]);
+  const [leads, setLeads] = useState<InsurerLeadSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      setLoading(true);
+      try {
+        const [policyData, leadData] = await Promise.all([
+          fetchInsurerPolicies(),
+          fetchInsurerLeads(),
+        ]);
+        setPolicies(policyData.policies);
+        setLeads(leadData.leads);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : "Could not load provider dashboard");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadDashboard();
+  }, []);
+
+  const policyRows = useMemo(
+    () =>
+      policies.map((policy) => {
+        const policyLeads = leads.filter((lead) => lead.policy?.id === policy.id);
+        return {
+          ...policy,
+          categoryLabel: titleCase(policy.category),
+          active: policyLeads.length,
+          revenue: formatPkr(policyLeads.length * policy.premiumYearlyPkr),
+          statusLabel: titleCase(policy.status),
+        };
+      }),
+    [policies, leads]
+  );
 
   const stats = [
-    { label: "Active Policies", value: "48", icon: <FileText className="w-5 h-5" />, trend: "+12% this month", color: "primary" },
-    { label: "Total Revenue", value: "₨2.4M", icon: <DollarSign className="w-5 h-5" />, trend: "+18% vs last month", color: "success" },
-    { label: "Customer Leads", value: "156", icon: <Users className="w-5 h-5" />, trend: "+24 new leads", color: "secondary" },
-    { label: "Claims Processed", value: "32", icon: <CheckCircle2 className="w-5 h-5" />, trend: "94% approval rate", color: "warning" }
-  ];
-
-  const policies = [
-    { id: 1, name: "Platinum Health Plan", category: "Health", active: 124, revenue: "₨1.2M", status: "Active" },
-    { id: 2, name: "Gold Auto Insurance", category: "Auto", active: 89, revenue: "₨680K", status: "Active" },
-    { id: 3, name: "Premium Home Shield", category: "Home", active: 45, revenue: "₨520K", status: "Active" },
-    { id: 4, name: "Executive Life Cover", category: "Life", active: 67, revenue: "₨890K", status: "Active" }
+    {
+      label: "Approved Policies",
+      value: String(policies.filter((policy) => policy.status === "approved").length),
+      icon: <FileText className="w-5 h-5" />,
+      trend: `${policies.length} total submitted`,
+      color: "primary",
+    },
+    {
+      label: "Projected Revenue",
+      value: formatPkr(
+        policyRows.reduce((sum, policy) => sum + policy.active * policy.premiumYearlyPkr, 0)
+      ),
+      icon: <DollarSign className="w-5 h-5" />,
+      trend: "Based on converted leads",
+      color: "success",
+    },
+    {
+      label: "Customer Leads",
+      value: String(leads.length),
+      icon: <Users className="w-5 h-5" />,
+      trend: `${leads.filter((lead) => lead.status === "new").length} new leads`,
+      color: "secondary",
+    },
+    {
+      label: "Pending Review",
+      value: String(policies.filter((policy) => policy.status === "pending").length),
+      icon: <CheckCircle2 className="w-5 h-5" />,
+      trend: "Awaiting admin approval",
+      color: "warning",
+    },
   ];
 
   const menuItems = [
@@ -33,7 +111,7 @@ export function ProviderDashboard() {
     { id: "policies", icon: <FileText className="w-5 h-5" />, label: "My Policies" },
     { id: "leads", icon: <Users className="w-5 h-5" />, label: "Customer Leads" },
     { id: "analytics", icon: <TrendingUp className="w-5 h-5" />, label: "Analytics" },
-    { id: "messages", icon: <MessageSquare className="w-5 h-5" />, label: "Messages", badge: 8 },
+    { id: "messages", icon: <MessageSquare className="w-5 h-5" />, label: "Messages" },
     { id: "settings", icon: <Settings className="w-5 h-5" />, label: "Settings" }
   ];
 
@@ -206,6 +284,13 @@ export function ProviderDashboard() {
               </div>
 
               <div className="overflow-x-auto">
+                {loading ? (
+                  <div className="py-10 text-center text-muted-foreground">Loading provider data...</div>
+                ) : policyRows.length === 0 ? (
+                  <div className="py-10 text-center text-muted-foreground">
+                    No policies submitted yet. Add your first policy to send it for admin approval.
+                  </div>
+                ) : (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
@@ -218,19 +303,19 @@ export function ProviderDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {policies.map((policy) => (
+                    {policyRows.map((policy) => (
                       <tr key={policy.id} className="border-b border-border hover:bg-accent/50 transition-colors">
                         <td className="py-4 px-4 font-medium">{policy.name}</td>
                         <td className="py-4 px-4">
                           <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                            {policy.category}
+                            {policy.categoryLabel}
                           </span>
                         </td>
                         <td className="py-4 px-4 text-muted-foreground">{policy.active}</td>
                         <td className="py-4 px-4 font-medium">{policy.revenue}</td>
                         <td className="py-4 px-4">
-                          <span className="px-3 py-1 bg-success/10 text-success rounded-full text-sm flex items-center gap-1 w-fit">
-                            <CheckCircle2 className="w-3 h-3" /> {policy.status}
+                          <span className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 w-fit ${statusClass(policy.status)}`}>
+                            <CheckCircle2 className="w-3 h-3" /> {policy.statusLabel}
                           </span>
                         </td>
                         <td className="py-4 px-4">
@@ -250,6 +335,7 @@ export function ProviderDashboard() {
                     ))}
                   </tbody>
                 </table>
+                )}
               </div>
             </div>
               </>
@@ -259,15 +345,23 @@ export function ProviderDashboard() {
               <div>
                 <h1 className="text-3xl font-bold mb-6">My Policies</h1>
                 <div className="grid md:grid-cols-2 gap-6">
-                  {policies.map((policy) => (
+                  {loading ? (
+                    <div className="md:col-span-2 py-10 text-center text-muted-foreground">
+                      Loading policies...
+                    </div>
+                  ) : policyRows.length === 0 ? (
+                    <div className="md:col-span-2 py-10 text-center text-muted-foreground">
+                      No policies found for this insurer account.
+                    </div>
+                  ) : policyRows.map((policy) => (
                     <div key={policy.id} className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg transition-all">
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <h3 className="text-xl font-semibold mb-2">{policy.name}</h3>
-                          <p className="text-sm text-muted-foreground">{policy.category} Insurance</p>
+                          <p className="text-sm text-muted-foreground">{policy.categoryLabel} Insurance</p>
                         </div>
-                        <span className="px-3 py-1 bg-success/10 text-success rounded-full text-sm">
-                          {policy.status}
+                        <span className={`px-3 py-1 rounded-full text-sm ${statusClass(policy.status)}`}>
+                          {policy.statusLabel}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-4 mb-4">
@@ -299,30 +393,29 @@ export function ProviderDashboard() {
                 <h1 className="text-3xl font-bold mb-6">Customer Leads</h1>
                 <div className="bg-card border border-border rounded-2xl p-6">
                   <div className="space-y-4">
-                    {[
-                      { name: "Ahmed Khan", email: "ahmed@example.com", interest: "Health Insurance", status: "New", value: "₨25,000" },
-                      { name: "Sara Malik", email: "sara@example.com", interest: "Auto Insurance", status: "In Progress", value: "₨18,000" },
-                      { name: "Usman Ali", email: "usman@example.com", interest: "Life Insurance", status: "Quote Sent", value: "₨45,000" },
-                      { name: "Fatima Hassan", email: "fatima@example.com", interest: "Home Insurance", status: "New", value: "₨35,000" }
-                    ].map((lead, index) => (
-                      <div key={index} className="flex items-center gap-4 p-4 bg-accent/50 rounded-xl hover:bg-accent transition-all">
+                    {loading ? (
+                      <div className="py-10 text-center text-muted-foreground">Loading leads...</div>
+                    ) : leads.length === 0 ? (
+                      <div className="py-10 text-center text-muted-foreground">
+                        No leads yet. Completed purchases will appear here automatically.
+                      </div>
+                    ) : leads.map((lead) => (
+                      <div key={lead.id} className="flex items-center gap-4 p-4 bg-accent/50 rounded-xl hover:bg-accent transition-all">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
                           <User className="w-6 h-6 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <div className="font-semibold">{lead.name}</div>
-                          <div className="text-sm text-muted-foreground">{lead.email}</div>
+                          <div className="font-semibold">{lead.seeker?.fullName ?? "Policy seeker"}</div>
+                          <div className="text-sm text-muted-foreground">{lead.seeker?.email ?? lead.summary}</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-muted-foreground mb-1">{lead.interest}</div>
-                          <div className="font-semibold">{lead.value}</div>
+                          <div className="text-sm text-muted-foreground mb-1">
+                            {lead.policy?.name ?? titleCase(lead.type)}
+                          </div>
+                          <div className="font-semibold">{titleCase(lead.policy?.category ?? lead.type)}</div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-sm ${
-                          lead.status === "New" ? "bg-primary/10 text-primary" :
-                          lead.status === "In Progress" ? "bg-warning/10 text-warning" :
-                          "bg-secondary/10 text-secondary"
-                        }`}>
-                          {lead.status}
+                        <span className={`px-3 py-1 rounded-full text-sm ${statusClass(lead.status)}`}>
+                          {titleCase(lead.status)}
                         </span>
                         <button className="px-4 py-2 bg-primary text-white rounded-xl hover:shadow-lg transition-all">
                           Contact
@@ -383,29 +476,7 @@ export function ProviderDashboard() {
             )}
 
             {activeTab === "messages" && (
-              <div>
-                <h1 className="text-3xl font-bold mb-6">Messages</h1>
-                <div className="bg-card border border-border rounded-2xl p-6">
-                  <div className="space-y-4">
-                    {[
-                      { from: "Ahmed Khan", message: "I have a question about my health insurance coverage", time: "10 min ago", unread: true },
-                      { from: "Sara Malik", message: "Thank you for the quick response!", time: "1 hour ago", unread: true },
-                      { from: "Usman Ali", message: "Can I upgrade my auto insurance plan?", time: "3 hours ago", unread: false },
-                      { from: "Fatima Hassan", message: "I'd like to add my spouse to the policy", time: "Yesterday", unread: false }
-                    ].map((msg, index) => (
-                      <div key={index} className={`p-4 rounded-xl hover:bg-accent transition-all cursor-pointer ${
-                        msg.unread ? "bg-primary/5 border-l-4 border-primary" : "bg-accent/30"
-                      }`}>
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="font-semibold">{msg.from}</div>
-                          <div className="text-xs text-muted-foreground">{msg.time}</div>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{msg.message}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <MessagesPanel />
             )}
 
             {activeTab === "settings" && (
