@@ -62,10 +62,10 @@ export function SignUp() {
       if (result.debugCode) {
         toast.message(`Dev code: ${result.debugCode}`);
       }
-      if (result.emailSent === false && !result.debugCode) {
-        toast.message("We couldn't email the code yet. Use Resend on the next screen.");
-      } else {
+      if (result.emailSent === true) {
         toast.success("Verification code sent");
+      } else if (!result.debugCode) {
+        toast.message("Check your email for the code, or use Resend on the next screen.");
       }
       navigate("/otp-verification", { state: { email: verifiedEmail } });
     } catch (err) {

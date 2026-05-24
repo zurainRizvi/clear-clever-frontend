@@ -10,25 +10,30 @@ import { copy } from "@/lib/copy";
 import { clearPendingEmail, getPendingEmail, setPendingEmail } from "@/lib/auth-storage";
 import { useAuthRedirect } from "../auth-context";
 
+function resolveOtpEmail(locationState: unknown): string {
+  const stateEmail = (locationState as { email?: string } | null)?.email?.trim() ?? "";
+  return getPendingEmail()?.trim() || stateEmail;
+}
+
 export function OTPVerification() {
   const navigate = useNavigate();
   const location = useLocation();
   const authRedirect = useAuthRedirect();
-  const stateEmail = (location.state as { email?: string } | null)?.email ?? "";
-  const storedEmail = getPendingEmail() ?? "";
-  const email = storedEmail || stateEmail;
+  const [email, setEmail] = useState(() => resolveOtpEmail(location.state));
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [timer, setTimer] = useState(60);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (email) {
-      setPendingEmail(email);
+    const resolved = resolveOtpEmail(location.state);
+    if (resolved) {
+      setEmail(resolved);
+      setPendingEmail(resolved);
       return;
     }
     navigate("/signup", { replace: true });
-  }, [email, navigate]);
+  }, [location.state, navigate]);
 
   useEffect(() => {
     const interval = setInterval(() => {

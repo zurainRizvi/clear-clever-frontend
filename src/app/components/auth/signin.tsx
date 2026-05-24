@@ -90,19 +90,19 @@ export function SignIn() {
       if (err instanceof ApiError) {
         if (err.status === 403 && err.message.includes("verify")) {
           setPendingEmail(data.email);
-          try {
-            const otpResult = await sendOtp({ email: data.email, purpose: "signup" });
-            if (otpResult.debugCode) {
-              toast.message(`Dev code: ${otpResult.debugCode}`);
-            } else if (otpResult.emailSent === false) {
-              toast.message(copy.auth.pendingVerification);
-            } else {
-              toast.success("Verification code sent to your email");
-            }
-          } catch {
-            toast.message(copy.auth.pendingVerification);
-          }
+          toast.message(copy.auth.pendingVerification);
           navigate("/otp-verification", { state: { email: data.email } });
+          void sendOtp({ email: data.email, purpose: "signup" })
+            .then((otpResult) => {
+              if (otpResult.debugCode) {
+                toast.message(`Dev code: ${otpResult.debugCode}`);
+              } else if (otpResult.emailSent === true) {
+                toast.success("Verification code sent to your email");
+              }
+            })
+            .catch(() => {
+              /* OTP screen has Resend */
+            });
           return;
         }
         if (err.fieldErrors.email) setError("email", { message: err.fieldErrors.email });

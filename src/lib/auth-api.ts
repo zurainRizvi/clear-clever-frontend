@@ -20,7 +20,7 @@ export async function signup(body: {
   email: string;
   phone: string;
   password: string;
-}): Promise<{ email: string; emailSent?: boolean; debugCode?: string }> {
+}): Promise<{ email: string; emailSent?: boolean | null; debugCode?: string }> {
   return apiRequest("/api/auth/signup", {
     method: "POST",
     body: JSON.stringify(body),

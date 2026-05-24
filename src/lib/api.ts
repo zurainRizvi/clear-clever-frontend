@@ -41,6 +41,8 @@ interface ApiErrorBody {
   errors: string[];
 }
 
+const REQUEST_TIMEOUT_MS = 30_000;
+
 export function getApiBaseUrl(): string {
   if (!API_BASE) {
     console.warn("[ClearClever] VITE_API_URL is not set");
@@ -53,7 +55,14 @@ export async function apiRequest<T>(
   options: RequestInit & { auth?: boolean } = {}
 ): Promise<T> {
   const { auth = false, headers, ...rest } = options;
-  const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+  const base = getApiBaseUrl();
+  if (!base) {
+    throw new ApiError(
+      0,
+      "API URL is not configured. Set VITE_API_URL in Vercel to your Render backend URL."
+    );
+  }
+  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
 
   const reqHeaders = new Headers(headers);
   if (!reqHeaders.has("Content-Type") && rest.body) {
@@ -65,11 +74,19 @@ export async function apiRequest<T>(
     if (token) reqHeaders.set("Authorization", `Bearer ${token}`);
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   let response: Response;
   try {
-    response = await fetch(url, { ...rest, headers: reqHeaders });
-  } catch {
-    throw new ApiError(0, "Network error");
+    response = await fetch(url, { ...rest, headers: reqHeaders, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError(0, "Request timed out. The server may be waking up — try again in a moment.");
+    }
+    throw new ApiError(0, "Network error — check your connection and API URL.");
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   let body: ApiSuccessBody<T> | ApiErrorBody | null = null;
