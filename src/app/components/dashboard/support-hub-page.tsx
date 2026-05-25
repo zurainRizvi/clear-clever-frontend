@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Loader2, MessageSquare, Send } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { ClearCleverLogo } from "../auth/clearclever-logo";
 import { useAuth } from "../auth-context";
@@ -9,12 +10,16 @@ import {
   type SupportInquiryReason,
   type SupportInquiryRole,
 } from "@/lib/support-api";
-import { MessagesPanel } from "./messages-panel";
+import { SupportChatCta } from "./support-chat-cta";
 
 export function SupportHubPage({ portalRole }: { portalRole: "user" | "insurer" }) {
+  const navigate = useNavigate();
   const { user, userName, userEmail } = useAuth();
   const defaultRoleLabel: SupportInquiryRole =
     portalRole === "insurer" ? "insurance_provider" : "policy_seeker";
+
+  const messagesPath =
+    portalRole === "insurer" ? "/provider-dashboard/messages" : "/dashboard/messages";
 
   const [fullName, setFullName] = useState(userName ?? "");
   const [email, setEmail] = useState(userEmail ?? user?.email ?? "");
@@ -22,6 +27,10 @@ export function SupportHubPage({ portalRole }: { portalRole: "user" | "insurer" 
   const [reason, setReason] = useState<SupportInquiryReason>("technical");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const openSupportMessages = () => {
+    navigate(messagesPath, { state: { tab: "support", openSupport: true } });
+  };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -66,16 +75,7 @@ export function SupportHubPage({ portalRole }: { portalRole: "user" | "insurer" 
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         <section className="lg:w-[40%] flex flex-col min-h-0 border border-border rounded-2xl overflow-hidden bg-card">
-          <div className="p-4 border-b border-border shrink-0 flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold">Contact support</h2>
-          </div>
-          <div className="flex-1 min-h-0 p-4">
-            <MessagesPanel
-              embedded
-              tabMode={portalRole === "insurer" ? "provider" : "seeker"}
-            />
-          </div>
+          <SupportChatCta onClick={openSupportMessages} />
         </section>
 
         <section className="lg:w-[60%] flex flex-col min-h-0 border border-border rounded-2xl overflow-hidden bg-card">

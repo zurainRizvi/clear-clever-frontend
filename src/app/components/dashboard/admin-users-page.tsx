@@ -21,7 +21,8 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
   const { user: currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   const roleFilter = searchParams.get("role") as UserRole | null;
-  const [query, setQuery] = useState("");
+  const emailParam = searchParams.get("email");
+  const [query, setQuery] = useState(emailParam ?? "");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AuthUser | null>(null);
 
@@ -30,6 +31,12 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
       setQuery("");
     }
   }, [roleFilter]);
+
+  useEffect(() => {
+    if (emailParam) {
+      setQuery(emailParam);
+    }
+  }, [emailParam]);
 
   const visibleUsers = useMemo(() => {
     if (mode === "superadmin" && roleFilter === "superadmin") {

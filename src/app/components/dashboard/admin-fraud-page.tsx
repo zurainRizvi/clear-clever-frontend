@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import {
@@ -39,10 +39,20 @@ function severityClass(severity: FraudSignal["severity"]) {
   return "bg-muted text-muted-foreground";
 }
 
+function isFraudCategory(value: string | null): value is FraudCategory {
+  return value === "account" || value === "claims" || value === "commerce" || value === "catalog";
+}
+
 export function AdminFraudPage() {
-  const [tab, setTab] = useState<FraudCategory>("account");
+  const [searchParams] = useSearchParams();
+  const categoryParam = searchParams.get("category");
+  const focusId = searchParams.get("focus");
+  const initialTab = isFraudCategory(categoryParam) ? categoryParam : "account";
+
+  const [tab, setTab] = useState<FraudCategory>(initialTab);
   const [signals, setSignals] = useState<FraudSignal[]>([]);
   const [loading, setLoading] = useState(true);
+  const highlightedRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async (category: FraudCategory) => {
     setLoading(true);
@@ -58,8 +68,22 @@ export function AdminFraudPage() {
   }, []);
 
   useEffect(() => {
+    if (isFraudCategory(categoryParam) && categoryParam !== tab) {
+      setTab(categoryParam);
+    }
+  }, [categoryParam, tab]);
+
+  useEffect(() => {
     void load(tab);
   }, [tab, load]);
+
+  useEffect(() => {
+    if (!focusId || loading) return;
+    const timer = window.setTimeout(() => {
+      highlightedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [focusId, loading, signals, tab]);
 
   const activeMeta = TABS.find((item) => item.id === tab);
 
@@ -102,34 +126,43 @@ export function AdminFraudPage() {
             <p>No signals in this category right now.</p>
           </div>
         ) : (
-          signals.map((alert) => (
-            <div
-              key={alert.id}
-              className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-accent/30 rounded-xl border-l-4 border-warning"
-            >
-              <div className="flex-1">
-                <div className="font-semibold mb-1 flex flex-wrap items-center gap-2">
-                  {alert.type}
-                  <span className={`px-2 py-0.5 rounded text-xs capitalize ${severityClass(alert.severity)}`}>
-                    {alert.severity}
-                  </span>
+          signals.map((alert) => {
+            const isFocused = focusId === alert.id;
+            return (
+              <div
+                key={alert.id}
+                id={`fraud-signal-${alert.id}`}
+                ref={isFocused ? highlightedRef : undefined}
+                className={`flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-accent/30 rounded-xl border-l-4 border-warning transition-shadow ${
+                  isFocused ? "ring-2 ring-primary shadow-md" : ""
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="font-semibold mb-1 flex flex-wrap items-center gap-2">
+                    {alert.type}
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs capitalize ${severityClass(alert.severity)}`}
+                    >
+                      {alert.severity}
+                    </span>
+                  </div>
+                  <div className="text-sm font-medium">{alert.subject}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{alert.detail}</div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {new Date(alert.detectedAt).toLocaleString()}
+                  </div>
                 </div>
-                <div className="text-sm font-medium">{alert.subject}</div>
-                <div className="text-sm text-muted-foreground mt-1">{alert.detail}</div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  {new Date(alert.detectedAt).toLocaleString()}
-                </div>
+                {alert.link ? (
+                  <Link
+                    to={alert.link}
+                    className="text-sm text-primary hover:underline shrink-0 font-medium"
+                  >
+                    Review →
+                  </Link>
+                ) : null}
               </div>
-              {alert.link ? (
-                <Link
-                  to={alert.link}
-                  className="text-sm text-primary hover:underline shrink-0"
-                >
-                  Review →
-                </Link>
-              ) : null}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

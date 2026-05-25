@@ -198,7 +198,8 @@ export function SeekerSettingsPage() {
 
       <section className="bg-card border border-border rounded-xl p-6 flex flex-wrap gap-3 xl:col-span-2">
         <Link
-          to="/dashboard/support"
+          to="/dashboard/messages"
+          state={{ tab: "support", openSupport: true }}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent"
         >
           <HelpCircle className="w-4 h-4" />

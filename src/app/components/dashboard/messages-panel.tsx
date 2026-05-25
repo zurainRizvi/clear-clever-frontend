@@ -19,6 +19,12 @@ import {
 import { isConversationUnread } from "@/lib/messaging-unread";
 import { titleForConversation } from "@/lib/messaging-display";
 import { ConversationActionsMenu } from "./conversation-actions-menu";
+import { SupportChatCta } from "./support-chat-cta";
+
+const SUPPORT_WELCOME_MESSAGE = "Hi ClearClever support, I need help with a query.";
+
+export type SeekerMessagesTab = SeekerTab;
+export type ProviderMessagesTab = ProviderTab;
 
 const MESSAGE_POLL_MS = 20_000;
 
@@ -48,10 +54,10 @@ function conversationMatchesTab(
 
 export function MessagesPanel({
   defaultConversation,
-  autoStartSupport = false,
   focusConversationId,
   tabMode = "none",
-  embedded = false,
+  initialTab,
+  openSupportOnMount = false,
 }: {
   defaultConversation?: {
     type: ConversationType;
@@ -60,11 +66,11 @@ export function MessagesPanel({
     subject?: string;
     initialMessage?: string;
   };
-  autoStartSupport?: boolean;
   focusConversationId?: string | null;
   tabMode?: MessagesTabMode;
-  /** When true, omit outer page title area (used inside SupportHub). */
-  embedded?: boolean;
+  initialTab?: SeekerTab | ProviderTab;
+  /** Open existing support chat or create one (welcome message only on first create). */
+  openSupportOnMount?: boolean;
 }) {
   const { user } = useAuth();
   const messagesContext = useMessagesOptional();
@@ -74,9 +80,20 @@ export function MessagesPanel({
   const allConversations = messagesContext?.conversations ?? localConversations;
   const loadingConversations = messagesContext?.isLoading ?? localLoadingConversations;
 
-  const [providerTab, setProviderTab] = useState<ProviderTab>("seekers");
-  const [seekerTab, setSeekerTab] = useState<SeekerTab>("insurers");
+  const [providerTab, setProviderTab] = useState<ProviderTab>(
+    initialTab === "support" && tabMode === "provider" ? "support" : "seekers"
+  );
+  const [seekerTab, setSeekerTab] = useState<SeekerTab>(
+    initialTab === "support" && tabMode === "seeker" ? "support" : "insurers"
+  );
   const activeTab = tabMode === "provider" ? providerTab : tabMode === "seeker" ? seekerTab : null;
+  const supportType: ConversationType =
+    user?.role === "insurer" ? "insurer_support" : "user_support";
+  const existingSupportConversation = useMemo(
+    () => allConversations.find((conversation) => conversation.type === supportType) ?? null,
+    [allConversations, supportType]
+  );
+  const openedSupportFromNavRef = useRef(false);
 
   const conversations = useMemo(() => {
     if (!activeTab || tabMode === "none") return allConversations;
@@ -231,25 +248,30 @@ export function MessagesPanel({
   }, [messages, loadingMessages, activeConversationId]);
 
   useEffect(() => {
-    if (!autoStartSupport || loadingConversations || tabMode !== "none") return;
-    if (allConversations.some((conversation) => conversation.type.includes("support"))) return;
-    void startSupportConversation();
-  }, [autoStartSupport, loadingConversations, allConversations, tabMode]);
+    if (!openSupportOnMount || loadingConversations || openedSupportFromNavRef.current) return;
+    openedSupportFromNavRef.current = true;
+    void openSupportChat();
+  }, [openSupportOnMount, loadingConversations]);
 
-  const startSupportConversation = async () => {
+  const openSupportChat = async () => {
     if (!user) return;
-    const type: ConversationType = user.role === "insurer" ? "insurer_support" : "user_support";
+    if (tabMode === "provider") setProviderTab("support");
+    if (tabMode === "seeker") setSeekerTab("support");
+
+    if (existingSupportConversation) {
+      setActiveConversationId(existingSupportConversation.id);
+      return;
+    }
+
     setCreatingSupport(true);
     try {
       const data = await createConversation({
-        type,
+        type: supportType,
         subject: "ClearClever support",
-        initialMessage: "Hi ClearClever support, I need help with a query.",
+        initialMessage: SUPPORT_WELCOME_MESSAGE,
       });
       await refreshConversations({ silent: true });
       setActiveConversationId(data.conversation.id);
-      if (tabMode === "provider") setProviderTab("support");
-      if (tabMode === "seeker") setSeekerTab("support");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not start support chat");
     } finally {
@@ -283,11 +305,13 @@ export function MessagesPanel({
     }
   };
 
-  const showSupportButton =
-    tabMode === "none" || (tabMode === "provider" && providerTab === "support") || (tabMode === "seeker" && seekerTab === "support");
+  const onSupportTab =
+    tabMode === "none" ||
+    (tabMode === "provider" && providerTab === "support") ||
+    (tabMode === "seeker" && seekerTab === "support");
 
   const panel = (
-    <ChatShell className={embedded ? "max-h-full" : ""}>
+    <ChatShell>
       {tabMode === "provider" ? (
         <div className="flex gap-2 mb-4 shrink-0">
           <button
@@ -362,25 +386,20 @@ export function MessagesPanel({
                     : "Insurers, support, and staff chats"}
               </p>
             </div>
-            {showSupportButton ? (
-              <button
-                type="button"
-                onClick={() => void startSupportConversation()}
-                disabled={creatingSupport}
-                className="px-3 py-2 text-sm bg-primary text-primary-foreground rounded-lg disabled:opacity-50"
-              >
-                {creatingSupport ? "Starting…" : "New chat"}
-              </button>
-            ) : null}
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-border min-h-0">
             {loadingConversations ? (
               <div className="p-6 text-center text-muted-foreground">Loading conversations...</div>
+            ) : onSupportTab && !existingSupportConversation ? (
+              <SupportChatCta
+                onClick={() => void openSupportChat()}
+                disabled={creatingSupport}
+                label={creatingSupport ? "Starting…" : "Chat with us"}
+              />
             ) : conversations.length === 0 ? (
               <div className="p-6 text-center text-muted-foreground">
                 No conversations in this tab yet.
-                {showSupportButton ? " Start a new chat to begin." : null}
               </div>
             ) : (
               conversations.map((conversation) => {
@@ -565,19 +584,23 @@ export function MessagesPanel({
                 </div>
               </div>
             </>
+          ) : onSupportTab && !existingSupportConversation ? (
+            <SupportChatCta
+              onClick={() => void openSupportChat()}
+              disabled={creatingSupport}
+              label={creatingSupport ? "Starting…" : "Chat with us"}
+            />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground min-h-0">
               <MessageSquare className="w-16 h-16 mb-4 opacity-60" />
               <h2 className="text-xl font-semibold text-foreground mb-2">Select a conversation</h2>
-              <p>Choose a thread or start a new chat to begin messaging.</p>
+              <p>Choose a thread to begin messaging.</p>
             </div>
           )}
         </div>
       </div>
     </ChatShell>
   );
-
-  if (embedded) return panel;
 
   return <div className="flex flex-col flex-1 min-h-0">{panel}</div>;
 }
@@ -591,21 +614,22 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+type MessagesLocationState = {
+  defaultConversation?: {
+    type: ConversationType;
+    insurerProfileId?: string;
+    purchaseId?: string;
+    subject?: string;
+    initialMessage?: string;
+  };
+  focusConversationId?: string;
+  tab?: SeekerTab | ProviderTab;
+  openSupport?: boolean;
+};
+
 export function MessagesPage() {
   const location = useLocation();
-  const state = location.state as
-    | {
-        defaultConversation?: {
-          type: ConversationType;
-          insurerProfileId?: string;
-          purchaseId?: string;
-          subject?: string;
-          initialMessage?: string;
-        };
-        focusConversationId?: string;
-        tab?: SeekerTab;
-      }
-    | null;
+  const state = location.state as MessagesLocationState | null;
 
   return (
     <div className="flex flex-col flex-1 min-h-0 -m-6 p-6">
@@ -613,6 +637,8 @@ export function MessagesPage() {
         tabMode="seeker"
         defaultConversation={state?.defaultConversation}
         focusConversationId={state?.focusConversationId}
+        initialTab={state?.tab === "support" ? "support" : undefined}
+        openSupportOnMount={state?.openSupport === true}
       />
     </div>
   );
@@ -620,10 +646,15 @@ export function MessagesPage() {
 
 export function ProviderMessagesPage() {
   const location = useLocation();
-  const state = location.state as { focusConversationId?: string } | null;
+  const state = location.state as MessagesLocationState | null;
   return (
     <div className="flex flex-col flex-1 min-h-0 -m-6 p-6">
-      <MessagesPanel tabMode="provider" focusConversationId={state?.focusConversationId} />
+      <MessagesPanel
+        tabMode="provider"
+        focusConversationId={state?.focusConversationId}
+        initialTab={state?.tab === "support" ? "support" : undefined}
+        openSupportOnMount={state?.openSupport === true}
+      />
     </div>
   );
 }
