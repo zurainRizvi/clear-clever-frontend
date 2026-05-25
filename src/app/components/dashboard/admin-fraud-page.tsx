@@ -43,16 +43,59 @@ function isFraudCategory(value: string | null): value is FraudCategory {
   return value === "account" || value === "claims" || value === "commerce" || value === "catalog";
 }
 
+function isInternalFraudLink(link: string): boolean {
+  try {
+    const url = new URL(link, window.location.origin);
+    return url.pathname === "/admin-dashboard/fraud";
+  } catch {
+    return link.startsWith("/admin-dashboard/fraud");
+  }
+}
+
+function focusFromFraudLink(link: string): string | null {
+  try {
+    const url = new URL(link, window.location.origin);
+    return url.searchParams.get("focus");
+  } catch {
+    return null;
+  }
+}
+
 export function AdminFraudPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get("category");
   const focusId = searchParams.get("focus");
-  const initialTab = isFraudCategory(categoryParam) ? categoryParam : "account";
+  const tab: FraudCategory = isFraudCategory(categoryParam) ? categoryParam : "account";
 
-  const [tab, setTab] = useState<FraudCategory>(initialTab);
   const [signals, setSignals] = useState<FraudSignal[]>([]);
   const [loading, setLoading] = useState(true);
-  const highlightedRef = useRef<HTMLDivElement | null>(null);
+  const scrolledFocusRef = useRef<string | null>(null);
+
+  const setTab = (next: FraudCategory) => {
+    scrolledFocusRef.current = null;
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set("category", next);
+        nextParams.delete("focus");
+        return nextParams;
+      },
+      { replace: true }
+    );
+  };
+
+  const focusSignal = (signalId: string) => {
+    scrolledFocusRef.current = null;
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set("category", tab);
+        nextParams.set("focus", signalId);
+        return nextParams;
+      },
+      { replace: true }
+    );
+  };
 
   const load = useCallback(async (category: FraudCategory) => {
     setLoading(true);
@@ -68,24 +111,51 @@ export function AdminFraudPage() {
   }, []);
 
   useEffect(() => {
-    if (isFraudCategory(categoryParam) && categoryParam !== tab) {
-      setTab(categoryParam);
-    }
-  }, [categoryParam, tab]);
-
-  useEffect(() => {
     void load(tab);
   }, [tab, load]);
 
   useEffect(() => {
     if (!focusId || loading) return;
+    if (scrolledFocusRef.current === focusId) return;
+
     const timer = window.setTimeout(() => {
-      highlightedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
+      const el = document.getElementById(`fraud-signal-${focusId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        scrolledFocusRef.current = focusId;
+      }
+    }, 150);
+
     return () => window.clearTimeout(timer);
-  }, [focusId, loading, signals, tab]);
+  }, [focusId, loading, signals]);
 
   const activeMeta = TABS.find((item) => item.id === tab);
+
+  const renderReviewAction = (alert: FraudSignal) => {
+    if (!alert.link) return null;
+
+    if (isInternalFraudLink(alert.link)) {
+      const linkedFocus = focusFromFraudLink(alert.link) ?? alert.id;
+      return (
+        <button
+          type="button"
+          onClick={() => focusSignal(linkedFocus)}
+          className="text-sm text-primary hover:underline shrink-0 font-medium"
+        >
+          Highlight →
+        </button>
+      );
+    }
+
+    return (
+      <Link
+        to={alert.link}
+        className="text-sm text-primary hover:underline shrink-0 font-medium"
+      >
+        Review →
+      </Link>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -132,7 +202,6 @@ export function AdminFraudPage() {
               <div
                 key={alert.id}
                 id={`fraud-signal-${alert.id}`}
-                ref={isFocused ? highlightedRef : undefined}
                 className={`flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-accent/30 rounded-xl border-l-4 border-warning transition-shadow ${
                   isFocused ? "ring-2 ring-primary shadow-md" : ""
                 }`}
@@ -152,14 +221,7 @@ export function AdminFraudPage() {
                     {new Date(alert.detectedAt).toLocaleString()}
                   </div>
                 </div>
-                {alert.link ? (
-                  <Link
-                    to={alert.link}
-                    className="text-sm text-primary hover:underline shrink-0 font-medium"
-                  >
-                    Review →
-                  </Link>
-                ) : null}
+                {renderReviewAction(alert)}
               </div>
             );
           })
