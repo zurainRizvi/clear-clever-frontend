@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
+import { BackToHomeLink } from "./back-to-home";
 import { ClearCleverLogo } from "./clearclever-logo";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -102,6 +103,9 @@ export function SignUp() {
       </div>
 
       <div className="flex-1 flex items-center justify-center p-8 relative overflow-y-auto">
+        <div className="absolute top-6 left-6">
+          <BackToHomeLink />
+        </div>
         <div className="absolute top-6 right-6">
           <DarkModeToggle />
         </div>

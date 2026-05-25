@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" fill="none">
+  <circle cx="14" cy="20" r="12" fill="#003781"/>
+  <path d="M8 20 L14 14 L20 20 L14 26 Z" fill="#fff"/>
+  <text x="32" y="26" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#003781">Allianz</text>
+</svg>

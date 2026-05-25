@@ -2,7 +2,7 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
-export function DarkModeToggle() {
+export function DarkModeToggle({ className = "" }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -17,7 +17,10 @@ export function DarkModeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="relative flex items-center justify-center w-12 h-12 rounded-xl bg-card hover:bg-accent transition-all duration-300 border border-border shadow-lg hover:shadow-xl"
+      className={
+        className ||
+        "relative flex items-center justify-center w-12 h-12 rounded-xl bg-card hover:bg-accent transition-all duration-300 border border-border shadow-lg hover:shadow-xl"
+      }
       aria-label="Toggle dark mode"
     >
       {theme === "dark" ? (

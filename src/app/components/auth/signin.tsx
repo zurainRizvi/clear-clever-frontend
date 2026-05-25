@@ -13,6 +13,7 @@ import {
   Crown,
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
+import { BackToHomeLink } from "./back-to-home";
 import { ClearCleverLogo } from "./clearclever-logo";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -120,6 +121,11 @@ export function SignIn() {
   return (
     <div className="min-h-screen flex bg-background">
       <div className="flex-1 flex items-center justify-center p-8 relative">
+        {step === "role" ? (
+          <div className="absolute top-6 left-6">
+            <BackToHomeLink />
+          </div>
+        ) : null}
         <div className="absolute top-6 right-6">
           <DarkModeToggle />
         </div>

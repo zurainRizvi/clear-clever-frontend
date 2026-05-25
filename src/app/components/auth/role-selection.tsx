@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Shield, User, Building2, ArrowRight } from "lucide-react";
+import { BackToHomeLink } from "./back-to-home";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -55,6 +56,9 @@ export function RoleSelection() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-8 bg-background relative">
+      <div className="absolute top-6 left-6">
+        <BackToHomeLink />
+      </div>
       <div className="absolute top-6 right-6">
         <DarkModeToggle />
       </div>

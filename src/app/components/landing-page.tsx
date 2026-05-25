@@ -1,30 +1,16 @@
 import { useState } from "react";
-import { Shield, TrendingUp, Zap, Users, CheckCircle2, Star, ChevronRight, Play, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
+import { Shield, TrendingUp, Zap, Users, Star, ArrowRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router";
-import { DarkModeToggle } from "./dark-mode-toggle";
 import { motion } from "motion/react";
+import { LandingHeroSection } from "./landing-hero-section";
 
 export function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [showDemo, setShowDemo] = useState(false);
 
-  const previewCards = [
-    {
-      title: "Auto coverage comparison",
-      subtitle: "Compare premiums from TPL, Jubilee, and Adamjee",
-      image: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=80",
-    },
-    {
-      title: "Home protection plans",
-      subtitle: "Review coverage for apartments and independent houses",
-      image: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80",
-    },
-    {
-      title: "Life & family security",
-      subtitle: "Transparent recommendations for long-term peace of mind",
-      image: "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=900&q=80",
-    },
-  ];
+  const scrollToHowItWorks = () => {
+    document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const features = [
     {
       icon: <Zap className="w-6 h-6" />,
@@ -46,18 +32,6 @@ export function LandingPage() {
       title: "Expert Support 24/7",
       description: "Dedicated insurance advisors ready to help you make informed decisions"
     }
-  ];
-
-  const stats = [
-    { value: "50,000+", label: "Happy Customers" },
-    { value: "100+", label: "Insurance Partners" },
-    { value: "₨500M+", label: "Claims Processed" },
-    { value: "4.9/5", label: "Customer Rating" }
-  ];
-
-  const insurers = [
-    "State Life", "Jubilee Life", "EFU Life", "Adamjee Insurance",
-    "East West Insurance", "IGI Insurance", "United Insurance", "TPL Insurance"
   ];
 
   const testimonials = [
@@ -86,156 +60,7 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2"
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
-            <span className="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              ClearClever
-            </span>
-          </motion.div>
-
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors scroll-smooth">Features</a>
-            <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors scroll-smooth">How It Works</a>
-            <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors scroll-smooth">Testimonials</a>
-            <a href="#faq" className="text-muted-foreground hover:text-foreground transition-colors scroll-smooth">FAQ</a>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <DarkModeToggle />
-            <Link to="/signin">
-              <button className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">
-                Sign In
-              </button>
-            </Link>
-            <Link to="/signup">
-              <button className="px-6 py-2.5 bg-gradient-to-r from-primary to-secondary text-white rounded-xl hover:shadow-xl hover:shadow-primary/20 transition-all duration-300">
-                Get Started
-              </button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none" />
-        <div className="absolute top-20 right-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-4xl mx-auto"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary mb-6">
-              <Sparkles className="w-4 h-4" />
-              <span className="text-sm">AI-Powered Insurance Platform</span>
-            </div>
-
-            <h1 className="text-6xl md:text-7xl font-bold mb-6 leading-tight">
-              Find Your Perfect
-              <span className="block bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Insurance Match
-              </span>
-            </h1>
-
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-2xl mx-auto">
-              Compare 100+ insurance policies in seconds. Get AI-powered recommendations tailored to your needs.
-              Save time, save money, and get the coverage you deserve.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <Link to="/compare">
-                <button className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-xl hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 flex items-center gap-2 group">
-                  Compare Policies
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowDemo(true)}
-                className="px-8 py-4 bg-card border border-border text-foreground rounded-xl hover:bg-accent transition-all duration-300 flex items-center gap-2 group"
-              >
-                <Play className="w-5 h-5" />
-                Watch demo
-              </button>
-            </div>
-
-            {/* Product preview */}
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.8 }}
-              className="relative mx-auto max-w-5xl"
-            >
-              <div className="absolute -inset-4 bg-primary/10 rounded-3xl blur-2xl" />
-              <div className="relative bg-card border border-border rounded-2xl p-4 md:p-6 shadow-lg overflow-hidden">
-                <div className="flex items-center gap-2 mb-4 px-1">
-                  <span className="w-3 h-3 rounded-full bg-destructive/80" />
-                  <span className="w-3 h-3 rounded-full bg-warning/80" />
-                  <span className="w-3 h-3 rounded-full bg-success/80" />
-                  <span className="ml-3 text-xs text-muted-foreground">ClearClever comparison preview</span>
-                </div>
-                <div className="grid md:grid-cols-3 gap-4">
-                  {previewCards.map((card) => (
-                    <div
-                      key={card.title}
-                      className="group rounded-xl overflow-hidden border border-border bg-muted/20 hover:shadow-md transition-shadow"
-                    >
-                      <div className="aspect-[4/3] overflow-hidden">
-                        <img
-                          src={card.image}
-                          alt={card.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="p-4 text-left">
-                        <p className="font-semibold text-sm mb-1">{card.title}</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{card.subtitle}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-16 px-6 bg-card/30 border-y border-border">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="text-center"
-              >
-                <div className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
-                  {stat.value}
-                </div>
-                <div className="text-muted-foreground">{stat.label}</div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <LandingHeroSection onWatchDemo={scrollToHowItWorks} />
 
       {/* Features Section */}
       <section id="features" className="py-20 px-6">
@@ -306,32 +131,7 @@ export function LandingPage() {
                   <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
                   <p className="text-muted-foreground">{item.desc}</p>
                 </div>
-                {index < 2 && (
-                  <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2">
-                    <ChevronRight className="w-8 h-8 text-muted-foreground/30" />
-                  </div>
-                )}
               </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Trusted Insurers */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Trusted by Leading Insurers</h2>
-            <p className="text-muted-foreground">Compare policies from Pakistan's top insurance providers</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {insurers.map((insurer, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-center p-6 bg-card border border-border rounded-xl hover:shadow-lg transition-all duration-300"
-              >
-                <span className="text-muted-foreground font-medium">{insurer}</span>
-              </div>
             ))}
           </div>
         </div>
@@ -515,46 +315,6 @@ export function LandingPage() {
         </div>
       </footer>
 
-      {showDemo ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Product demo"
-        >
-          <div className="relative w-full max-w-4xl bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
-            <button
-              type="button"
-              onClick={() => setShowDemo(false)}
-              className="absolute top-3 right-3 z-10 px-3 py-1.5 text-sm bg-background/90 border border-border rounded-lg hover:bg-accent"
-            >
-              Close
-            </button>
-            <div className="aspect-video bg-black">
-              <video
-                className="w-full h-full object-cover"
-                controls
-                autoPlay
-                playsInline
-                poster={previewCards[0]?.image}
-              >
-                <source
-                  src="https://assets.mixkit.co/videos/preview/mixkit-family-walking-on-the-beach-1246-large.mp4"
-                  type="video/mp4"
-                />
-                Your browser does not support video playback.
-              </video>
-            </div>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-2">See how ClearClever works</h3>
-              <p className="text-sm text-muted-foreground">
-                Compare policies, answer a short questionnaire, and get transparent recommendations
-                from trusted Pakistani insurers.
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
