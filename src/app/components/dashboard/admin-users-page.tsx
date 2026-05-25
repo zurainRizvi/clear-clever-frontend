@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Loader2, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
@@ -18,25 +19,41 @@ interface AdminUsersPageProps {
 export function AdminUsersPage({ mode }: AdminUsersPageProps) {
   const { users, loading, refresh, setUsers } = useAdmin();
   const { user: currentUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const roleFilter = searchParams.get("role") as UserRole | null;
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AuthUser | null>(null);
 
-  const visibleUsers = useMemo(
-    () => users.filter((user) => user.role !== "superadmin"),
-    [users]
-  );
+  useEffect(() => {
+    if (roleFilter) {
+      setQuery("");
+    }
+  }, [roleFilter]);
+
+  const visibleUsers = useMemo(() => {
+    if (mode === "superadmin" && roleFilter === "superadmin") {
+      return users.filter((user) => user.role === "superadmin");
+    }
+    if (mode === "superadmin" && roleFilter === "admin") {
+      return users.filter((user) => user.role === "admin");
+    }
+    return users.filter((user) => user.role !== "superadmin");
+  }, [users, mode, roleFilter]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return visibleUsers;
-    return visibleUsers.filter(
+    const base = roleFilter && roleFilter !== "superadmin" && roleFilter !== "admin"
+      ? visibleUsers.filter((user) => user.role === roleFilter)
+      : visibleUsers;
+    if (!q) return base;
+    return base.filter(
       (user) =>
         user.fullName.toLowerCase().includes(q) ||
         user.email.toLowerCase().includes(q) ||
         user.role.toLowerCase().includes(q)
     );
-  }, [visibleUsers, query]);
+  }, [visibleUsers, query, roleFilter]);
 
   const handleRoleChange = async (userId: string, role: UserRole) => {
     setBusyId(userId);
@@ -95,9 +112,13 @@ export function AdminUsersPage({ mode }: AdminUsersPageProps) {
         <h1 className="text-3xl font-bold mb-1">User management</h1>
         <p className="text-muted-foreground">
           Deactivated users keep their account but cannot sign in until you reactivate them.
-          {mode === "superadmin"
-            ? " Super admin accounts are managed separately and are not listed here."
-            : " Super admin accounts are hidden from this view."}
+          {roleFilter === "superadmin"
+            ? " Showing super admin accounts only."
+            : roleFilter === "admin"
+              ? " Showing platform admin accounts only."
+              : mode === "superadmin"
+                ? " Use dashboard shortcuts to filter by super admin or platform admin role."
+                : " Super admin accounts are hidden from this view."}
         </p>
       </div>
 

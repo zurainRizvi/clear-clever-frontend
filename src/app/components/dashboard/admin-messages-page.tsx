@@ -14,6 +14,7 @@ import {
 } from "@/lib/messaging-api";
 import { titleForConversation } from "@/lib/messaging-display";
 import { isConversationUnread } from "@/lib/messaging-unread";
+import { ChatShell } from "./chat-shell";
 
 type AdminMessageTab = "seekers" | "insurers";
 
@@ -151,13 +152,13 @@ export function AdminMessagesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="flex flex-col flex-1 min-h-0 -m-6 p-6 space-y-4">
+      <div className="shrink-0">
         <h1 className="text-3xl font-bold mb-1">Messages</h1>
         <p className="text-muted-foreground">Platform conversations with policy seekers and insurers</p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 shrink-0">
         <button
           type="button"
           onClick={() => setTab("seekers")}
@@ -180,8 +181,9 @@ export function AdminMessagesPage() {
         </button>
       </div>
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-4 min-h-[640px]">
-        <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+      <ChatShell>
+      <div className="grid lg:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0">
+        <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col min-h-0">
           <div className="p-4 border-b border-border font-medium">
             {tab === "seekers" ? "Policy seekers" : "Insurers"}
           </div>
@@ -237,7 +239,7 @@ export function AdminMessagesPage() {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl flex flex-col min-h-[640px] overflow-hidden">
+        <div className="bg-card border border-border rounded-xl flex flex-col min-h-0 overflow-hidden">
           {activeConversation ? (
             <>
               <div className="p-4 border-b border-border flex items-start justify-between gap-3">
@@ -257,7 +259,7 @@ export function AdminMessagesPage() {
                 />
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 bg-muted/20">
                 {loadingMessages ? (
                   <div className="flex justify-center py-16">
                     <Loader2 className="w-7 h-7 animate-spin text-primary" />
@@ -328,6 +330,7 @@ export function AdminMessagesPage() {
           )}
         </div>
       </div>
+      </ChatShell>
     </div>
   );
 }

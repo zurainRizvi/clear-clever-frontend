@@ -57,9 +57,9 @@ export function SuperadminReportsPage() {
       href: "/admin-dashboard/fraud",
     },
     {
-      label: "Conversations",
+      label: "Audit events",
       value: platform?.conversations ?? 0,
-      detail: "Support and insurer threads",
+      detail: "Platform activity and engagement",
       icon: MessageSquare,
       href: "/admin-dashboard/audit",
     },

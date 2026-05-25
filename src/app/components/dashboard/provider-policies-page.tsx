@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import type { ProviderOutletContext } from "./provider-dashboard";
-import { CheckCircle2, Eye, Loader2, Plus } from "lucide-react";
-import { fetchInsurerPolicy, type InsurerPolicyDetail } from "@/lib/insurer-api";
+import { CheckCircle2, Eye, Loader2, Plus, Trash2 } from "lucide-react";
+import { deleteInsurerPolicy, fetchInsurerPolicy, type InsurerPolicyDetail } from "@/lib/insurer-api";
+import { ActionConfirmDialog } from "./action-confirm-dialog";
 import { statusClass } from "@/lib/provider-utils";
 import { useProvider } from "./provider-context";
 import { ApiError } from "@/lib/api";
@@ -11,9 +12,11 @@ import { formatPkr } from "@/lib/format";
 
 export function ProviderPoliciesPage() {
   const { onAddPolicy, onEditPolicy } = useOutletContext<ProviderOutletContext>();
-  const { policyRows, loading } = useProvider();
+  const { policyRows, loading, refresh } = useProvider();
   const [viewing, setViewing] = useState<InsurerPolicyDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const openDetails = async (policyId: string) => {
     setLoadingDetail(true);
@@ -84,7 +87,7 @@ export function ProviderPoliciesPage() {
                   <div className="font-semibold">{policy.purchaseLeads}</div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={loadingDetail}
@@ -101,11 +104,47 @@ export function ProviderPoliciesPage() {
                 >
                   {policy.status === "rejected" ? "Revise & resubmit" : "Edit"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget({ id: policy.id, name: policy.name })}
+                  className="px-4 py-2 border border-destructive/30 text-destructive rounded-lg text-sm inline-flex items-center gap-2 hover:bg-destructive/5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <ActionConfirmDialog
+        open={!!deleteTarget}
+        title="Delete policy?"
+        description={
+          deleteTarget
+            ? `Remove "${deleteTarget.name}" permanently? This cannot be undone. Policies with purchases or claims cannot be deleted.`
+            : ""
+        }
+        confirmLabel="Delete"
+        confirmTone="destructive"
+        loading={deleting}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          setDeleting(true);
+          try {
+            await deleteInsurerPolicy(deleteTarget.id);
+            toast.success("Policy deleted");
+            setDeleteTarget(null);
+            await refresh();
+          } catch (err) {
+            toast.error(err instanceof ApiError ? err.message : "Could not delete policy");
+          } finally {
+            setDeleting(false);
+          }
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {viewing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">

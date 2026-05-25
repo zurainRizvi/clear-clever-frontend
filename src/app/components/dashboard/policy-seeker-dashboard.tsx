@@ -15,7 +15,6 @@ import {
   X,
   LogOut,
   User,
-  Camera,
   Gift,
   type LucideIcon,
 } from "lucide-react";
@@ -268,7 +267,13 @@ function PolicySeekerDashboardInner() {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto p-6">
+          <main
+            className={`flex-1 p-6 ${
+              location.pathname.includes("/messages") || location.pathname.includes("/support")
+                ? "flex flex-col min-h-0 overflow-hidden"
+                : "overflow-y-auto"
+            }`}
+          >
             <Outlet />
           </main>
         </div>
@@ -291,17 +296,14 @@ function ProfilePhotoPicker({
     <motion.div className={`relative ${sizeClass} shrink-0`}>
       <label
         htmlFor={id}
-        className={`relative ${sizeClass} rounded-full bg-success/10 flex items-center justify-center cursor-pointer group overflow-hidden`}
+        className={`relative ${sizeClass} rounded-full bg-muted flex items-center justify-center cursor-pointer overflow-hidden border border-border`}
         title="Upload profile photo"
       >
         {photo ? (
           <img src={photo} alt="Profile" className="w-full h-full rounded-full object-cover" />
         ) : (
-          <User className="w-6 h-6 text-success" />
+          <User className="w-6 h-6 text-muted-foreground" />
         )}
-        <span className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-success text-white flex items-center justify-center border-2 border-background group-hover:scale-105 transition-transform">
-          <Camera className="w-3.5 h-3.5" />
-        </span>
         <input
           id={id}
           type="file"

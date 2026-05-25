@@ -59,11 +59,12 @@ export function ProviderClaimsPage() {
 
   const setStatus = async (
     claimId: string,
-    status: Exclude<InsurerClaimStatus, "submitted">
+    status: Exclude<InsurerClaimStatus, "submitted">,
+    options?: { revert?: boolean }
   ) => {
     setUpdatingId(claimId);
     try {
-      const data = await updateInsurerClaimStatus(claimId, status);
+      const data = await updateInsurerClaimStatus(claimId, status, options);
       setClaims((prev) => prev.map((claim) => (claim.id === claimId ? data.claim : claim)));
       await refreshProvider();
       toast.success(`Claim marked as ${claimStatusLabel(data.claim.status).toLowerCase()}`);
@@ -196,6 +197,18 @@ export function ProviderClaimsPage() {
                         className="px-4 py-2 text-sm border border-destructive/40 text-destructive rounded-lg hover:bg-destructive/10 disabled:opacity-50"
                       >
                         Reject
+                      </button>
+                    </div>
+                  )}
+                  {(claim.status === "approved" || claim.status === "rejected") && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        disabled={updatingId === claim.id}
+                        onClick={() => void setStatus(claim.id, "in_review", { revert: true })}
+                        className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent disabled:opacity-50"
+                      >
+                        Undo decision
                       </button>
                     </div>
                   )}

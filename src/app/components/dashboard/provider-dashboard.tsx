@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   TrendingUp,
   MessageSquare,
+  HelpCircle,
   Settings,
   Menu,
   X,
@@ -32,6 +33,7 @@ const menuItems: { path: string; icon: LucideIcon; label: string }[] = [
   { path: "/provider-dashboard/claims", icon: ShieldCheck, label: "Claims" },
   { path: "/provider-dashboard/analytics", icon: TrendingUp, label: "Analytics" },
   { path: "/provider-dashboard/messages", icon: MessageSquare, label: "Messages" },
+  { path: "/provider-dashboard/support", icon: HelpCircle, label: "Support" },
   { path: "/provider-dashboard/settings", icon: Settings, label: "Settings" },
 ];
 
@@ -52,7 +54,7 @@ function ProviderDashboardInner() {
   const location = useLocation();
   const navigate = useNavigate();
   const handleLogout = useLogout();
-  const { profile, pendingClaimsCount, refresh } = useProvider();
+  const { profile, pendingClaimsCount, unseenNewLeadsCount, refresh } = useProvider();
   const { userEmail } = useAuth();
   const { unreadCount: unreadMessagesCount } = useMessages();
 
@@ -127,6 +129,9 @@ function ProviderDashboardInner() {
                       {unreadMessagesCount}
                     </span>
                   ) : null}
+                  {item.path === "/provider-dashboard/leads" && unseenNewLeadsCount > 0 ? (
+                    <span className="w-2 h-2 rounded-full bg-destructive shrink-0" title={`${unseenNewLeadsCount} new leads`} />
+                  ) : null}
                   {item.path === "/provider-dashboard/claims" && pendingClaimsCount > 0 ? (
                     <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
                       {pendingClaimsCount}
@@ -191,8 +196,22 @@ function ProviderDashboardInner() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className={location.pathname.endsWith("/settings") ? "w-full max-w-none" : "max-w-7xl mx-auto"}>
+        <main
+          className={`flex-1 p-6 ${
+            location.pathname.includes("/messages") || location.pathname.includes("/support")
+              ? "flex flex-col min-h-0 overflow-hidden"
+              : "overflow-y-auto"
+          }`}
+        >
+          <div
+            className={`${
+              location.pathname.endsWith("/settings")
+                ? "w-full max-w-none"
+                : location.pathname.includes("/messages") || location.pathname.includes("/support")
+                  ? "flex flex-col flex-1 min-h-0"
+                  : "max-w-7xl mx-auto"
+            }`}
+          >
             <Outlet context={outletContext} />
           </div>
         </main>

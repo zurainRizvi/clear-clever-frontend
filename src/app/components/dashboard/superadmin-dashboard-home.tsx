@@ -122,15 +122,18 @@ export function SuperadminDashboardHome() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1 bg-card border border-border rounded-full text-sm">
+            <Link
+              to="/admin-dashboard/users?role=superadmin"
+              className="px-3 py-1 bg-card border border-border rounded-full text-sm hover:border-primary/40 transition-colors"
+            >
               {platform?.staff.superadmins ?? 1} super admin
-            </span>
-            <span className="px-3 py-1 bg-card border border-border rounded-full text-sm">
+            </Link>
+            <Link
+              to="/admin-dashboard/users?role=admin"
+              className="px-3 py-1 bg-card border border-border rounded-full text-sm hover:border-primary/40 transition-colors"
+            >
               {platform?.staff.admins ?? 0} platform admins
-            </span>
-            <span className="px-3 py-1 bg-card border border-border rounded-full text-sm">
-              {platform?.conversations ?? 0} conversations
-            </span>
+            </Link>
           </div>
         </div>
       </div>
@@ -138,13 +141,15 @@ export function SuperadminDashboardHome() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {controlStats.map((stat, index) => {
           const Icon = stat.icon;
-          return (
+          const card = (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.06 }}
-              className="bg-card border border-border rounded-xl p-5"
+              className={`bg-card border border-border rounded-xl p-5 ${
+                stat.label === "Platform users" ? "hover:border-primary/30 transition-colors" : ""
+              }`}
             >
               <div className="flex items-center justify-between mb-3">
                 <Icon className={`w-5 h-5 ${stat.tone}`} />
@@ -154,6 +159,14 @@ export function SuperadminDashboardHome() {
               <div className="text-xs text-muted-foreground mt-1">{stat.sub}</div>
             </motion.div>
           );
+          if (stat.label === "Platform users") {
+            return (
+              <Link key={stat.label} to="/admin-dashboard/users">
+                {card}
+              </Link>
+            );
+          }
+          return card;
         })}
       </div>
 

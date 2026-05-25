@@ -131,6 +131,14 @@ export async function reactivateUser(id: string): Promise<{ user: AuthUser }> {
   });
 }
 
+export interface InfrastructureServiceStatus {
+  ok: boolean;
+  latencyMs: number;
+  label: string;
+  detail?: string;
+  url?: string;
+}
+
 export interface HealthStatus {
   service: string;
   environment: string;
@@ -139,6 +147,7 @@ export interface HealthStatus {
     readyState?: number;
     host?: string;
     name?: string;
+    error?: string;
   };
   email: {
     provider: string;
@@ -148,7 +157,35 @@ export interface HealthStatus {
     hint?: string;
     renderFreeTierNote?: string;
   };
+  infrastructure?: {
+    render: InfrastructureServiceStatus;
+    vercel: InfrastructureServiceStatus;
+    mongodb: InfrastructureServiceStatus;
+    brevo: InfrastructureServiceStatus;
+    checkedAt: string;
+    environment: string;
+  };
   timestamp: string;
+}
+
+export type FraudCategory = "account" | "claims" | "commerce" | "catalog";
+
+export interface FraudSignal {
+  id: string;
+  type: string;
+  severity: "low" | "medium" | "high" | "critical";
+  subject: string;
+  detail: string;
+  detectedAt: string;
+  link?: string;
+}
+
+export async function fetchFraudSignals(category: FraudCategory): Promise<{
+  category: FraudCategory;
+  count: number;
+  signals: FraudSignal[];
+}> {
+  return apiRequest(`/api/admin/fraud-signals?category=${category}`, { auth: true });
 }
 
 export async function fetchHealth(): Promise<HealthStatus> {

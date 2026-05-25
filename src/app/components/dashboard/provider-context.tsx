@@ -27,6 +27,7 @@ interface ProviderContextType {
   leads: InsurerLeadSummary[];
   claims: InsurerClaimSummary[];
   pendingClaimsCount: number;
+  unseenNewLeadsCount: number;
   policyRows: PolicyRow[];
   loading: boolean;
   refresh: () => Promise<void>;
@@ -72,6 +73,10 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
     () => claims.filter((claim) => claim.status === "submitted" || claim.status === "in_review").length,
     [claims]
   );
+  const unseenNewLeadsCount = useMemo(
+    () => leads.filter((lead) => lead.isNew).length,
+    [leads]
+  );
 
   const value = useMemo(
     () => ({
@@ -80,13 +85,14 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
       leads,
       claims,
       pendingClaimsCount,
+      unseenNewLeadsCount,
       policyRows,
       loading,
       refresh,
       setProfile,
       setPolicies,
     }),
-    [profile, policies, leads, claims, pendingClaimsCount, policyRows, loading, refresh]
+    [profile, policies, leads, claims, pendingClaimsCount, unseenNewLeadsCount, policyRows, loading, refresh]
   );
 
   return <ProviderContext.Provider value={value}>{children}</ProviderContext.Provider>;

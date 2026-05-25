@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import { formatPkr } from "@/lib/format";
+import { statusClass } from "@/lib/provider-utils";
 import {
   createClaim,
   fetchClaims,
@@ -262,7 +263,9 @@ export function ClaimsPage() {
                       {claim.insurer?.companyName} · {claim.claimType.replace(/_/g, " ")}
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-xs bg-primary/10 text-primary capitalize">
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-xs capitalize ${statusClass(claim.status)}`}
+                  >
                     {claim.status === "submitted"
                       ? "Sent to insurer"
                       : claim.status === "in_review"

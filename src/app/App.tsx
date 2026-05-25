@@ -43,6 +43,7 @@ import { AdminAuditPage } from "./components/dashboard/admin-audit-page";
 import { AdminHealthPage } from "./components/dashboard/admin-health-page";
 import { Toaster } from "./components/ui/sonner";
 import { SupportPage } from "./components/dashboard/support-page";
+import { ProviderSupportPage } from "./components/dashboard/provider-support-page";
 import { SeekerSettingsPage } from "./components/dashboard/seeker-settings-page";
 
 export default function App() {
@@ -101,6 +102,7 @@ export default function App() {
                 <Route path="claims" element={<ProviderClaimsPage />} />
                 <Route path="analytics" element={<ProviderAnalyticsPage />} />
                 <Route path="messages" element={<ProviderMessagesPage />} />
+                <Route path="support" element={<ProviderSupportPage />} />
                 <Route path="settings" element={<ProviderSettingsPage />} />
               </Route>
               <Route

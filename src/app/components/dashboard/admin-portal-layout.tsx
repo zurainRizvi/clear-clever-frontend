@@ -20,6 +20,7 @@ import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { useAuth, useLogout } from "../auth-context";
 import { useAdmin } from "./admin-context";
+import { PortalProfileAvatar } from "./portal-profile-avatar";
 
 export type AdminPortalVariant = "employee" | "superadmin";
 
@@ -95,7 +96,12 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
   const displayName =
     variant === "superadmin" ? "Super Admin" : (userName ?? profileLabel);
   const isSettingsRoute = location.pathname.endsWith("/settings");
-  const contentWidthClass = isSettingsRoute ? "w-full max-w-none" : "max-w-7xl mx-auto";
+  const isChatRoute = location.pathname.includes("/messages");
+  const contentWidthClass = isSettingsRoute
+    ? "w-full max-w-none"
+    : isChatRoute
+      ? "flex flex-col flex-1 min-h-0"
+      : "max-w-7xl mx-auto";
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -146,9 +152,7 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
 
           <div className="p-4 border-t border-sidebar-border">
             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sidebar-accent/40">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5 text-primary" />
-              </div>
+              <PortalProfileAvatar />
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{displayName}</div>
                 <div className="text-xs text-muted-foreground truncate">{userEmail ?? ""}</div>
@@ -216,7 +220,11 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main
+          className={`flex-1 p-6 ${
+            isChatRoute ? "flex flex-col min-h-0 overflow-hidden" : "overflow-y-auto"
+          }`}
+        >
           <div className={contentWidthClass}>
             <Outlet />
           </div>

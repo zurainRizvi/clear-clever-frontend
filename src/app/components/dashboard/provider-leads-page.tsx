@@ -1,36 +1,75 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Loader2, Mail, MessageSquare, Phone, User } from "lucide-react";
+import { toast } from "sonner";
 import { useProvider } from "./provider-context";
 import { statusClass, titleCase } from "@/lib/provider-utils";
-import { fetchConversations } from "@/lib/messaging-api";
+import { createConversation, fetchConversations } from "@/lib/messaging-api";
+import { markInsurerLeadSeen } from "@/lib/insurer-api";
+import { ApiError } from "@/lib/api";
 
 export function ProviderLeadsPage() {
-  const { leads, loading } = useProvider();
+  const { leads, loading, profile, refresh } = useProvider();
   const navigate = useNavigate();
   const [contactingId, setContactingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
 
+  useEffect(() => {
+    if (filter !== "new") return;
+    const unseen = leads.filter((lead) => lead.isNew);
+    if (unseen.length === 0) return;
+    void Promise.all(unseen.map((lead) => markInsurerLeadSeen(lead.id).catch(() => undefined))).then(
+      () => refresh()
+    );
+  }, [filter, leads, refresh]);
+
   const filteredLeads = useMemo(() => {
+    if (filter === "new") return leads.filter((lead) => lead.isNew);
     if (filter === "all") return leads;
     return leads.filter((lead) => lead.status === filter);
   }, [filter, leads]);
 
-  const openConversation = async (seekerId: string | undefined) => {
-    if (!seekerId) return;
+  const markSeen = async (leadId: string) => {
+    try {
+      await markInsurerLeadSeen(leadId);
+      await refresh();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const openConversation = async (lead: (typeof leads)[0]) => {
+    const seekerId = lead.seeker?.id;
+    if (!seekerId || !profile?.id) return;
     setContactingId(seekerId);
     try {
+      if (lead.isNew) await markSeen(lead.id);
       const data = await fetchConversations();
       const existing = data.conversations.find(
         (conversation) =>
           conversation.type === "user_insurer" &&
           conversation.participants.some((participant) => participant.id === seekerId)
       );
-      navigate("/provider-dashboard/messages", {
-        state: existing
-          ? { focusConversationId: existing.id }
-          : undefined,
+      if (existing) {
+        navigate("/provider-dashboard/messages", {
+          state: { focusConversationId: existing.id },
+        });
+        return;
+      }
+      const created = await createConversation({
+        type: "user_insurer",
+        targetUserId: seekerId,
+        insurerProfileId: profile.id,
+        subject: lead.policy?.name
+          ? `Inquiry: ${lead.policy.name}`
+          : `Lead from ${lead.seeker?.fullName ?? "policy seeker"}`,
+        initialMessage: `Hi ${lead.seeker?.fullName ?? "there"}, thanks for your interest. How can we help?`,
       });
+      navigate("/provider-dashboard/messages", {
+        state: { focusConversationId: created.conversation.id },
+      });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not open conversation");
     } finally {
       setContactingId(null);
     }
@@ -86,7 +125,12 @@ export function ProviderLeadsPage() {
                   <User className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold">{lead.seeker?.fullName ?? "Policy seeker"}</div>
+                  <div className="font-semibold flex items-center gap-2">
+                    {lead.seeker?.fullName ?? "Policy seeker"}
+                    {lead.isNew ? (
+                      <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                    ) : null}
+                  </div>
                   <div className="text-sm text-muted-foreground flex flex-wrap gap-3 mt-1">
                     {lead.seeker?.email ? (
                       <span className="inline-flex items-center gap-1">
@@ -115,7 +159,7 @@ export function ProviderLeadsPage() {
                 <button
                   type="button"
                   disabled={!lead.seeker?.id || contactingId === lead.seeker.id}
-                  onClick={() => void openConversation(lead.seeker?.id)}
+                  onClick={() => void openConversation(lead)}
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm inline-flex items-center gap-2 disabled:opacity-50"
                 >
                   <MessageSquare className="w-4 h-4" />

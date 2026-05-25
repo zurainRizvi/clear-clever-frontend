@@ -41,6 +41,8 @@ export interface InsurerLeadSummary {
   id: string;
   type: string;
   status: string;
+  seenAt?: string;
+  isNew?: boolean;
   summary: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
@@ -123,9 +125,26 @@ export async function updateInsurerPolicy(
 
 export async function fetchInsurerLeads(): Promise<{
   count: number;
+  unseenNewCount: number;
   leads: InsurerLeadSummary[];
 }> {
   return apiRequest("/api/insurer/leads", { auth: true });
+}
+
+export async function markInsurerLeadSeen(leadId: string): Promise<{
+  lead: { id: string; seenAt: string; isNew: boolean };
+}> {
+  return apiRequest(`/api/insurer/leads/${leadId}/seen`, {
+    method: "PATCH",
+    auth: true,
+  });
+}
+
+export async function deleteInsurerPolicy(policyId: string): Promise<{ policyId: string }> {
+  return apiRequest(`/api/insurer/policies/${policyId}`, {
+    method: "DELETE",
+    auth: true,
+  });
 }
 
 export type InsurerClaimStatus = "submitted" | "in_review" | "approved" | "rejected";
@@ -167,11 +186,12 @@ export async function fetchInsurerClaims(): Promise<{
 
 export async function updateInsurerClaimStatus(
   claimId: string,
-  status: Exclude<InsurerClaimStatus, "submitted">
+  status: Exclude<InsurerClaimStatus, "submitted">,
+  options?: { revert?: boolean }
 ): Promise<{ claim: InsurerClaimSummary }> {
   return apiRequest(`/api/insurer/claims/${claimId}`, {
     method: "PATCH",
     auth: true,
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, revert: options?.revert }),
   });
 }

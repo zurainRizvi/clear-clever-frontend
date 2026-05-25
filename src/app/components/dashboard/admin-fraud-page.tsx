@@ -1,93 +1,136 @@
-import { AlertTriangle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, Loader2 } from "lucide-react";
+import { Link } from "react-router";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
+import {
+  fetchFraudSignals,
+  type FraudCategory,
+  type FraudSignal,
+} from "@/lib/admin-api";
 
-const DEMO_ALERTS = [
+const TABS: { id: FraudCategory; label: string; description: string }[] = [
   {
-    id: 1,
-    type: "Multiple account creation",
-    user: "suspicious@email.com",
-    severity: "High",
-    time: "Demo alert",
-    status: "Blocked",
+    id: "account",
+    label: "Account risk",
+    description: "Duplicate emails, unverified providers, deactivation spikes",
   },
   {
-    id: 2,
-    type: "Unusual claim pattern",
-    user: "Review queue",
-    severity: "Medium",
-    time: "Demo alert",
-    status: "Review",
+    id: "claims",
+    label: "Claims",
+    description: "Unusual claim frequency and rejection patterns",
   },
   {
-    id: 3,
-    type: "Document verification flag",
-    user: "Automated scan",
-    severity: "Critical",
-    time: "Demo alert",
-    status: "Blocked",
+    id: "commerce",
+    label: "Commerce",
+    description: "Pending purchases and abnormal lead volume",
+  },
+  {
+    id: "catalog",
+    label: "Provider catalog",
+    description: "Stale policy reviews and high rejection rates",
   },
 ];
 
+function severityClass(severity: FraudSignal["severity"]) {
+  if (severity === "critical") return "bg-destructive text-destructive-foreground";
+  if (severity === "high") return "bg-warning text-warning-foreground";
+  if (severity === "medium") return "bg-primary/15 text-primary";
+  return "bg-muted text-muted-foreground";
+}
+
 export function AdminFraudPage() {
+  const [tab, setTab] = useState<FraudCategory>("account");
+  const [signals, setSignals] = useState<FraudSignal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async (category: FraudCategory) => {
+    setLoading(true);
+    try {
+      const data = await fetchFraudSignals(category);
+      setSignals(data.signals);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not load fraud signals");
+      setSignals([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load(tab);
+  }, [tab, load]);
+
+  const activeMeta = TABS.find((item) => item.id === tab);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-1">Fraud detection</h1>
         <p className="text-muted-foreground">
-          Demo monitor for advisor presentations — not connected to live fraud APIs yet
+          Live heuristics from your ClearClever database — suspicious patterns by category
         </p>
       </div>
 
-      <div className="bg-warning/5 border border-warning/20 rounded-xl p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-warning/15 flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6 text-warning" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-1">Demo fraud monitor</h3>
-            <p className="text-sm text-muted-foreground">
-              These sample alerts illustrate how suspicious activity would appear once a fraud
-              scoring service is integrated. Approve/reject flows use real admin APIs elsewhere.
-            </p>
-          </div>
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setTab(item.id)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium ${
+              tab === item.id
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
+      <p className="text-sm text-muted-foreground">{activeMeta?.description}</p>
+
       <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-        {DEMO_ALERTS.map((alert) => (
-          <div
-            key={alert.id}
-            className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-accent/30 rounded-xl border-l-4 border-warning"
-          >
-            <div className="flex-1">
-              <div className="font-semibold mb-1 flex flex-wrap items-center gap-2">
-                {alert.type}
-                <span
-                  className={`px-2 py-0.5 rounded text-xs ${
-                    alert.severity === "Critical"
-                      ? "bg-destructive text-destructive-foreground"
-                      : alert.severity === "High"
-                        ? "bg-warning text-warning-foreground"
-                        : "bg-secondary/20 text-secondary"
-                  }`}
-                >
-                  {alert.severity}
-                </span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {alert.user} · {alert.time}
-              </div>
-            </div>
-            <span
-              className={`px-3 py-1 rounded-full text-sm w-fit ${
-                alert.status === "Blocked"
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-warning/10 text-warning"
-              }`}
-            >
-              {alert.status}
-            </span>
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ))}
+        ) : signals.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-40" />
+            <p>No signals in this category right now.</p>
+          </div>
+        ) : (
+          signals.map((alert) => (
+            <div
+              key={alert.id}
+              className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-accent/30 rounded-xl border-l-4 border-warning"
+            >
+              <div className="flex-1">
+                <div className="font-semibold mb-1 flex flex-wrap items-center gap-2">
+                  {alert.type}
+                  <span className={`px-2 py-0.5 rounded text-xs capitalize ${severityClass(alert.severity)}`}>
+                    {alert.severity}
+                  </span>
+                </div>
+                <div className="text-sm font-medium">{alert.subject}</div>
+                <div className="text-sm text-muted-foreground mt-1">{alert.detail}</div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  {new Date(alert.detectedAt).toLocaleString()}
+                </div>
+              </div>
+              {alert.link ? (
+                <Link
+                  to={alert.link}
+                  className="text-sm text-primary hover:underline shrink-0"
+                >
+                  Review →
+                </Link>
+              ) : null}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
