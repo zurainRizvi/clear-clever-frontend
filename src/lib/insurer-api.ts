@@ -73,6 +73,154 @@ export interface InsurerPolicyInput {
   questions?: PolicyQuestion[];
 }
 
+export type InsurerDashboardTrend = "up" | "down" | "neutral";
+
+export interface InsurerDashboardOverviewStat {
+  title: string;
+  value: string;
+  change: string;
+  trend: InsurerDashboardTrend;
+  icon: string;
+  iconColor: string;
+}
+
+export interface InsurerSmartInsight {
+  badge: string;
+  title: string;
+  description: string;
+  metricLabel: string;
+  metricValue: string;
+  theme: "blue" | "green" | "purple" | "orange";
+  sparkline: number[];
+  priority: number;
+  actionType?: string;
+}
+
+export interface InsurerDashboardPayload {
+  dateRange: { from: string; to: string; label: string };
+  overviewStats: InsurerDashboardOverviewStat[];
+  smartInsights: InsurerSmartInsight[];
+  topPolicies: Array<{
+    policyId: string;
+    policy: string;
+    category: string;
+    match: string;
+    conversion: string;
+    audience: string;
+    revenue: string;
+    revenuePkr: number;
+    trend: number[];
+  }>;
+  demandTrends: {
+    centerLabel: string;
+    segments: Array<{
+      label: string;
+      value: string;
+      color: string;
+      trend: string;
+      count: number;
+    }>;
+    footerInsight: { label: string; text: string; badge: string };
+  };
+  recentLeads: Array<{
+    id: string;
+    name: string;
+    category: string;
+    time: string;
+    status: "Hot" | "Warm";
+  }>;
+  pendingClaims: Array<{
+    id: string;
+    claimId: string;
+    category: string;
+    submitted: string;
+  }>;
+  badges: {
+    claims: number;
+    queries: number;
+    support: number;
+    notifications: number;
+  };
+}
+
+export async function fetchInsurerDashboard(params?: {
+  from?: string;
+  to?: string;
+}): Promise<{ dashboard: InsurerDashboardPayload }> {
+  const search = new URLSearchParams();
+  if (params?.from) search.set("from", params.from);
+  if (params?.to) search.set("to", params.to);
+  const query = search.toString();
+  return apiRequest(`/api/insurer/dashboard${query ? `?${query}` : ""}`, { auth: true });
+}
+
+export type InsurerAnalyticsTrend = "up" | "down" | "neutral" | "down-positive";
+
+export interface InsurerAnalyticsPayload {
+  dateRange: { from: string; to: string; label: string };
+  overviewMetrics: Array<{
+    title: string;
+    value: string;
+    change: string;
+    trend: InsurerAnalyticsTrend;
+    icon: string;
+    iconColor: string;
+    sparkline: number[];
+  }>;
+  interestTrends: {
+    xAxis: string[];
+    datasets: Array<{ label: string; color: string; values: number[] }>;
+    sideLegend: Array<{ label: string; percentage: string; trend: string }>;
+    insightBanner: { text: string; badge: string };
+  };
+  funnel: {
+    steps: Array<{ name: string; users: number; conversion?: string }>;
+  };
+  customerSegments: Array<{
+    segment: string;
+    interest: string;
+    level: "High" | "Medium" | "Low";
+    conversion: string;
+    conversionPct: number;
+  }>;
+  smartInsights: Array<{
+    icon: string;
+    title: string;
+    description: string;
+    suggestion: string;
+    theme: "purple" | "orange" | "green" | "blue";
+  }>;
+  revenue: {
+    totalRevenue: string;
+    totalRevenuePkr: number;
+    growth: string;
+    trend: "up" | "down" | "neutral";
+    chartValues: number[];
+    xAxis: string[];
+  };
+  topPolicies: Array<{ policy: string; revenue: string; conversion: string }>;
+  competitiveness: {
+    score: number;
+    label: string;
+    indicators: Array<{
+      metric: string;
+      status: "Strong" | "Average" | "Needs Improvement";
+    }>;
+    footerSuggestion: string;
+  };
+}
+
+export async function fetchInsurerAnalytics(params?: {
+  from?: string;
+  to?: string;
+}): Promise<{ analytics: InsurerAnalyticsPayload }> {
+  const search = new URLSearchParams();
+  if (params?.from) search.set("from", params.from);
+  if (params?.to) search.set("to", params.to);
+  const query = search.toString();
+  return apiRequest(`/api/insurer/analytics${query ? `?${query}` : ""}`, { auth: true });
+}
+
 export async function fetchInsurerProfile(): Promise<{ profile: InsurerProfile }> {
   return apiRequest("/api/insurer/profile", { auth: true });
 }
