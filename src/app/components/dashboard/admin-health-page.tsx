@@ -64,12 +64,29 @@ export function AdminHealthPage() {
     );
   }
 
-  const infra = health?.infrastructure;
-  const allOk =
+  if (!health) {
+    return (
+      <div className="space-y-4 text-center py-20">
+        <p className="text-muted-foreground">System health could not be loaded.</p>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-sm hover:bg-accent"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const infra = health.infrastructure;
+  const allOk = Boolean(
     infra?.render.ok &&
-    infra?.vercel.ok &&
-    infra?.mongodb.ok &&
-    infra?.brevo.ok;
+      infra?.vercel.ok &&
+      infra?.mongodb.ok &&
+      infra?.brevo.ok
+  );
 
   return (
     <div className="space-y-6">

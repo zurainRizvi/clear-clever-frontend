@@ -223,10 +223,29 @@ export function ProviderDashboardHome() {
 
   const notificationCount = dashboard?.badges.notifications ?? 0;
 
-  if (loading || !dashboard) {
+  if (loading && !dashboard) {
     return (
       <div className="flex justify-center py-24" style={{ backgroundColor: THEME.bg }}>
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: THEME.primary }} />
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-4 py-24 text-center"
+        style={{ backgroundColor: THEME.bg }}
+      >
+        <p className="text-slate-500">Dashboard intelligence could not be loaded.</p>
+        <button
+          type="button"
+          onClick={() => void loadDashboard(range)}
+          className="px-4 py-2 rounded-xl text-sm font-semibold text-white"
+          style={{ backgroundColor: THEME.primary }}
+        >
+          Retry
+        </button>
       </div>
     );
   }
