@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Loader2, Mail, MessageSquare, Phone, User } from "lucide-react";
 import { toast } from "sonner";
@@ -13,15 +13,6 @@ export function ProviderLeadsPage() {
   const navigate = useNavigate();
   const [contactingId, setContactingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
-
-  useEffect(() => {
-    if (filter !== "new") return;
-    const unseen = leads.filter((lead) => lead.isNew);
-    if (unseen.length === 0) return;
-    void Promise.all(unseen.map((lead) => markInsurerLeadSeen(lead.id).catch(() => undefined))).then(
-      () => refresh()
-    );
-  }, [filter, leads, refresh]);
 
   const filteredLeads = useMemo(() => {
     if (filter === "new") return leads.filter((lead) => lead.isNew);
