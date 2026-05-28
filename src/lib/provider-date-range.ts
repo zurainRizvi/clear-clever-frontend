@@ -20,15 +20,21 @@ export function formatProviderRangeLabel(range: DateRangeValue): string {
 
 export function toRangeQuery(range: DateRangeValue): { from: string; to: string } {
   return {
-    from: range.from.toISOString().slice(0, 10),
-    to: range.to.toISOString().slice(0, 10),
+    from: format(range.from, "yyyy-MM-dd"),
+    to: format(range.to, "yyyy-MM-dd"),
   };
+}
+
+function parseDateOnly(value: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return new Date(value);
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 export function parseRangeFromApi(from?: string, to?: string): DateRangeValue {
   if (!from || !to) return defaultProviderRange();
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
   if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
     return defaultProviderRange();
   }
