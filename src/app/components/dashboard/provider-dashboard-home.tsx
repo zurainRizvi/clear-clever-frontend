@@ -223,10 +223,37 @@ export function ProviderDashboardHome() {
 
   const notificationCount = dashboard?.badges.notifications ?? 0;
 
-  if (loading || !dashboard) {
+  if (loading && !dashboard) {
     return (
       <div className="flex justify-center py-24" style={{ backgroundColor: THEME.bg }}>
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: THEME.primary }} />
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div
+        className={`${PROVIDER_PAGE_CLASS} min-h-full flex items-center justify-center`}
+        style={{ backgroundColor: THEME.bg, fontFamily: "Inter, sans-serif" }}
+      >
+        <div className="text-center bg-white border border-slate-100 rounded-3xl p-8 shadow-sm max-w-md">
+          <Headphones className="w-10 h-10 mx-auto mb-3 text-slate-400" />
+          <h1 className="text-xl font-semibold text-slate-900">Dashboard could not be loaded</h1>
+          <p className="text-sm text-slate-500 mt-2">
+            We could not load your provider intelligence right now. Try again or use the sidebar to keep working.
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadDashboard(range)}
+            className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white text-sm font-semibold disabled:opacity-60"
+            style={{ backgroundColor: THEME.primary }}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
