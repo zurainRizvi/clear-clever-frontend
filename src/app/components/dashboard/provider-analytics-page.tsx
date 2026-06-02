@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTheme } from "next-themes";
 import { Link } from "react-router";
 import {
   AlertTriangle,
@@ -50,11 +51,26 @@ const METRIC_ICONS: Record<string, LucideIcon> = {
 };
 
 const INSIGHT_STYLES = {
-  purple: "border-violet-100 bg-violet-50/40",
-  orange: "border-amber-100 bg-amber-50/40",
-  green: "border-emerald-100 bg-emerald-50/40",
-  blue: "border-blue-100 bg-blue-50/40",
+  purple:
+    "border-violet-100 bg-violet-50/40 dark:border-violet-900/40 dark:bg-violet-950/30",
+  orange:
+    "border-amber-100 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/30",
+  green:
+    "border-emerald-100 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/30",
+  blue: "border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/30",
 } as const;
+
+function useChartColors() {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  return {
+    grid: isDark ? "rgba(148, 163, 184, 0.12)" : "#F1F5F9",
+    axis: isDark ? "#94A3B8" : "#64748B",
+    gaugeTrack: isDark ? "rgba(148, 163, 184, 0.2)" : "#E2E8F0",
+  };
+}
+
+const PORTAL_CARD_CLASS = "provider-portal-card p-5 border bg-white min-w-0";
 
 function trendColor(trend: InsurerAnalyticsTrend): string {
   if (trend === "up" || trend === "down-positive") return "text-emerald-600";
@@ -75,17 +91,25 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-function ScoreGauge({ score, label }: { score: number; label: string }) {
+function ScoreGauge({
+  score,
+  label,
+  trackColor,
+}: {
+  score: number;
+  label: string;
+  trackColor: string;
+}) {
   const pct = Math.min(100, Math.max(0, score));
   return (
     <div className="flex flex-col items-center py-4">
       <div
         className="relative w-36 h-36 rounded-full flex items-center justify-center"
         style={{
-          background: `conic-gradient(#2563EB ${pct * 3.6}deg, #E2E8F0 0deg)`,
+          background: `conic-gradient(#2563EB ${pct * 3.6}deg, ${trackColor} 0deg)`,
         }}
       >
-        <div className="w-28 h-28 rounded-full bg-white flex flex-col items-center justify-center shadow-inner">
+        <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-card shadow-inner">
           <span className="text-3xl font-bold text-slate-900">{score}</span>
           <span className="text-xs text-slate-500">/ 100</span>
         </div>
@@ -102,9 +126,16 @@ function statusPill(status: string) {
 }
 
 export function ProviderAnalyticsPage() {
+  const chartColors = useChartColors();
   const [range, setRange] = useState<DateRangeValue>(defaultProviderRange);
   const [analytics, setAnalytics] = useState<InsurerAnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const cardStyle = {
+    borderRadius: PROVIDER_THEME.radius,
+    borderColor: PROVIDER_THEME.border,
+    boxShadow: PROVIDER_THEME.shadow,
+  };
 
   const load = useCallback(async (r: DateRangeValue) => {
     setLoading(true);
@@ -190,7 +221,7 @@ export function ProviderAnalyticsPage() {
           <button
             type="button"
             onClick={exportReport}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border bg-white text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="provider-portal-card inline-flex items-center gap-2 rounded-2xl border bg-card px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-accent"
             style={{ borderColor: PROVIDER_THEME.borderAlt, boxShadow: PROVIDER_THEME.shadow }}
           >
             <Download className="w-4 h-4" />
@@ -209,12 +240,8 @@ export function ProviderAnalyticsPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.04 }}
-              className="p-4 border bg-white min-w-0"
-              style={{
-                borderRadius: PROVIDER_THEME.radius,
-                borderColor: PROVIDER_THEME.border,
-                boxShadow: PROVIDER_THEME.shadow,
-              }}
+              className="provider-portal-card p-4 border bg-white min-w-0"
+              style={cardStyle}
             >
               <div className="flex items-start justify-between gap-2">
                 <div
@@ -239,14 +266,7 @@ export function ProviderAnalyticsPage() {
         {/* Left column */}
         <div className="xl:col-span-8 space-y-5 min-w-0">
           {/* Interest trends */}
-          <section
-            className="p-5 border bg-white min-w-0"
-            style={{
-              borderRadius: PROVIDER_THEME.radius,
-              borderColor: PROVIDER_THEME.border,
-              boxShadow: PROVIDER_THEME.shadow,
-            }}
-          >
+          <section className={PORTAL_CARD_CLASS} style={cardStyle}>
             <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Customer Interest Trends</h2>
@@ -264,9 +284,9 @@ export function ProviderAnalyticsPage() {
               <div className="h-52 min-w-0 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={interestChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} width={32} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: chartColors.axis }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: chartColors.axis }} width={32} axisLine={false} tickLine={false} />
                     <Tooltip />
                     {analytics.interestTrends.datasets.map((ds) => (
                       <Line
@@ -299,11 +319,8 @@ export function ProviderAnalyticsPage() {
                 ))}
               </div>
             </div>
-            <div
-              className="mt-4 flex flex-wrap items-center gap-2 p-3 rounded-xl border"
-              style={{ backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }}
-            >
-              <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+            <div className="provider-insight-banner mt-4 flex flex-wrap items-center gap-2 rounded-xl border p-3 bg-blue-50 border-blue-100 dark:bg-blue-950/30 dark:border-blue-900/40">
+              <Sparkles className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
               <p className="text-xs text-slate-700 flex-1 min-w-0">
                 {analytics.interestTrends.insightBanner.text}
               </p>
@@ -314,14 +331,7 @@ export function ProviderAnalyticsPage() {
           </section>
 
           {/* Funnel */}
-          <section
-            className="p-5 border bg-white min-w-0"
-            style={{
-              borderRadius: PROVIDER_THEME.radius,
-              borderColor: PROVIDER_THEME.border,
-              boxShadow: PROVIDER_THEME.shadow,
-            }}
-          >
+          <section className={PORTAL_CARD_CLASS} style={cardStyle}>
             <h2 className="text-base font-bold text-slate-900">Funnel Analytics</h2>
             <p className="text-xs text-slate-500 mb-4">
               Track user journey from discovery to purchase (your leads & questionnaires)
@@ -355,14 +365,7 @@ export function ProviderAnalyticsPage() {
           </section>
 
           {/* Segments table */}
-          <section
-            className="p-5 border bg-white min-w-0 overflow-hidden"
-            style={{
-              borderRadius: PROVIDER_THEME.radius,
-              borderColor: PROVIDER_THEME.border,
-              boxShadow: PROVIDER_THEME.shadow,
-            }}
-          >
+          <section className={`${PORTAL_CARD_CLASS} overflow-hidden`} style={cardStyle}>
             <h2 className="text-base font-bold text-slate-900">Customer Segments Insight</h2>
             <p className="text-xs text-slate-500 mb-4">
               Segments inferred from questionnaire answers and lead behavior
@@ -410,14 +413,7 @@ export function ProviderAnalyticsPage() {
 
         {/* Right column */}
         <div className="xl:col-span-4 space-y-5 min-w-0">
-          <section
-            className="p-5 border bg-white min-w-0"
-            style={{
-              borderRadius: PROVIDER_THEME.radius,
-              borderColor: PROVIDER_THEME.border,
-              boxShadow: PROVIDER_THEME.shadow,
-            }}
-          >
+          <section className={PORTAL_CARD_CLASS} style={cardStyle}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-bold text-slate-900">Smart Business Insights</h2>
               <Link
@@ -455,14 +451,7 @@ export function ProviderAnalyticsPage() {
             </div>
           </section>
 
-          <section
-            className="p-5 border bg-white min-w-0"
-            style={{
-              borderRadius: PROVIDER_THEME.radius,
-              borderColor: PROVIDER_THEME.border,
-              boxShadow: PROVIDER_THEME.shadow,
-            }}
-          >
+          <section className={PORTAL_CARD_CLASS} style={cardStyle}>
             <h2 className="text-base font-bold text-slate-900">Revenue Overview</h2>
             <p className="text-xs text-slate-500">This period</p>
             <p className="text-2xl font-bold text-slate-900 mt-2">{analytics.revenue.totalRevenue}</p>
@@ -480,7 +469,9 @@ export function ProviderAnalyticsPage() {
                       <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: chartColors.axis }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: chartColors.axis }} width={28} axisLine={false} tickLine={false} />
                   <Tooltip formatter={(v: number) => [`Rs ${(v * 1000).toLocaleString()}`, "Revenue"]} />
                   <Area type="monotone" dataKey="revenue" stroke="#2563EB" fill="url(#revGrad)" />
                 </AreaChart>
@@ -488,14 +479,7 @@ export function ProviderAnalyticsPage() {
             </div>
           </section>
 
-          <section
-            className="p-5 border bg-white min-w-0"
-            style={{
-              borderRadius: PROVIDER_THEME.radius,
-              borderColor: PROVIDER_THEME.border,
-              boxShadow: PROVIDER_THEME.shadow,
-            }}
-          >
+          <section className={PORTAL_CARD_CLASS} style={cardStyle}>
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-base font-bold text-slate-900">Top Performing Policies</h2>
               <Link
@@ -526,19 +510,13 @@ export function ProviderAnalyticsPage() {
             </div>
           </section>
 
-          <section
-            className="p-5 border bg-white min-w-0"
-            style={{
-              borderRadius: PROVIDER_THEME.radius,
-              borderColor: PROVIDER_THEME.border,
-              boxShadow: PROVIDER_THEME.shadow,
-            }}
-          >
+          <section className={PORTAL_CARD_CLASS} style={cardStyle}>
             <h2 className="text-base font-bold text-slate-900">Competitiveness Overview</h2>
             <p className="text-xs text-slate-500">Your position in the market</p>
             <ScoreGauge
               score={analytics.competitiveness.score}
               label={analytics.competitiveness.label}
+              trackColor={chartColors.gaugeTrack}
             />
             <ul className="space-y-2 mt-2">
               {analytics.competitiveness.indicators.map((item) => (
@@ -550,10 +528,7 @@ export function ProviderAnalyticsPage() {
                 </li>
               ))}
             </ul>
-            <p
-              className="text-xs text-slate-600 mt-4 p-3 rounded-xl"
-              style={{ backgroundColor: "#F8FAFC" }}
-            >
+            <p className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-muted/40 dark:text-muted-foreground">
               {analytics.competitiveness.footerSuggestion}
             </p>
           </section>

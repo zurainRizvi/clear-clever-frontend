@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
-import { ClearCleverLogo } from "./auth/clearclever-logo";
+import { MarketingPageShell } from "./marketing-page-shell";
 import { ApiError } from "@/lib/api";
 import {
   submitPublicSupportContact,
@@ -42,13 +42,11 @@ export function PublicSupportFormPage({ title = "Contact Us" }: { title?: string
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground px-6 py-10">
-      <div className="max-w-3xl mx-auto rounded-2xl border border-border bg-card p-6 md:p-8">
-        <ClearCleverLogo className="mb-5" />
-        <h1 className="text-3xl font-bold">{title}</h1>
-        <p className="text-muted-foreground mt-2 mb-6">
-          Reach our team for policy guidance, partnership, technical, and account questions.
-        </p>
+    <MarketingPageShell title={title}>
+      <p className="text-muted-foreground -mt-2">
+        Reach our team for policy guidance, partnership, technical, and account questions.
+      </p>
+      <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
         <form onSubmit={onSubmit} className="space-y-4">
           <input
             value={fullName}
@@ -100,6 +98,6 @@ export function PublicSupportFormPage({ title = "Contact Us" }: { title?: string
           </button>
         </form>
       </div>
-    </main>
+    </MarketingPageShell>
   );
 }

@@ -107,6 +107,7 @@ const INSURANCE_CARDS: InsuranceCard[] = [
     images: [
       { src: heroLifeFamily, label: "Family" },
       { src: heroLifeHealth, label: "Health" },
+      { src: heroLifeFamily, label: "Coverage" },
     ],
     background: "#FFF8F5",
     accentColor: "#F59E0B",
@@ -144,60 +145,29 @@ const PARTNER_LOGOS = [
   { name: "IGI General", src: logoIgi },
 ] as const;
 
-const CAROUSEL_INTERVAL_MS = 5000;
-const IMAGE_CYCLE_MS = 2200;
+const IMAGES_PER_CATEGORY = 3;
+const IMAGE_HOLD_MS = 2400;
 const NAVBAR_HEIGHT_PX = 88;
 
-function CategoryImageRotator({
-  images,
-  accentColor,
-}: {
-  images: InsuranceSlideImage[];
-  accentColor: string;
-}) {
-  const [imageIndex, setImageIndex] = useState(0);
-
-  useEffect(() => {
-    setImageIndex(0);
-  }, [images]);
-
-  useEffect(() => {
-    if (images.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setImageIndex((current) => (current + 1) % images.length);
-    }, IMAGE_CYCLE_MS);
-    return () => window.clearInterval(timer);
-  }, [images]);
-
-  const current = images[imageIndex];
-
-  return (
-    <div className="relative mx-auto h-36 w-full max-w-[280px] shrink-0 md:mx-0 md:h-40 md:w-44">
-      <AnimatePresence mode="wait">
-        <motion.img
-          key={current.src}
-          src={current.src}
-          alt={current.label}
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 1.04 }}
-          transition={{ duration: 0.35 }}
-          className="h-full w-full object-contain object-center"
-        />
-      </AnimatePresence>
-      <span
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"
-        style={{ backgroundColor: accentColor }}
-      >
-        {current.label}
-      </span>
-    </div>
-  );
+function imagesForCategory(images: InsuranceSlideImage[]): InsuranceSlideImage[] {
+  if (images.length >= IMAGES_PER_CATEGORY) return images.slice(0, IMAGES_PER_CATEGORY);
+  const padded = [...images];
+  while (padded.length < IMAGES_PER_CATEGORY) {
+    padded.push(images[padded.length % images.length]);
+  }
+  return padded;
 }
 
 function HeroInsuranceCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [imageReady, setImageReady] = useState(false);
+  const [categoryProgress, setCategoryProgress] = useState(0);
   const [direction, setDirection] = useState(1);
+
+  const card = INSURANCE_CARDS[activeIndex];
+  const slideImages = useMemo(() => imagesForCategory(card.images), [card.images]);
+  const currentImage = slideImages[imageIndex];
 
   const goTo = (index: number) => {
     setActiveIndex((current) => {
@@ -206,17 +176,53 @@ function HeroInsuranceCarousel() {
       }
       return index;
     });
+    setImageIndex(0);
+    setImageReady(false);
+    setCategoryProgress(0);
   };
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setDirection(1);
-      setActiveIndex((current) => (current + 1) % INSURANCE_CARDS.length);
-    }, CAROUSEL_INTERVAL_MS);
-    return () => window.clearInterval(timer);
+    setImageIndex(0);
+    setImageReady(false);
+    setCategoryProgress(0);
   }, [activeIndex]);
 
-  const card = INSURANCE_CARDS[activeIndex];
+  useEffect(() => {
+    if (!imageReady) return;
+
+    const isLastImage = imageIndex === IMAGES_PER_CATEGORY - 1;
+    const segmentDuration = isLastImage ? 500 : IMAGE_HOLD_MS;
+    const segmentStart = performance.now();
+    let frame = 0;
+
+    const advanceCategory = () => {
+      setDirection(1);
+      setActiveIndex((current) => (current + 1) % INSURANCE_CARDS.length);
+    };
+
+    const tick = (now: number) => {
+      const elapsed = now - segmentStart;
+      const segmentT = Math.min(1, elapsed / segmentDuration);
+      const base = imageIndex / IMAGES_PER_CATEGORY;
+      setCategoryProgress(base + segmentT / IMAGES_PER_CATEGORY);
+
+      if (elapsed >= segmentDuration) {
+        if (isLastImage) {
+          setCategoryProgress(1);
+          advanceCategory();
+        } else {
+          setImageIndex((current) => current + 1);
+          setImageReady(false);
+        }
+        return;
+      }
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [imageIndex, imageReady, activeIndex]);
 
   const slideVariants = {
     enter: (slideDirection: number) => ({
@@ -249,7 +255,30 @@ function HeroInsuranceCarousel() {
                 className="flex flex-col gap-5 rounded-2xl border border-border p-5 md:flex-row md:items-center md:gap-6 md:p-6"
                 style={{ backgroundColor: card.background }}
               >
-                <CategoryImageRotator images={card.images} accentColor={card.accentColor} />
+                <div className="relative mx-auto h-36 w-full max-w-[280px] shrink-0 md:mx-0 md:h-40 md:w-44">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={`${card.title}-${currentImage.src}-${imageIndex}`}
+                      src={currentImage.src}
+                      alt={currentImage.label}
+                      initial={{ opacity: 0, scale: 0.92 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.04 }}
+                      transition={{ duration: 0.35 }}
+                      onLoad={() => setImageReady(true)}
+                      ref={(node) => {
+                        if (node?.complete) setImageReady(true);
+                      }}
+                      className="h-full w-full object-contain object-center"
+                    />
+                  </AnimatePresence>
+                  <span
+                    className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"
+                    style={{ backgroundColor: card.accentColor }}
+                  >
+                    {currentImage.label}
+                  </span>
+                </div>
                 <div className="min-w-0 flex-1 text-center md:text-left">
                   <h3 className="text-lg font-bold text-foreground md:text-xl">{card.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:text-base">
@@ -297,19 +326,29 @@ function HeroInsuranceCarousel() {
       </div>
 
       <div className="mt-4 flex justify-center gap-2">
-        {INSURANCE_CARDS.map((_, index) => (
-          <button
-            key={index}
-            type="button"
-            onClick={() => goTo(index)}
-            aria-label={`Show ${INSURANCE_CARDS[index].title}`}
-            className="h-2 rounded-full transition-all"
-            style={{
-              width: index === activeIndex ? 24 : 8,
-              backgroundColor: index === activeIndex ? "#2563EB" : "#CBD5E1",
-            }}
-          />
-        ))}
+        {INSURANCE_CARDS.map((item, index) => {
+          const isActive = index === activeIndex;
+          const fill =
+            index < activeIndex ? 1 : isActive ? Math.min(1, Math.max(0, categoryProgress)) : 0;
+          return (
+            <button
+              key={index}
+              type="button"
+              onClick={() => goTo(index)}
+              aria-label={`Show ${item.title}`}
+              className="relative h-2 overflow-hidden rounded-full bg-[#CBD5E1] transition-[width] duration-300 dark:bg-muted"
+              style={{ width: isActive ? 28 : 8 }}
+            >
+              <span
+                className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-75 ease-linear"
+                style={{
+                  width: `${fill * 100}%`,
+                  backgroundColor: isActive ? item.accentColor : "#2563EB",
+                }}
+              />
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -557,8 +596,8 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                       <CheckCircle2 className="h-5 w-5 text-[#10B981]" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-[#0F172A]">Quick • Simple • Smart</p>
-                      <p className="text-xs text-[#64748B]">Takes less than 3 minutes</p>
+                      <p className="text-sm font-bold text-foreground">Quick • Simple • Smart</p>
+                      <p className="text-xs text-muted-foreground">Takes less than 3 minutes</p>
                     </div>
                   </div>
                 </motion.div>

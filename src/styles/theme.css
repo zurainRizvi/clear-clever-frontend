@@ -222,3 +222,41 @@
 .dark .provider-dashboard-theme .bg-slate-100 {
   background-color: rgba(255, 255, 255, 0.06) !important;
 }
+
+.dark .provider-dashboard-theme .provider-portal-card {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35) !important;
+}
+
+.dark .provider-dashboard-theme .bg-violet-50\/40,
+.dark .provider-dashboard-theme .bg-amber-50\/40,
+.dark .provider-dashboard-theme .bg-emerald-50\/40,
+.dark .provider-dashboard-theme .bg-blue-50\/40 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .provider-dashboard-theme .border-violet-100,
+.dark .provider-dashboard-theme .border-amber-100,
+.dark .provider-dashboard-theme .border-emerald-100,
+.dark .provider-dashboard-theme .border-blue-100 {
+  border-color: var(--border) !important;
+}
+
+.dark .provider-dashboard-theme .text-violet-600,
+.dark .provider-dashboard-theme .text-amber-600,
+.dark .provider-dashboard-theme .text-emerald-600,
+.dark .provider-dashboard-theme .text-blue-600 {
+  color: var(--foreground) !important;
+}
+
+.dark .provider-dashboard-theme .provider-insight-banner {
+  background-color: rgba(37, 99, 235, 0.12) !important;
+  border-color: rgba(96, 165, 250, 0.25) !important;
+}
+
+.dark .provider-dashboard-theme .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.dark .provider-dashboard-theme .text-emerald-700 {
+  color: #6ee7b7 !important;
+}

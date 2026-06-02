@@ -1,26 +1,10 @@
-import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { ClearCleverLogo } from "./auth/clearclever-logo";
 import { InsurerLogo } from "./dashboard/insurer-logo";
-
-function Shell({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <main className="min-h-screen bg-background text-foreground px-6 py-10">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <ClearCleverLogo />
-        <h1 className="text-4xl font-bold">{title}</h1>
-        {children}
-        <Link to="/" className="inline-flex text-primary hover:underline">
-          Back to homepage
-        </Link>
-      </div>
-    </main>
-  );
-}
+import { MarketingPageShell } from "./marketing-page-shell";
 
 export function AboutPage() {
   return (
-    <Shell title="About ClearClever">
+    <MarketingPageShell title="About ClearClever">
       <p className="text-muted-foreground leading-relaxed">
         ClearClever is an AI-powered insurance marketplace for policy seekers and insurers. We help
         users discover suitable plans quickly while giving insurers actionable intelligence to improve
@@ -49,7 +33,7 @@ export function AboutPage() {
           </p>
         </article>
       </div>
-    </Shell>
+    </MarketingPageShell>
   );
 }
 
@@ -65,7 +49,7 @@ const PARTNERS = [
 
 export function PartnersPage() {
   return (
-    <Shell title="Partners">
+    <MarketingPageShell title="Partners">
       <p className="text-muted-foreground">
         We collaborate with trusted insurers to deliver broad coverage options, better transparency,
         and a smoother purchase journey for customers.
@@ -84,9 +68,14 @@ export function PartnersPage() {
           </article>
         ))}
       </div>
-      <Link to="/contact-us" className="inline-flex px-5 py-3 rounded-xl bg-primary text-primary-foreground">
-        Partnership with us
-      </Link>
-    </Shell>
+      <div className="pt-2">
+        <Link
+          to="/contact-us"
+          className="inline-flex px-5 py-3 rounded-xl bg-primary text-primary-foreground font-medium"
+        >
+          Partnership with us
+        </Link>
+      </div>
+    </MarketingPageShell>
   );
 }
