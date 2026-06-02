@@ -105,18 +105,17 @@ function ProviderDashboardInner() {
 
   return (
     <div
-      className="min-h-screen flex"
-      style={{ backgroundColor: "#F8FAFC", fontFamily: "Inter, sans-serif" }}
+      className="min-h-screen flex bg-background"
+      style={{ fontFamily: "Inter, sans-serif" }}
     >
       <motion.aside
         initial={false}
         animate={{ width: sidebarOpen ? 260 : 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-white border-r flex flex-col overflow-hidden shrink-0"
-        style={{ borderColor: "#E5E7EB" }}
+        className="sticky top-0 h-screen bg-card border-r border-border flex flex-col overflow-hidden shrink-0"
       >
-        <div className="w-[260px] flex flex-col h-full min-h-screen">
-          <div className="p-5 border-b" style={{ borderColor: "#E5E7EB" }}>
+        <div className="w-[260px] flex flex-col h-full">
+          <div className="p-5 border-b border-border">
             <Link to="/provider-dashboard" className="flex items-center gap-3">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -125,15 +124,15 @@ function ProviderDashboardInner() {
                 <ShieldCheck className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="font-bold text-base text-slate-900 block leading-tight">
+                <span className="font-bold text-base text-foreground block leading-tight">
                   ClearClever
                 </span>
-                <span className="text-xs text-slate-500">Provider Portal</span>
+                <span className="text-xs text-muted-foreground">Provider Portal</span>
               </div>
             </Link>
           </div>
 
-          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
+          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 min-h-0">
             {menuItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path, item.label);
@@ -145,7 +144,7 @@ function ProviderDashboardInner() {
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                     active
                       ? "font-medium"
-                      : "text-slate-600 hover:bg-slate-50"
+                      : "text-muted-foreground hover:bg-accent"
                   }`}
                   style={
                     active
@@ -154,7 +153,7 @@ function ProviderDashboardInner() {
                   }
                 >
                   <Icon
-                    className={`w-[18px] h-[18px] shrink-0 ${active ? "" : "text-slate-500"}`}
+                    className={`w-[18px] h-[18px] shrink-0 ${active ? "" : "text-muted-foreground"}`}
                     style={active ? { color: "#2563EB" } : undefined}
                   />
                   <span className="flex-1">{item.label}</span>
@@ -171,10 +170,9 @@ function ProviderDashboardInner() {
             })}
           </nav>
 
-          <div className="p-3 border-t" style={{ borderColor: "#E5E7EB" }}>
+          <div className="p-3 border-t border-border mt-auto shrink-0">
             <div
-              className="flex items-center gap-3 px-3 py-3 rounded-2xl border cursor-pointer hover:bg-slate-50 transition-colors"
-              style={{ borderColor: "#E5E7EB", backgroundColor: "#FAFAFA" }}
+              className="flex items-center gap-3 px-3 py-3 rounded-2xl border border-border cursor-pointer hover:bg-accent transition-colors bg-card"
             >
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -183,7 +181,7 @@ function ProviderDashboardInner() {
                 <Shield className="w-5 h-5" style={{ color: "#2563EB" }} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-slate-900 truncate">
+                <div className="font-semibold text-sm text-foreground truncate">
                   {profile?.companyName ?? "Provider"}
                 </div>
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full mt-0.5">
@@ -194,15 +192,15 @@ function ProviderDashboardInner() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="text-slate-400 hover:text-red-500 p-1"
+                  className="text-muted-foreground hover:text-destructive p-1"
                   title="Sign out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
-                <ChevronDown className="w-4 h-4 text-slate-400" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 truncate px-3 mt-1">{userEmail ?? ""}</p>
+            <p className="text-[10px] text-muted-foreground truncate px-3 mt-1">{userEmail ?? ""}</p>
           </div>
         </div>
       </motion.aside>

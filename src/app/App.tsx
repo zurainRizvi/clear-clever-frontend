@@ -45,6 +45,7 @@ import { Toaster } from "./components/ui/sonner";
 import { SupportPage } from "./components/dashboard/support-page";
 import { ProviderSupportPage } from "./components/dashboard/provider-support-page";
 import { SeekerSettingsPage } from "./components/dashboard/seeker-settings-page";
+import { StaticPage } from "./components/static-page";
 
 export default function App() {
   return (
@@ -144,6 +145,12 @@ export default function App() {
                 <Route path="settings" element={<AdminSettingsPage variant="superadmin" />} />
               </Route>
               <Route path="/compare" element={<Navigate to="/dashboard/compare" replace />} />
+              <Route path="/about" element={<StaticPage title="About ClearClever" body="ClearClever helps families and businesses compare insurance options with transparent guidance and clear product information." />} />
+              <Route path="/partners" element={<StaticPage title="Partnerships" body="ClearClever works with trusted insurer partners to present policy options in one place with consistent customer experience." />} />
+              <Route path="/help-center" element={<StaticPage title="Help Center" body="Need help choosing, purchasing, renewing, or claiming? Our support team is available from your portal messages and support section." />} />
+              <Route path="/privacy" element={<StaticPage title="Privacy Policy" body="We protect your personal data and only use it to deliver recommendations, policy workflows, and service notifications." />} />
+              <Route path="/terms" element={<StaticPage title="Terms of Service" body="By using ClearClever, you agree to our usage terms, platform conduct guidelines, and insurer checkout redirection process." />} />
+              <Route path="/cookies" element={<StaticPage title="Cookie Policy" body="ClearClever uses cookies and similar technologies for secure sessions, analytics, and product performance improvements." />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>

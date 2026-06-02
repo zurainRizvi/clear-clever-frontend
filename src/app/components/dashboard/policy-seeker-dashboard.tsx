@@ -118,9 +118,9 @@ function PolicySeekerDashboardInner() {
           initial={false}
           animate={{ width: sidebarOpen ? 280 : 0 }}
           transition={{ duration: 0.3 }}
-          className="bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0"
+          className="sticky top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0"
         >
-          <div className="w-[280px] flex flex-col h-full min-h-screen">
+          <div className="w-[280px] flex flex-col h-full">
             <div className="p-6 border-b border-sidebar-border">
               <Link to="/dashboard" className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
@@ -130,7 +130,7 @@ function PolicySeekerDashboardInner() {
               </Link>
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-6 px-3">
+            <nav className="flex-1 overflow-y-auto py-6 px-3 min-h-0">
               <div className="space-y-1">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
@@ -188,7 +188,7 @@ function PolicySeekerDashboardInner() {
               </a>
             </nav>
 
-            <div className="p-4 border-t border-sidebar-border">
+            <div className="p-4 border-t border-sidebar-border mt-auto shrink-0">
               <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sidebar-accent/40">
                 <ProfilePhotoPicker
                   id="sidebar-profile-photo"

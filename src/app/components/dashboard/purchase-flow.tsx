@@ -24,6 +24,8 @@ import {
   savePurchaseDraft,
 } from "@/lib/purchase-draft";
 import type { PolicyQuestion, PublicPolicy } from "@/lib/types";
+import { ClearCleverLogo } from "../auth/clearclever-logo";
+import { InsurerLogo } from "./insurer-logo";
 
 type Step = "questionnaire" | "contact" | "review";
 
@@ -292,6 +294,10 @@ export function PurchaseFlow() {
         </div>
 
         <div className="mb-8 p-6 bg-accent/50 rounded-xl">
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-background/80 px-4 py-3">
+            <ClearCleverLogo linkToHome={false} />
+            <InsurerLogo companyName={policy.insurer.companyName} className="h-8 w-auto max-w-[140px]" />
+          </div>
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
               <Shield className="w-6 h-6 text-primary" />

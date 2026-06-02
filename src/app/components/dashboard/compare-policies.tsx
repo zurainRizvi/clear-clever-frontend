@@ -24,6 +24,7 @@ import { formatPkr, formatPkrYearly } from "@/lib/format";
 import { assignRecommendationBadges, badgeLabel } from "@/lib/recommendations";
 import type { CategoryItem, PolicyQuestion, ScoredRecommendation } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
+import { InsurerLogo } from "./insurer-logo";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   home: Home,
@@ -391,9 +392,10 @@ export function ComparePolicies() {
                       <div className="flex flex-col lg:flex-row gap-6">
                         <div className="flex-1">
                           <h3 className="text-xl font-bold mb-1">{rec.policy.name}</h3>
-                          <p className="text-muted-foreground text-sm mb-3">
-                            {rec.policy.insurer.companyName}
-                          </p>
+                          <div className="mb-3 flex items-center gap-2">
+                            <span className="text-muted-foreground text-sm">{rec.policy.insurer.companyName}</span>
+                            <InsurerLogo companyName={rec.policy.insurer.companyName} />
+                          </div>
                           {rec.matchReasons.length > 0 && (
                             <ul className="mb-4 space-y-1">
                               {rec.matchReasons.map((reason) => (

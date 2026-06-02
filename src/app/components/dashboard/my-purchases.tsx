@@ -20,6 +20,7 @@ import {
   rescheduleAgentCall,
   type PurchaseSummary,
 } from "@/lib/purchase-api";
+import { InsurerLogo } from "./insurer-logo";
 
 export function MyPurchases() {
   const navigate = useNavigate();
@@ -175,6 +176,9 @@ export function MyPurchases() {
               <p className="text-sm text-muted-foreground">
                 {purchase.insurer?.companyName} · {purchase.policy?.category}
               </p>
+              <div className="mt-2">
+                <InsurerLogo companyName={purchase.insurer?.companyName} />
+              </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {purchase.policy?.coverageSummary}
               </p>

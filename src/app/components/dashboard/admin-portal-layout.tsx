@@ -109,9 +109,9 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
         initial={false}
         animate={{ width: sidebarOpen ? 280 : 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0"
+        className="sticky top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0"
       >
-        <div className="w-[280px] flex flex-col h-full min-h-screen">
+        <div className="w-[280px] flex flex-col h-full">
           <div className="p-6 border-b border-sidebar-border">
             <Link to={basePath} className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
@@ -122,7 +122,7 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
             <div className="mt-3 text-sm text-muted-foreground">{portalLabel}</div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
+          <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 min-h-0">
             {menuItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
@@ -150,7 +150,7 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
             })}
           </nav>
 
-          <div className="p-4 border-t border-sidebar-border">
+          <div className="p-4 border-t border-sidebar-border mt-auto shrink-0">
             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sidebar-accent/40">
               <PortalProfileAvatar />
               <div className="flex-1 min-w-0">

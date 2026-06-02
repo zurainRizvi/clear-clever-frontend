@@ -251,14 +251,14 @@ export function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 relative overflow-hidden">
+      <section id="contact" className="py-20 px-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/10 to-primary/10" />
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Ready to Find Your Perfect Insurance?
           </h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Join 50,000+ happy customers and start comparing policies today
+            <p className="text-xl text-muted-foreground mb-8">
+            Join thousands of users and compare policies for free
           </p>
           <Link to="/signup">
             <button className="px-10 py-5 bg-gradient-to-r from-primary to-secondary text-white rounded-xl text-lg hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 flex items-center gap-2 mx-auto group">
@@ -285,27 +285,27 @@ export function LandingPage() {
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-3">Product</h4>
+              <h4 className="font-semibold mb-3">Platform</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Features</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Insurance Types</a></li>
+                <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
+                <li><a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a></li>
+                <li><a href="#contact" className="hover:text-foreground transition-colors">Contact</a></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-3">Company</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
+                <li><Link to="/about" className="hover:text-foreground transition-colors">About ClearClever</Link></li>
+                <li><Link to="/partners" className="hover:text-foreground transition-colors">Partners</Link></li>
+                <li><Link to="/help-center" className="hover:text-foreground transition-colors">Help center</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-3">Legal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Cookie Policy</a></li>
+                <li><Link to="/privacy" className="hover:text-foreground transition-colors">Privacy policy</Link></li>
+                <li><Link to="/terms" className="hover:text-foreground transition-colors">Terms of service</Link></li>
+                <li><Link to="/cookies" className="hover:text-foreground transition-colors">Cookie policy</Link></li>
               </ul>
             </div>
           </div>

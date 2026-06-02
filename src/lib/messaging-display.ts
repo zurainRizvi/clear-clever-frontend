@@ -16,7 +16,13 @@ export function titleForConversation(
       participant.role !== "admin" &&
       participant.role !== "superadmin"
   );
-  if (other) return other.fullName;
+  if (other) {
+    const preferred = other.fullName?.trim();
+    if (preferred) return preferred;
+    const emailName = other.email?.split("@")[0]?.trim();
+    if (emailName) return emailName;
+    return other.role === "insurer" ? "Insurer" : "Policy Seeker";
+  }
   if (conversation.type === "user_support") return "ClearClever Support";
   if (conversation.type === "insurer_support") return "Provider Support";
   if (conversation.type === "internal_admin") return "Internal Staff Chat";

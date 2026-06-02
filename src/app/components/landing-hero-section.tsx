@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -146,6 +146,7 @@ const PARTNER_LOGOS = [
 
 const CAROUSEL_INTERVAL_MS = 5000;
 const IMAGE_CYCLE_MS = 2200;
+const NAVBAR_HEIGHT_PX = 88;
 
 function DotPattern() {
   return (
@@ -332,8 +333,8 @@ function PartnerLogoMarquee() {
 
   return (
     <div className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#F8FAFF] to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#F8FAFF] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-background to-transparent" />
       <motion.div
         className="flex w-max items-center gap-14 px-4 opacity-90"
         animate={{ x: ["0%", "-50%"] }}
@@ -344,7 +345,7 @@ function PartnerLogoMarquee() {
             key={`${partner.name}-${index}`}
             src={partner.src}
             alt={partner.name}
-            className="h-8 w-auto max-w-[120px] shrink-0 object-contain md:h-9"
+            className="h-10 w-auto max-w-[150px] shrink-0 object-contain md:h-11 md:max-w-[170px]"
           />
         ))}
       </motion.div>
@@ -353,10 +354,46 @@ function PartnerLogoMarquee() {
 }
 
 export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void }) {
+  const [scrolled, setScrolled] = useState(false);
+  const navLinks = useMemo(
+    () =>
+      NAV_LINKS.map((item) => ({
+        item,
+        href:
+          item === "FAQ"
+            ? "#faq"
+            : item === "How It Works"
+              ? "#how-it-works"
+              : `#${item.toLowerCase()}`,
+      })),
+    []
+  );
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToHash = (hash: string) => {
+    const id = hash.replace("#", "");
+    const el = document.getElementById(id);
+    if (!el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY - NAVBAR_HEIGHT_PX - 8;
+    window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+  };
+
   return (
-    <div className="font-[Inter,sans-serif] bg-[#F8FAFF] text-[#0F172A]">
+    <div className="font-[Inter,sans-serif] bg-background text-foreground">
       {/* Navbar */}
-      <header className="sticky top-0 z-50 h-[88px] border-b border-[#F1F5F9] bg-white">
+      <header
+        className={`sticky top-0 z-50 h-[88px] border-b backdrop-blur transition-all ${
+          scrolled
+            ? "border-border bg-background/90 shadow-md"
+            : "border-border bg-background/95 shadow-none"
+        }`}
+      >
         <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between px-5 md:px-10 xl:px-20">
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
             <ShieldCheck className="h-8 w-8 text-[#2563EB]" strokeWidth={2.25} />
@@ -364,18 +401,16 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
           </Link>
 
           <nav className="hidden items-center gap-10 lg:flex">
-            {NAV_LINKS.map((item) => {
-              const href =
-                item === "FAQ"
-                  ? "#faq"
-                  : item === "How It Works"
-                    ? "#how-it-works"
-                    : `#${item.toLowerCase()}`;
+            {navLinks.map(({ item, href }) => {
               return (
                 <a
                   key={item}
                   href={href}
-                  className="text-[15px] font-medium text-[#334155] transition-colors hover:text-[#2563EB]"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    scrollToHash(href);
+                  }}
+                  className="text-[15px] font-medium text-muted-foreground transition-colors hover:text-primary"
                 >
                   {item}
                 </a>
@@ -384,7 +419,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <DarkModeToggle className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#E2E8F0] bg-white text-[#334155] shadow-none transition-colors hover:border-[#2563EB]/30 hover:bg-[#F8FAFF]" />
+            <DarkModeToggle className="relative flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-none transition-colors hover:border-primary/30 hover:bg-accent" />
             <Link
               to="/signin"
               className="hidden px-4 py-2 text-[15px] font-medium text-[#0F172A] transition-colors hover:text-[#2563EB] sm:inline-block"
@@ -493,7 +528,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
               transition={{ duration: 0.65, delay: 0.12 }}
               className="relative mx-auto w-full max-w-xl lg:max-w-none"
             >
-              <div className="relative overflow-visible rounded-[32px] bg-white p-6 shadow-[0_30px_60px_rgba(15,23,42,0.08)] md:p-10">
+              <div className="relative overflow-visible rounded-[32px] border border-border bg-card p-6 shadow-[0_30px_60px_rgba(15,23,42,0.08)] md:p-10 md:pb-16">
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <h2 className="text-xl font-bold text-[#0F172A] md:text-2xl">
@@ -527,7 +562,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                 <motion.div
                   animate={{ y: [0, 5, 0] }}
                   transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                  className="absolute -bottom-4 left-1/2 z-20 hidden -translate-x-1/2 rounded-2xl border border-[#E2E8F0] bg-white px-5 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] md:block"
+                  className="absolute -bottom-7 left-1/2 z-20 hidden -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] md:block"
                 >
                   <div className="flex items-center gap-3 whitespace-nowrap">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ECFDF5]">

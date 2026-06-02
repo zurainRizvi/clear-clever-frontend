@@ -392,11 +392,10 @@ export function MessagesPanel({
             {loadingConversations ? (
               <div className="p-6 text-center text-muted-foreground">Loading conversations...</div>
             ) : onSupportTab && !existingSupportConversation ? (
-              <SupportChatCta
-                onClick={() => void openSupportChat()}
-                disabled={creatingSupport}
-                label={creatingSupport ? "Starting…" : "Chat with us"}
-              />
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                Press <span className="font-semibold text-foreground">Chat with us</span> on the right to
+                start a secure conversation with the ClearClever team.
+              </div>
             ) : conversations.length === 0 ? (
               <div className="p-6 text-center text-muted-foreground">
                 No conversations in this tab yet.
@@ -493,6 +492,12 @@ export function MessagesPanel({
                 ) : (
                   messages.map((message) => {
                     const mine = message.senderUserId === user?.id;
+                    const senderName =
+                      activeConversation?.participants.find((participant) => participant.id === message.senderUserId)
+                        ?.fullName ??
+                      activeConversation?.participants.find((participant) => participant.id === message.senderUserId)
+                        ?.email?.split("@")[0] ??
+                      "User";
                     return (
                       <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                         <div
@@ -502,6 +507,9 @@ export function MessagesPanel({
                               : "bg-card border border-border"
                           }`}
                         >
+                          <p className={`text-xs mb-1 ${mine ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                            {mine ? "You" : senderName}
+                          </p>
                           <p className="text-sm whitespace-pre-wrap">{message.body}</p>
                           {message.attachments?.length ? (
                             <div className="mt-3 space-y-2">
