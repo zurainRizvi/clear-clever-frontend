@@ -14,6 +14,15 @@ import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { ApiError } from "@/lib/api";
 import {
+  createAssistantThread,
+  deriveThreadTitle,
+  fromStoredMessages,
+  loadAssistantChatStore,
+  saveAssistantChatStore,
+  toStoredMessages,
+  type AssistantChatThread,
+} from "@/lib/assistant-chat-storage";
+import {
   explainRecommendation,
   getAssistantStatus,
   sendAssistantChat,
@@ -21,6 +30,7 @@ import {
 } from "@/lib/assistant-api";
 import { useAssistantWidget } from "./assistant-widget-context";
 import { AssistantMessageMarkdown } from "./assistant-message-markdown";
+import { AssistantThreadSidebar } from "./assistant-thread-sidebar";
 import { getAssistantSuggestions } from "./assistant-suggestions";
 import { getAssistantSessionKey, getAssistantWelcomeMessage } from "./assistant-welcome";
 import { normalizeAssistantMarkdown } from "@/lib/assistant-markdown";
@@ -91,12 +101,19 @@ export function AssistantWidget() {
 
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [threads, setThreads] = useState<AssistantChatThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [sending, setSending] = useState(false);
   const [explaining, setExplaining] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const persistKey = useMemo(() => {
+    if (!isAuthenticated || !user?.id || !user.role) return null;
+    return { userId: user.id, role: user.role };
+  }, [isAuthenticated, user?.id, user?.role]);
 
   const sessionKey = useMemo(
     () =>
@@ -119,13 +136,77 @@ export function AssistantWidget() {
     [isAuthenticated, user?.role, user?.fullName]
   );
 
+  const persistStore = useCallback(
+    (nextThreads: AssistantChatThread[], nextActiveId: string | null) => {
+      if (!persistKey) return;
+      saveAssistantChatStore(persistKey.userId, persistKey.role, {
+        activeThreadId: nextActiveId,
+        threads: nextThreads,
+      });
+    },
+    [persistKey]
+  );
+
+  const applyThreadMessages = useCallback(
+    (threadId: string | null, nextMessages: ChatMessage[]) => {
+      if (!persistKey || !threadId) return;
+      const stored = toStoredMessages(nextMessages);
+      setThreads((prev) => {
+        const next = prev.map((thread) =>
+          thread.id === threadId
+            ? {
+                ...thread,
+                messages: stored,
+                title: deriveThreadTitle(stored),
+                updatedAt: new Date().toISOString(),
+              }
+            : thread
+        );
+        persistStore(next, threadId);
+        return next;
+      });
+    },
+    [persistKey, persistStore]
+  );
+
+  const ensureActiveThread = useCallback((): string | null => {
+    if (!persistKey) return null;
+    if (activeThreadId && threads.some((thread) => thread.id === activeThreadId)) {
+      return activeThreadId;
+    }
+    const thread = createAssistantThread();
+    const nextThreads = [thread, ...threads];
+    setThreads(nextThreads);
+    setActiveThreadId(thread.id);
+    persistStore(nextThreads, thread.id);
+    return thread.id;
+  }, [persistKey, activeThreadId, threads, persistStore]);
+
+  useEffect(() => {
+    if (!persistKey) {
+      setThreads([]);
+      setActiveThreadId(null);
+      return;
+    }
+    const store = loadAssistantChatStore(persistKey.userId, persistKey.role);
+    const resolvedActiveId = store.activeThreadId ?? store.threads[0]?.id ?? null;
+    const activeThread = store.threads.find((thread) => thread.id === resolvedActiveId);
+    setThreads(store.threads);
+    setActiveThreadId(resolvedActiveId);
+    setMessages(activeThread ? fromStoredMessages(activeThread.messages) : []);
+  }, [persistKey?.userId, persistKey?.role]);
+
   useEffect(() => {
     if (prevSessionKeyRef.current === sessionKey) return;
     prevSessionKeyRef.current = sessionKey;
     setMessages([]);
     setPendingFiles([]);
     setInput("");
-  }, [sessionKey]);
+    if (!persistKey) {
+      setThreads([]);
+      setActiveThreadId(null);
+    }
+  }, [sessionKey, persistKey]);
 
   const suggestions = useMemo(
     () =>
@@ -156,6 +237,8 @@ export function AssistantWidget() {
       const trimmed = text.trim();
       if ((!trimmed && files.length === 0) || sending) return;
 
+      const threadId = ensureActiveThread();
+
       const attachmentPayloads: AssistantAttachmentPayload[] = [];
       try {
         for (const pf of files) {
@@ -182,7 +265,9 @@ export function AssistantWidget() {
         createdAt: new Date(),
         attachmentNames: files.map((f) => f.file.name),
       };
-      setMessages((prev) => [...prev, userMsg]);
+      const withUser = [...messages, userMsg];
+      setMessages(withUser);
+      if (threadId) applyThreadMessages(threadId, withUser);
       setInput("");
       setPendingFiles([]);
       setSending(true);
@@ -196,26 +281,38 @@ export function AssistantWidget() {
           sessionKey,
           auth: isAuthenticated,
         });
-        setMessages((prev) => [
-          ...prev,
+        const withAssistant = [
+          ...withUser,
           {
             id: `a-${Date.now()}`,
-            role: "assistant",
+            role: "assistant" as const,
             content: normalizeAssistantMarkdown(result.reply),
             createdAt: new Date(),
           },
-        ]);
+        ];
+        setMessages(withAssistant);
+        if (threadId) applyThreadMessages(threadId, withAssistant);
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : "Assistant could not reply");
       } finally {
         setSending(false);
       }
     },
-    [sending, messages, category, isAuthenticated, pendingFiles, sessionKey]
+    [
+      sending,
+      messages,
+      category,
+      isAuthenticated,
+      pendingFiles,
+      sessionKey,
+      ensureActiveThread,
+      applyThreadMessages,
+    ]
   );
 
   useEffect(() => {
     if (!isOpen || !presetReply) return;
+    const threadId = ensureActiveThread();
     const next: ChatMessage[] = [];
     if (presetUserMessage) {
       next.push({
@@ -232,8 +329,16 @@ export function AssistantWidget() {
       createdAt: new Date(),
     });
     setMessages(next);
+    if (threadId) applyThreadMessages(threadId, next);
     clearPreset();
-  }, [isOpen, presetReply, presetUserMessage, clearPreset]);
+  }, [
+    isOpen,
+    presetReply,
+    presetUserMessage,
+    clearPreset,
+    ensureActiveThread,
+    applyThreadMessages,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -246,24 +351,27 @@ export function AssistantWidget() {
       toast.message("Sign in as a policy seeker to get personalized explanations");
       return;
     }
+    const threadId = ensureActiveThread();
     setExplaining(true);
     try {
       const result = await explainRecommendation({ category });
-      setMessages((prev) => [
-        ...prev,
+      const next = [
+        ...messages,
         {
           id: `u-${Date.now()}`,
-          role: "user",
+          role: "user" as const,
           content: `Explain why ${result.policyName} is recommended for me.`,
           createdAt: new Date(),
         },
         {
           id: `a-${Date.now()}`,
-          role: "assistant",
+          role: "assistant" as const,
           content: normalizeAssistantMarkdown(result.reply),
           createdAt: new Date(),
         },
-      ]);
+      ];
+      setMessages(next);
+      if (threadId) applyThreadMessages(threadId, next);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not explain recommendation");
     } finally {
@@ -292,21 +400,74 @@ export function AssistantWidget() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const resetChatState = useCallback(() => {
+  const resetGuestChatState = useCallback(() => {
     setMessages([]);
     setPendingFiles([]);
     setInput("");
   }, []);
 
-  const clearChat = () => {
-    resetChatState();
+  const startNewChat = useCallback(() => {
+    if (persistKey) {
+      const thread = createAssistantThread();
+      const nextThreads = [thread, ...threads];
+      setThreads(nextThreads);
+      setActiveThreadId(thread.id);
+      setMessages([]);
+      setPendingFiles([]);
+      setInput("");
+      persistStore(nextThreads, thread.id);
+      toast.message("New chat started");
+      return;
+    }
+    resetGuestChatState();
     toast.message("Chat cleared");
-  };
+  }, [persistKey, threads, persistStore, resetGuestChatState]);
+
+  const selectThread = useCallback(
+    (threadId: string) => {
+      const thread = threads.find((item) => item.id === threadId);
+      if (!thread) return;
+      setActiveThreadId(threadId);
+      setMessages(fromStoredMessages(thread.messages));
+      setPendingFiles([]);
+      setInput("");
+      persistStore(threads, threadId);
+    },
+    [threads, persistStore]
+  );
+
+  const deleteThread = useCallback(
+    (threadId: string) => {
+      const nextThreads = threads.filter((thread) => thread.id !== threadId);
+      let nextActiveId = activeThreadId;
+      if (activeThreadId === threadId) {
+        nextActiveId = nextThreads[0]?.id ?? null;
+        setMessages(nextActiveId ? fromStoredMessages(nextThreads[0]!.messages) : []);
+        setPendingFiles([]);
+        setInput("");
+      }
+      setThreads(nextThreads);
+      setActiveThreadId(nextActiveId);
+      persistStore(nextThreads, nextActiveId);
+    },
+    [threads, activeThreadId, persistStore]
+  );
 
   const handleClose = useCallback(() => {
-    resetChatState();
+    if (!persistKey) {
+      resetGuestChatState();
+    } else if (activeThreadId) {
+      applyThreadMessages(activeThreadId, messages);
+    }
     closeAssistant();
-  }, [resetChatState, closeAssistant]);
+  }, [
+    persistKey,
+    resetGuestChatState,
+    activeThreadId,
+    messages,
+    applyThreadMessages,
+    closeAssistant,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -316,6 +477,10 @@ export function AssistantWidget() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, handleClose]);
+
+  const panelWidthClass = persistKey
+    ? "w-[min(100vw-1.5rem,680px)]"
+    : "w-[min(100vw-1.5rem,440px)]";
 
   if (configured === false) {
     return null;
@@ -342,256 +507,262 @@ export function AssistantWidget() {
         <>
           <button
             type="button"
-            className="fixed inset-0 z-40 cursor-default bg-slate-900/25"
+            className="fixed inset-0 z-40 cursor-default bg-slate-900/25 dark:bg-black/50"
             aria-label="Close assistant"
             onClick={handleClose}
           />
           <div
-            className="fixed bottom-4 right-4 z-50 flex w-[min(100vw-1.5rem,440px)] flex-col overflow-hidden border border-slate-900/[0.06] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.10)] sm:bottom-6 sm:right-6"
+            className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.10)] dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:bottom-6 sm:right-6`}
             style={{ borderRadius: "24px", maxHeight: "min(90vh, 720px)", height: "min(90vh, 720px)" }}
             role="dialog"
             aria-modal="true"
             aria-label="ClearClever AI Assistant"
           >
-          {/* Header */}
-          <header
-            className="flex shrink-0 items-center justify-between px-5 py-4 text-white"
-            style={{
-              background: "linear-gradient(135deg, #0A2EA8 0%, #2563EB 100%)",
-            }}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <Shield className="h-6 w-6" />
-              </div>
-              <div className="min-w-0">
-                <p className="flex items-center gap-1.5 font-bold text-lg tracking-tight truncate">
-                  ClearClever Assistant
-                  <Sparkles className="h-4 w-4 shrink-0 opacity-90" />
-                </p>
-                <p className="text-sm font-medium text-white/75">
-                  {configured === null ? "Connecting…" : "Powered by Gemini"}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={clearChat}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
-                aria-label="Clear chat history"
-                title="Clear chat"
-              >
-                <History className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
-                aria-label="Close assistant"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </header>
+            <div className="flex min-h-0 flex-1">
+              {persistKey && (
+                <AssistantThreadSidebar
+                  threads={threads}
+                  activeThreadId={activeThreadId}
+                  onSelectThread={selectThread}
+                  onNewThread={startNewChat}
+                  onDeleteThread={deleteThread}
+                />
+              )}
 
-          {!isAuthenticated ? (
-            <p className="shrink-0 text-xs text-slate-600 bg-slate-50 px-5 py-2 border-b border-slate-100">
-              Guest mode — general platform guidance. Sign in for personalized answers.
-            </p>
-          ) : (
-            <p className="shrink-0 text-xs text-slate-600 bg-blue-50/80 px-5 py-2 border-b border-slate-100">
-              Signed in as{" "}
-              <span className="font-semibold capitalize">
-                {user?.role === "user" ? "policy seeker" : user?.role?.replace("_", " ")}
-              </span>
-              — answers use your account data only.
-            </p>
-          )}
-
-          {isAuthenticated && user?.role === "user" && category && (
-            <div className="shrink-0 px-5 py-2 border-b border-slate-100 bg-white">
-              <button
-                type="button"
-                disabled={explaining || sending}
-                onClick={() => void handleExplainTop()}
-                className="text-xs font-semibold text-blue-600 hover:underline disabled:opacity-50"
-              >
-                {explaining ? "Explaining top match…" : "Explain my top recommendation"}
-              </button>
-            </div>
-          )}
-
-          {/* Body */}
-          <div
-            ref={scrollRef}
-            className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5"
-            style={{ background: "#F8FAFC" }}
-          >
-            {messages.length === 0 && (
-              <div className="flex gap-3 max-w-[92%]">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <div
-                  className="rounded-3xl bg-white px-4 py-3 shadow-[0_10px_40px_rgba(15,23,42,0.06)]"
+              <div className="flex min-w-0 flex-1 flex-col">
+                <header
+                  className="flex shrink-0 items-center justify-between px-5 py-4 text-white"
+                  style={{
+                    background: "linear-gradient(135deg, #0A2EA8 0%, #2563EB 100%)",
+                  }}
                 >
-                  <AssistantMessageMarkdown content={welcomeMessage} />
-                </div>
-              </div>
-            )}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                      style={{ background: "rgba(255,255,255,0.12)" }}
+                    >
+                      <Shield className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 font-bold text-lg tracking-tight truncate">
+                        ClearClever Assistant
+                        <Sparkles className="h-4 w-4 shrink-0 opacity-90" />
+                      </p>
+                      <p className="text-sm font-medium text-white/75">
+                        {configured === null ? "Connecting…" : "Powered by Gemini"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={startNewChat}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
+                      aria-label="Start new chat"
+                      title={persistKey ? "New chat" : "Clear chat"}
+                    >
+                      <History className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClose}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
+                      aria-label="Close assistant"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                </header>
 
-            {messages.map((msg) =>
-              msg.role === "assistant" ? (
-                <div key={msg.id} className="flex gap-3 max-w-[92%]">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                    <Sparkles className="h-5 w-5" />
+                {!isAuthenticated ? (
+                  <p className="shrink-0 text-xs text-slate-600 bg-slate-50 px-5 py-2 border-b border-slate-100 dark:text-slate-300 dark:bg-slate-800/80 dark:border-slate-700">
+                    Guest mode — general platform guidance. Sign in for personalized answers and saved chats.
+                  </p>
+                ) : (
+                  <p className="shrink-0 text-xs text-slate-600 bg-blue-50/80 px-5 py-2 border-b border-slate-100 dark:text-slate-300 dark:bg-blue-950/40 dark:border-slate-700">
+                    Signed in as{" "}
+                    <span className="font-semibold capitalize">
+                      {user?.role === "user" ? "policy seeker" : user?.role?.replace("_", " ")}
+                    </span>
+                    — chats are saved on this device.
+                  </p>
+                )}
+
+                {isAuthenticated && user?.role === "user" && category && (
+                  <div className="shrink-0 px-5 py-2 border-b border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-900">
+                    <button
+                      type="button"
+                      disabled={explaining || sending}
+                      onClick={() => void handleExplainTop()}
+                      className="text-xs font-semibold text-blue-600 hover:underline disabled:opacity-50 dark:text-blue-400"
+                    >
+                      {explaining ? "Explaining top match…" : "Explain my top recommendation"}
+                    </button>
                   </div>
-                  <div className="rounded-3xl bg-white px-4 py-3 shadow-[0_10px_40px_rgba(15,23,42,0.06)] min-w-0">
-                    <AssistantMessageMarkdown content={msg.content} />
-                  </div>
+                )}
+
+                <div
+                  ref={scrollRef}
+                  className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5 bg-slate-50 dark:bg-slate-950"
+                >
+                  {messages.length === 0 && (
+                    <div className="flex gap-3 max-w-[92%]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div className="rounded-3xl bg-white px-4 py-3 shadow-[0_10px_40px_rgba(15,23,42,0.06)] dark:bg-slate-800 dark:shadow-[0_10px_40px_rgba(0,0,0,0.25)]">
+                        <AssistantMessageMarkdown content={welcomeMessage} />
+                      </div>
+                    </div>
+                  )}
+
+                  {messages.map((msg) =>
+                    msg.role === "assistant" ? (
+                      <div key={msg.id} className="flex gap-3 max-w-[92%]">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                          <Sparkles className="h-5 w-5" />
+                        </div>
+                        <div className="rounded-3xl bg-white px-4 py-3 shadow-[0_10px_40px_rgba(15,23,42,0.06)] min-w-0 dark:bg-slate-800 dark:shadow-[0_10px_40px_rgba(0,0,0,0.25)]">
+                          <AssistantMessageMarkdown content={msg.content} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={msg.id} className="flex flex-col items-end gap-1">
+                        <div
+                          className="max-w-[85%] rounded-full px-5 py-3 text-[15px] font-medium text-white shadow-[0_16px_40px_rgba(37,99,235,0.25)]"
+                          style={{
+                            background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
+                          }}
+                        >
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          {msg.attachmentNames && msg.attachmentNames.length > 0 && (
+                            <p className="mt-1 text-xs text-white/80">
+                              📎 {msg.attachmentNames.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-slate-500 pr-1 dark:text-slate-400">
+                          <span>{formatTime(msg.createdAt)}</span>
+                          <CheckCheck className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {(sending || explaining) && (
+                    <div className="flex gap-3 items-center text-slate-500 text-sm dark:text-slate-400">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                      Thinking…
+                    </div>
+                  )}
+
+                  {showSuggestions && (
+                    <div className="flex flex-wrap gap-2 pl-12 pt-1">
+                      {suggestions.map((chip) => {
+                        const Icon = chip.icon;
+                        return (
+                          <button
+                            key={chip.id}
+                            type="button"
+                            onClick={() => void sendMessage(chip.prompt)}
+                            className="inline-flex items-center gap-2 rounded-full border border-blue-600/12 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:border-blue-600/25 hover:bg-blue-50/50 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                          >
+                            <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            {chip.text}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div key={msg.id} className="flex flex-col items-end gap-1">
-                  <div
-                    className="max-w-[85%] rounded-full px-5 py-3 text-[15px] font-medium text-white shadow-[0_16px_40px_rgba(37,99,235,0.25)]"
-                    style={{
-                      background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
+
+                <div className="shrink-0 border-t border-slate-200 bg-white px-4 pt-3 pb-3 dark:border-slate-700 dark:bg-slate-900">
+                  {pendingFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {pendingFiles.map((pf) => (
+                        <span
+                          key={pf.id}
+                          className="inline-flex items-center gap-2 rounded-xl border border-blue-600/12 bg-slate-50 px-2 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          {pf.previewUrl ? (
+                            <img src={pf.previewUrl} alt="" className="h-8 w-8 rounded object-cover" />
+                          ) : (
+                            <Paperclip className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          )}
+                          <span className="max-w-[120px] truncate">{pf.file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingFiles((prev) => prev.filter((f) => f.id !== pf.id))
+                            }
+                            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                            aria-label="Remove file"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <form
+                    className="flex flex-col gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void sendMessage(input);
                     }}
                   >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                    {msg.attachmentNames && msg.attachmentNames.length > 0 && (
-                      <p className="mt-1 text-xs text-white/80">
-                        📎 {msg.attachmentNames.join(", ")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 text-[11px] text-slate-500 pr-1">
-                    <span>{formatTime(msg.createdAt)}</span>
-                    <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
-                  </div>
+                    <div className="flex items-center gap-2 rounded-full border-2 border-blue-600/12 bg-slate-50 px-3 py-2 shadow-[0_8px_30px_rgba(15,23,42,0.04)] dark:border-slate-600 dark:bg-slate-800">
+                      <input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Ask ClearClever anything..."
+                        disabled={sending || configured === null}
+                        className="flex-1 min-w-0 bg-transparent border-0 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+                        maxLength={2000}
+                      />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept={ALLOWED_TYPES.join(",")}
+                        multiple
+                        className="hidden"
+                        onChange={(e) => onPickFiles(e.target.files)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={sending || pendingFiles.length >= MAX_FILES}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-600/12 bg-white text-blue-600 shadow-sm hover:bg-blue-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-slate-800"
+                        aria-label="Attach files"
+                        title="Attach images or PDF (max 3, 4MB each)"
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={
+                          sending ||
+                          configured === null ||
+                          (!input.trim() && pendingFiles.length === 0)
+                        }
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_16px_30px_rgba(37,99,235,0.30)] disabled:opacity-50"
+                        style={{
+                          background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
+                        }}
+                        aria-label="Send message"
+                      >
+                        <Send className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      <Shield className="h-3.5 w-3.5 shrink-0" />
+                      AI guidance only — not legal or financial advice. Confirm details with your insurer.
+                    </p>
+                  </form>
                 </div>
-              )
-            )}
-
-            {(sending || explaining) && (
-              <div className="flex gap-3 items-center text-slate-500 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                Thinking…
               </div>
-            )}
-
-            {showSuggestions && (
-              <div className="flex flex-wrap gap-2 pl-12 pt-1">
-                {suggestions.map((chip) => {
-                  const Icon = chip.icon;
-                  return (
-                    <button
-                      key={chip.id}
-                      type="button"
-                      onClick={() => void sendMessage(chip.prompt)}
-                      className="inline-flex items-center gap-2 rounded-full border border-blue-600/12 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:border-blue-600/25 hover:bg-blue-50/50 transition-colors"
-                    >
-                      <Icon className="h-4 w-4 text-blue-600" />
-                      {chip.text}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Input */}
-          <div className="shrink-0 border-t border-slate-900/[0.06] bg-white px-4 pt-3 pb-3">
-            {pendingFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                {pendingFiles.map((pf) => (
-                  <span
-                    key={pf.id}
-                    className="inline-flex items-center gap-2 rounded-xl border border-blue-600/12 bg-slate-50 px-2 py-1 text-xs text-slate-700"
-                  >
-                    {pf.previewUrl ? (
-                      <img src={pf.previewUrl} alt="" className="h-8 w-8 rounded object-cover" />
-                    ) : (
-                      <Paperclip className="h-4 w-4 text-blue-600" />
-                    )}
-                    <span className="max-w-[120px] truncate">{pf.file.name}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPendingFiles((prev) => prev.filter((f) => f.id !== pf.id))
-                      }
-                      className="text-slate-400 hover:text-slate-700"
-                      aria-label="Remove file"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <form
-              className="flex flex-col gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void sendMessage(input);
-              }}
-            >
-              <div
-                className="flex items-center gap-2 rounded-full border-2 border-blue-600/12 bg-slate-50 px-3 py-2 shadow-[0_8px_30px_rgba(15,23,42,0.04)]"
-              >
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask ClearClever anything..."
-                  disabled={sending || configured === null}
-                  className="flex-1 min-w-0 bg-transparent border-0 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
-                  maxLength={2000}
-                />
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={ALLOWED_TYPES.join(",")}
-                  multiple
-                  className="hidden"
-                  onChange={(e) => onPickFiles(e.target.files)}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={sending || pendingFiles.length >= MAX_FILES}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-600/12 bg-white text-blue-600 shadow-sm hover:bg-blue-50 disabled:opacity-50"
-                  aria-label="Attach files"
-                  title="Attach images or PDF (max 3, 4MB each)"
-                >
-                  <Paperclip className="h-5 w-5" />
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    sending ||
-                    configured === null ||
-                    (!input.trim() && pendingFiles.length === 0)
-                  }
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_16px_30px_rgba(37,99,235,0.30)] disabled:opacity-50"
-                  style={{
-                    background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
-                  }}
-                  aria-label="Send message"
-                >
-                  <Send className="h-5 w-5" />
-                </button>
-              </div>
-              <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                <Shield className="h-3.5 w-3.5 shrink-0" />
-                AI guidance only — not legal or financial advice. Confirm details with your insurer.
-              </p>
-            </form>
-          </div>
+            </div>
           </div>
         </>
       )}

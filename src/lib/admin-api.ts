@@ -139,6 +139,54 @@ export interface InfrastructureServiceStatus {
   url?: string;
 }
 
+export interface AssistantUsageSummary {
+  serverStartedAt: string;
+  lastRequestAt?: string;
+  totalApiCalls: number;
+  successfulApiCalls: number;
+  failedApiCalls: number;
+  rateLimitErrors: number;
+  chatApiCalls: number;
+  explainApiCalls: number;
+  probeApiCalls: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalTokens: number;
+  requestsLastMinute: number;
+  recentErrors: Array<{ at: string; route: string; message: string }>;
+}
+
+export interface AssistantHealthReport {
+  configured: boolean;
+  apiKeySet: boolean;
+  ok: boolean;
+  latencyMs: number;
+  label: string;
+  detail?: string;
+  model: string;
+  modelResourceName?: string;
+  displayName?: string;
+  modelAvailable: boolean;
+  supportedGenerationMethods: string[];
+  limits: {
+    configuredMaxOutputTokens: number;
+    modelInputTokenLimit?: number;
+    modelOutputTokenLimit?: number;
+    assistantRateLimitPerMin: number;
+    anonymousRateLimitPerMin: number;
+    maxAttachmentsPerMessage: number;
+    maxBytesPerAttachment: number;
+    allowedAttachmentMimeTypes: string[];
+  };
+  usage: AssistantUsageSummary;
+  internalRateLimits: {
+    activeBuckets: number;
+    totalTrackedRequests: number;
+  };
+  diagnostics: string[];
+  notes: string[];
+}
+
 export interface HealthStatus {
   service: string;
   environment: string;
@@ -162,9 +210,11 @@ export interface HealthStatus {
     vercel: InfrastructureServiceStatus;
     mongodb: InfrastructureServiceStatus;
     brevo: InfrastructureServiceStatus;
+    gemini: InfrastructureServiceStatus;
     checkedAt: string;
     environment: string;
   };
+  assistant?: AssistantHealthReport;
   timestamp: string;
 }
 
@@ -189,7 +239,7 @@ export async function fetchFraudSignals(category: FraudCategory): Promise<{
 }
 
 export async function fetchHealth(): Promise<HealthStatus> {
-  return apiRequest("/api/health");
+  return apiRequest("/api/admin/health", { auth: true });
 }
 
 export async function fetchAdminInsurers(): Promise<{

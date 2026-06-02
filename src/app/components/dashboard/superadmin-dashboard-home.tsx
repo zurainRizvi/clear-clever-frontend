@@ -85,7 +85,7 @@ export function SuperadminDashboardHome() {
     },
     {
       title: "System health",
-      description: "API, database, and email readiness",
+      description: "API, database, email, and Gemini AI assistant",
       href: "/admin-dashboard/health",
       icon: Activity,
     },

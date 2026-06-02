@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { Activity, Bot, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
-import { fetchHealth, type HealthStatus, type InfrastructureServiceStatus } from "@/lib/admin-api";
+import {
+  fetchHealth,
+  type AssistantHealthReport,
+  type HealthStatus,
+  type InfrastructureServiceStatus,
+} from "@/lib/admin-api";
 
 const REFRESH_MS = 30_000;
 
 function statusTone(ok: boolean) {
   return ok ? "text-success" : "text-destructive";
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
 }
 
 function ServiceRow({ service }: { service: InfrastructureServiceStatus }) {
@@ -27,6 +38,121 @@ function ServiceRow({ service }: { service: InfrastructureServiceStatus }) {
           <p className="text-[10px] text-muted-foreground">{service.latencyMs}ms</p>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function MetricTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-accent/20 p-3">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold mt-1">{value}</p>
+      {sub ? <p className="text-xs text-muted-foreground mt-0.5">{sub}</p> : null}
+    </div>
+  );
+}
+
+function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
+  const usage = assistant.usage;
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <Bot className="w-5 h-5 text-primary" />
+            Gemini AI assistant
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Model: <span className="font-medium text-foreground">{assistant.displayName ?? assistant.model}</span>
+            {assistant.modelResourceName ? ` · ${assistant.modelResourceName}` : ""}
+          </p>
+        </div>
+        <span className={`text-sm font-medium ${statusTone(assistant.ok)}`}>
+          {assistant.configured ? (assistant.ok ? "Operational" : "Needs attention") : "Not configured"}
+        </span>
+      </div>
+
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <MetricTile
+          label="API calls (since deploy)"
+          value={String(usage.totalApiCalls)}
+          sub={`${usage.successfulApiCalls} ok · ${usage.failedApiCalls} failed`}
+        />
+        <MetricTile
+          label="Tokens used"
+          value={usage.totalTokens.toLocaleString()}
+          sub={`${usage.totalPromptTokens.toLocaleString()} prompt · ${usage.totalCompletionTokens.toLocaleString()} completion`}
+        />
+        <MetricTile
+          label="429 / busy errors"
+          value={String(usage.rateLimitErrors)}
+          sub={`${usage.requestsLastMinute} call(s) in last minute`}
+        />
+        <MetricTile
+          label="Chat / explain"
+          value={`${usage.chatApiCalls} / ${usage.explainApiCalls}`}
+          sub={`${usage.probeApiCalls} health probe(s)`}
+        />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4 text-sm">
+        <div className="rounded-xl border border-border p-4 space-y-2">
+          <p className="font-medium">Configured limits</p>
+          <ul className="space-y-1 text-muted-foreground">
+            <li>Max output tokens: {assistant.limits.configuredMaxOutputTokens.toLocaleString()}</li>
+            <li>
+              Model context:{" "}
+              {assistant.limits.modelInputTokenLimit
+                ? `${assistant.limits.modelInputTokenLimit.toLocaleString()} input`
+                : "—"}
+              {assistant.limits.modelOutputTokenLimit
+                ? ` · ${assistant.limits.modelOutputTokenLimit.toLocaleString()} output`
+                : ""}
+            </li>
+            <li>
+              App rate limit: {assistant.limits.assistantRateLimitPerMin}/min signed-in ·{" "}
+              {assistant.limits.anonymousRateLimitPerMin}/min guest
+            </li>
+            <li>
+              Attachments: {assistant.limits.maxAttachmentsPerMessage} files · max{" "}
+              {formatBytes(assistant.limits.maxBytesPerAttachment)} each
+            </li>
+            <li>Internal buckets active: {assistant.internalRateLimits.activeBuckets}</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-border p-4 space-y-2">
+          <p className="font-medium">Runtime</p>
+          <ul className="space-y-1 text-muted-foreground">
+            <li>Server started: {new Date(usage.serverStartedAt).toLocaleString()}</li>
+            <li>
+              Last Gemini call:{" "}
+              {usage.lastRequestAt ? new Date(usage.lastRequestAt).toLocaleString() : "None yet"}
+            </li>
+            <li>Probe latency: {assistant.latencyMs > 0 ? `${assistant.latencyMs}ms` : "—"}</li>
+            <li>
+              Methods:{" "}
+              {assistant.supportedGenerationMethods.length > 0
+                ? assistant.supportedGenerationMethods.join(", ")
+                : "Unknown"}
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {usage.recentErrors.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Recent Gemini errors</p>
+          {usage.recentErrors.map((item) => (
+            <p
+              key={`${item.at}-${item.route}`}
+              className="text-xs p-3 rounded-xl bg-destructive/5 border border-destructive/20 text-destructive"
+            >
+              [{item.route}] {new Date(item.at).toLocaleString()} — {item.message}
+            </p>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -65,11 +191,32 @@ export function AdminHealthPage() {
   }
 
   const infra = health?.infrastructure;
+  const assistant = health?.assistant;
   const allOk =
     infra?.render.ok &&
     infra?.vercel.ok &&
     infra?.mongodb.ok &&
-    infra?.brevo.ok;
+    infra?.brevo.ok &&
+    (!assistant?.configured || infra?.gemini.ok);
+
+  const diagnosticItems: Array<{ tone: "error" | "hint" | "warning" | "info"; text: string }> = [];
+
+  if (health?.email?.error) {
+    diagnosticItems.push({ tone: "error", text: `Email error: ${health.email.error}` });
+  }
+  if (health?.email?.hint) {
+    diagnosticItems.push({ tone: "hint", text: health.email.hint });
+  }
+  if (health?.email?.renderFreeTierNote) {
+    diagnosticItems.push({ tone: "warning", text: health.email.renderFreeTierNote });
+  }
+
+  for (const line of assistant?.diagnostics ?? []) {
+    diagnosticItems.push({ tone: "info", text: line });
+  }
+  for (const line of assistant?.notes ?? []) {
+    diagnosticItems.push({ tone: "hint", text: line });
+  }
 
   return (
     <div className="space-y-6">
@@ -77,7 +224,7 @@ export function AdminHealthPage() {
         <div>
           <h1 className="text-3xl font-bold mb-1">System health</h1>
           <p className="text-muted-foreground">
-            Live probes for Render API, Vercel frontend, MongoDB Atlas, and Brevo email
+            Live probes for Render, Vercel, MongoDB, email, and Gemini AI assistant usage
           </p>
         </div>
         <button
@@ -127,6 +274,7 @@ export function AdminHealthPage() {
               <ServiceRow service={infra.vercel} />
               <ServiceRow service={infra.mongodb} />
               <ServiceRow service={infra.brevo} />
+              <ServiceRow service={infra.gemini} />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Infrastructure probe data unavailable.</p>
@@ -136,25 +284,29 @@ export function AdminHealthPage() {
         <div className="bg-card border border-border rounded-xl p-6">
           <h3 className="text-xl font-semibold mb-4">Diagnostics</h3>
           <div className="space-y-3 text-sm">
-            {health?.email?.error ? (
-              <p className="p-3 bg-destructive/5 border border-destructive/20 rounded-xl text-destructive">
-                Email error: {health.email.error}
-              </p>
-            ) : null}
-            {health?.email?.hint ? (
-              <p className="p-3 bg-accent/30 rounded-xl text-muted-foreground">{health.email.hint}</p>
-            ) : null}
-            {health?.email?.renderFreeTierNote ? (
-              <p className="p-3 bg-warning/5 border border-warning/20 rounded-xl text-muted-foreground">
-                {health.email.renderFreeTierNote}
-              </p>
-            ) : null}
-            {!health?.email?.error && !health?.email?.hint && !health?.email?.renderFreeTierNote ? (
+            {diagnosticItems.length === 0 ? (
               <p className="text-muted-foreground">No additional diagnostics reported.</p>
-            ) : null}
+            ) : (
+              diagnosticItems.map((item, index) => (
+                <p
+                  key={`${item.tone}-${index}`}
+                  className={`p-3 rounded-xl ${
+                    item.tone === "error"
+                      ? "bg-destructive/5 border border-destructive/20 text-destructive"
+                      : item.tone === "warning"
+                        ? "bg-warning/5 border border-warning/20 text-muted-foreground"
+                        : "bg-accent/30 text-muted-foreground"
+                  }`}
+                >
+                  {item.text}
+                </p>
+              ))
+            )}
           </div>
         </div>
       </div>
+
+      {assistant ? <AssistantPanel assistant={assistant} /> : null}
     </div>
   );
 }
