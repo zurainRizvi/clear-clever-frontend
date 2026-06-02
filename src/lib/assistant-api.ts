@@ -31,6 +31,7 @@ export async function sendAssistantChat(input: {
   history?: AssistantHistoryTurn[];
   category?: string;
   attachments?: AssistantAttachmentPayload[];
+  sessionKey?: string;
   auth?: boolean;
 }): Promise<{ reply: string; personalized: boolean; audience?: string }> {
   return apiRequest<{ reply: string; personalized: boolean; audience?: string }>(
@@ -43,6 +44,7 @@ export async function sendAssistantChat(input: {
         history: input.history,
         category: input.category,
         attachments: input.attachments,
+        sessionKey: input.sessionKey,
       }),
     }
   );

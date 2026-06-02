@@ -22,6 +22,8 @@ import {
 import { useAssistantWidget } from "./assistant-widget-context";
 import { AssistantMessageMarkdown } from "./assistant-message-markdown";
 import { getAssistantSuggestions } from "./assistant-suggestions";
+import { getAssistantSessionKey, getAssistantWelcomeMessage } from "./assistant-welcome";
+import { normalizeAssistantMarkdown } from "@/lib/assistant-markdown";
 
 type ChatMessage = {
   id: string;
@@ -96,6 +98,35 @@ export function AssistantWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const sessionKey = useMemo(
+    () =>
+      getAssistantSessionKey({
+        isAuthenticated,
+        userId: user?.id,
+        role: user?.role ?? null,
+      }),
+    [isAuthenticated, user?.id, user?.role]
+  );
+  const prevSessionKeyRef = useRef(sessionKey);
+
+  const welcomeMessage = useMemo(
+    () =>
+      getAssistantWelcomeMessage({
+        isAuthenticated,
+        role: user?.role ?? null,
+        fullName: user?.fullName,
+      }),
+    [isAuthenticated, user?.role, user?.fullName]
+  );
+
+  useEffect(() => {
+    if (prevSessionKeyRef.current === sessionKey) return;
+    prevSessionKeyRef.current = sessionKey;
+    setMessages([]);
+    setPendingFiles([]);
+    setInput("");
+  }, [sessionKey]);
+
   const suggestions = useMemo(
     () =>
       getAssistantSuggestions({
@@ -162,6 +193,7 @@ export function AssistantWidget() {
           history: historyForApi.length > 0 ? historyForApi : undefined,
           category: category ?? undefined,
           attachments: attachmentPayloads.length > 0 ? attachmentPayloads : undefined,
+          sessionKey,
           auth: isAuthenticated,
         });
         setMessages((prev) => [
@@ -169,7 +201,7 @@ export function AssistantWidget() {
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            content: result.reply,
+            content: normalizeAssistantMarkdown(result.reply),
             createdAt: new Date(),
           },
         ]);
@@ -179,7 +211,7 @@ export function AssistantWidget() {
         setSending(false);
       }
     },
-    [sending, messages, category, isAuthenticated, pendingFiles]
+    [sending, messages, category, isAuthenticated, pendingFiles, sessionKey]
   );
 
   useEffect(() => {
@@ -196,12 +228,18 @@ export function AssistantWidget() {
     next.push({
       id: `a-preset-${Date.now()}`,
       role: "assistant",
-      content: presetReply,
+      content: normalizeAssistantMarkdown(presetReply),
       createdAt: new Date(),
     });
     setMessages(next);
     clearPreset();
   }, [isOpen, presetReply, presetUserMessage, clearPreset]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (messages.length > 0 || presetReply) return;
+    prevSessionKeyRef.current = sessionKey;
+  }, [isOpen, messages.length, presetReply, sessionKey]);
 
   const handleExplainTop = async () => {
     if (!category || !isAuthenticated || user?.role !== "user") {
@@ -222,7 +260,7 @@ export function AssistantWidget() {
         {
           id: `a-${Date.now()}`,
           role: "assistant",
-          content: result.reply,
+          content: normalizeAssistantMarkdown(result.reply),
           createdAt: new Date(),
         },
       ]);
@@ -263,10 +301,6 @@ export function AssistantWidget() {
   if (configured === false) {
     return null;
   }
-
-  const welcomeMessage = isAuthenticated
-    ? "Hello! I'm your ClearClever Assistant. How can I help you with insurance policies or recommendations today?"
-    : "Hello! I'm your ClearClever Assistant. Ask me about ClearClever or insurance in Pakistan — sign in for personalized recommendations.";
 
   return (
     <>
@@ -337,9 +371,17 @@ export function AssistantWidget() {
             </div>
           </header>
 
-          {!isAuthenticated && (
+          {!isAuthenticated ? (
             <p className="shrink-0 text-xs text-slate-600 bg-slate-50 px-5 py-2 border-b border-slate-100">
-              Sign in for personalized recommendations based on your questionnaire and policies.
+              Guest mode — general platform guidance. Sign in for personalized answers.
+            </p>
+          ) : (
+            <p className="shrink-0 text-xs text-slate-600 bg-blue-50/80 px-5 py-2 border-b border-slate-100">
+              Signed in as{" "}
+              <span className="font-semibold capitalize">
+                {user?.role === "user" ? "policy seeker" : user?.role?.replace("_", " ")}
+              </span>
+              — answers use your account data only.
             </p>
           )}
 
