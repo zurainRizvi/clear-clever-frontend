@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Bell, Check, Loader2, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
@@ -14,6 +15,12 @@ export function NotificationsPage() {
     markAllRead,
     clearAll,
   } = useNotifications();
+
+  useEffect(() => {
+    if (!loading && unreadCount > 0) {
+      void markAllRead();
+    }
+  }, [loading, unreadCount, markAllRead]);
 
   const handleOpen = async (item: (typeof items)[number]) => {
     try {

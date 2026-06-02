@@ -42,6 +42,7 @@ import { useProvider } from "./provider-context";
 import { ProviderDateRangePicker } from "./provider-date-range-picker";
 import { PROVIDER_PAGE_CLASS, PROVIDER_THEME } from "./provider-portal-theme";
 import { toast } from "sonner";
+import { useNotifications } from "./notifications-context";
 
 const THEME = PROVIDER_THEME;
 
@@ -186,6 +187,7 @@ function DonutChartBlock({ dashboard }: { dashboard: InsurerDashboardPayload }) 
 export function ProviderDashboardHome() {
   const { onAddPolicy } = useOutletContext<ProviderOutletContext>();
   const { profile } = useProvider();
+  const { unreadCount: unreadNotificationsCount } = useNotifications();
   const navigate = useNavigate();
   const [range, setRange] = useState<DateRangeValue>(defaultProviderRange);
   const [dashboard, setDashboard] = useState<InsurerDashboardPayload | null>(null);
@@ -221,7 +223,7 @@ export function ProviderDashboardHome() {
     [navigate, onAddPolicy]
   );
 
-  const notificationCount = dashboard?.badges.notifications ?? 0;
+  const notificationCount = unreadNotificationsCount;
 
   if (loading || !dashboard) {
     return (
@@ -257,7 +259,7 @@ export function ProviderDashboardHome() {
             }}
           />
           <Link
-            to="/provider-dashboard/messages"
+            to="/provider-dashboard/notifications"
             className="relative p-2.5 rounded-2xl border bg-white hover:bg-slate-50 transition-colors"
             style={{ borderColor: "#E5E7EB", boxShadow: THEME.shadow }}
           >

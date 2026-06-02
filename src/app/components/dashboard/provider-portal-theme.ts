@@ -1,8 +1,8 @@
 export const PROVIDER_THEME = {
-  bg: "#F8FAFC",
-  card: "#FFFFFF",
-  border: "#EEF2F7",
-  borderAlt: "#E5E7EB",
+  bg: "var(--background)",
+  card: "var(--card)",
+  border: "var(--border)",
+  borderAlt: "var(--border)",
   primary: "#2563EB",
   shadow: "0 8px 30px rgba(15,23,42,0.05)",
   radius: "22px",

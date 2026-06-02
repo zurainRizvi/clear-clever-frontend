@@ -14,13 +14,16 @@ import {
   LogOut,
   Shield,
   ChevronDown,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuth, useLogout } from "../auth-context";
 import { MessagesProvider, useMessages } from "./messages-context";
+import { NotificationsProvider, useNotifications } from "./notifications-context";
 import { ProviderProvider, useProvider } from "./provider-context";
 import { ProviderPolicyFormDialog } from "./provider-policy-form";
+import { DarkModeToggle } from "../dark-mode-toggle";
 import { fetchInsurerPolicy } from "@/lib/insurer-api";
 import type { InsurerPolicyDetail } from "@/lib/insurer-api";
 import { ApiError } from "@/lib/api";
@@ -30,7 +33,7 @@ interface MenuItemDef {
   path: string;
   icon: LucideIcon;
   label: string;
-  badgeKey?: "claims" | "messages";
+  badgeKey?: "claims" | "messages" | "notifications";
 }
 
 const menuItems: MenuItemDef[] = [
@@ -38,6 +41,7 @@ const menuItems: MenuItemDef[] = [
   { path: "/provider-dashboard/policies", icon: FileText, label: "My Policies" },
   { path: "/provider-dashboard/leads", icon: Users, label: "Leads & Customers" },
   { path: "/provider-dashboard/claims", icon: ShieldCheck, label: "Claims", badgeKey: "claims" },
+  { path: "/provider-dashboard/notifications", icon: Bell, label: "Notifications", badgeKey: "notifications" },
   { path: "/provider-dashboard/analytics", icon: LineChart, label: "Analytics" },
   { path: "/provider-dashboard/messages", icon: MessageSquare, label: "Messages", badgeKey: "messages" },
   { path: "/provider-dashboard/support", icon: LifeBuoy, label: "Support" },
@@ -47,9 +51,11 @@ const menuItems: MenuItemDef[] = [
 export function ProviderDashboard() {
   return (
     <ProviderProvider>
-      <MessagesProvider>
-        <ProviderDashboardInner />
-      </MessagesProvider>
+      <NotificationsProvider>
+        <MessagesProvider>
+          <ProviderDashboardInner />
+        </MessagesProvider>
+      </NotificationsProvider>
     </ProviderProvider>
   );
 }
@@ -64,6 +70,7 @@ function ProviderDashboardInner() {
   const { profile, pendingClaimsCount, refresh } = useProvider();
   const { userEmail } = useAuth();
   const { unreadCount: unreadMessagesCount } = useMessages();
+  const { unreadCount: unreadNotificationsCount } = useNotifications();
 
   const isHome =
     location.pathname === "/provider-dashboard" ||
@@ -80,6 +87,7 @@ function ProviderDashboardInner() {
     if (!key) return 0;
     if (key === "claims") return pendingClaimsCount;
     if (key === "messages") return unreadMessagesCount;
+    if (key === "notifications") return unreadNotificationsCount;
     return 0;
   };
 
@@ -135,7 +143,7 @@ function ProviderDashboardInner() {
           <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 min-h-0">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const active = isActive(item.path, item.label);
+              const active = isActive(item.path);
               const count = badgeCount(item.badgeKey);
               return (
                 <Link
@@ -208,15 +216,14 @@ function ProviderDashboardInner() {
       <div className="flex-1 flex flex-col min-w-0">
         {!isHome ? (
           <header
-            className="sticky top-0 z-40 border-b bg-white/90 backdrop-blur-md"
-            style={{ borderColor: "#E5E7EB" }}
+            className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md"
           >
             <div className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-4">
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 hover:bg-slate-100 rounded-xl text-slate-600"
+                  className="p-2 hover:bg-accent rounded-xl text-muted-foreground"
                 >
                   {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                 </button>
@@ -228,18 +235,41 @@ function ProviderDashboardInner() {
                   ← Dashboard
                 </Link>
               </div>
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/provider-dashboard/notifications"
+                  className="relative p-2 rounded-xl border border-border hover:bg-accent"
+                >
+                  <Bell className="w-4 h-4" />
+                  {unreadNotificationsCount > 0 ? (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
+                  ) : null}
+                </Link>
+                <DarkModeToggle />
+              </div>
             </div>
           </header>
         ) : (
-          <div className="px-6 pt-4 flex items-center">
+          <div className="px-6 pt-4 flex items-center justify-between">
             <button
               type="button"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-white rounded-xl text-slate-600 border"
-              style={{ borderColor: "#E5E7EB" }}
+              className="p-2 hover:bg-accent rounded-xl text-muted-foreground border border-border"
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/provider-dashboard/notifications"
+                className="relative p-2 rounded-xl border border-border hover:bg-accent"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotificationsCount > 0 ? (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
+                ) : null}
+              </Link>
+              <DarkModeToggle />
+            </div>
           </div>
         )}
 

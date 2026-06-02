@@ -148,19 +148,6 @@ const CAROUSEL_INTERVAL_MS = 5000;
 const IMAGE_CYCLE_MS = 2200;
 const NAVBAR_HEIGHT_PX = 88;
 
-function DotPattern() {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 opacity-40"
-      aria-hidden
-      style={{
-        backgroundImage: "radial-gradient(#CBD5E1 1px, transparent 1px)",
-        backgroundSize: "24px 24px",
-      }}
-    />
-  );
-}
-
 function CategoryImageRotator({
   images,
   accentColor,
@@ -385,10 +372,10 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
   };
 
   return (
-    <div className="font-[Inter,sans-serif] bg-background text-foreground">
+    <div className="font-[Inter,sans-serif] bg-background text-foreground pt-[88px]">
       {/* Navbar */}
       <header
-        className={`sticky top-0 z-50 h-[88px] border-b backdrop-blur transition-all ${
+        className={`fixed inset-x-0 top-0 z-50 h-[88px] border-b backdrop-blur transition-all ${
           scrolled
             ? "border-border bg-background/90 shadow-md"
             : "border-border bg-background/95 shadow-none"
@@ -422,7 +409,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             <DarkModeToggle className="relative flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-none transition-colors hover:border-primary/30 hover:bg-accent" />
             <Link
               to="/signin"
-              className="hidden px-4 py-2 text-[15px] font-medium text-[#0F172A] transition-colors hover:text-[#2563EB] sm:inline-block"
+              className="hidden px-4 py-2 text-[15px] font-medium text-foreground transition-colors hover:text-[#2563EB] sm:inline-block"
             >
               Sign In
             </Link>
@@ -438,7 +425,6 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
 
       {/* Hero */}
       <section className="relative overflow-hidden pt-10 pb-12 md:pt-14 md:pb-16 lg:pt-16">
-        <DotPattern />
         <div
           className="pointer-events-none absolute -left-32 top-20 h-80 w-80 rounded-full bg-[#2563EB]/8 blur-3xl"
           aria-hidden
