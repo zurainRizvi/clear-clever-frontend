@@ -289,7 +289,7 @@ export function LandingPage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
                 <li><a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a></li>
-                <li><Link to="/dashboard/support" className="hover:text-foreground transition-colors">Contact</Link></li>
+                <li><Link to="/contact-us" className="hover:text-foreground transition-colors">Contact Us</Link></li>
               </ul>
             </div>
             <div>
@@ -297,7 +297,7 @@ export function LandingPage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link to="/about" className="hover:text-foreground transition-colors">About ClearClever</Link></li>
                 <li><Link to="/partners" className="hover:text-foreground transition-colors">Partners</Link></li>
-                <li><Link to="/dashboard/support" className="hover:text-foreground transition-colors">Help center</Link></li>
+                <li><Link to="/help-center" className="hover:text-foreground transition-colors">Help center</Link></li>
               </ul>
             </div>
             <div>

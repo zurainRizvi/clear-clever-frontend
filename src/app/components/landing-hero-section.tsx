@@ -246,13 +246,13 @@ function HeroInsuranceCarousel() {
             <Link to={card.href} className="block">
               <motion.div
                 whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(15,23,42,0.1)" }}
-                className="flex flex-col gap-5 rounded-2xl p-5 md:flex-row md:items-center md:gap-6 md:p-6"
+                className="flex flex-col gap-5 rounded-2xl border border-border p-5 md:flex-row md:items-center md:gap-6 md:p-6"
                 style={{ backgroundColor: card.background }}
               >
                 <CategoryImageRotator images={card.images} accentColor={card.accentColor} />
                 <div className="min-w-0 flex-1 text-center md:text-left">
-                  <h3 className="text-lg font-bold text-[#0F172A] md:text-xl">{card.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[#64748B] md:text-base">
+                  <h3 className="text-lg font-bold text-foreground md:text-xl">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:text-base">
                     {card.description}
                   </p>
                   <span
@@ -482,7 +482,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                 </motion.button>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
                 {FEATURE_HIGHLIGHTS.map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -491,7 +491,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.15 + index * 0.08 }}
-                      className="flex flex-col gap-2"
+                      className="flex items-start gap-3 rounded-xl border border-border bg-card/80 p-3"
                     >
                       <div
                         className="flex h-10 w-10 items-center justify-center rounded-xl"
@@ -499,8 +499,10 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                       >
                         <Icon className="h-5 w-5" style={{ color: item.iconColor }} />
                       </div>
-                      <p className="text-sm font-bold leading-snug text-[#0F172A]">{item.title}</p>
-                      <p className="text-sm text-[#64748B]">{item.description}</p>
+                      <div>
+                        <p className="text-sm font-bold leading-snug text-foreground">{item.title}</p>
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -517,27 +519,27 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
               <div className="relative overflow-visible rounded-[32px] border border-border bg-card p-6 shadow-[0_30px_60px_rgba(15,23,42,0.08)] md:p-10 md:pb-16">
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-xl font-bold text-[#0F172A] md:text-2xl">
+                    <h2 className="text-xl font-bold text-foreground md:text-2xl">
                       What would you like coverage for?
                     </h2>
-                    <p className="mt-1 text-sm text-[#64748B] md:text-base">
+                    <p className="mt-1 text-sm text-muted-foreground md:text-base">
                       Select a category to get started
                     </p>
                   </div>
                   <motion.div
                     animate={{ y: [0, -4, 0] }}
                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="hidden shrink-0 rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:block"
+                    className="hidden shrink-0 rounded-2xl border border-border bg-card px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:block"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEF4FF]">
                         <BrainCircuit className="h-5 w-5 text-[#2563EB]" />
                       </div>
                       <div className="min-w-[10.5rem]">
-                        <p className="text-sm font-bold leading-tight text-[#0F172A]">
+                        <p className="text-sm font-bold leading-tight text-foreground">
                           Smart Recommendations
                         </p>
-                        <p className="text-xs leading-snug text-[#64748B]">Based on your answers</p>
+                        <p className="text-xs leading-snug text-muted-foreground">Based on your answers</p>
                       </div>
                     </div>
                   </motion.div>

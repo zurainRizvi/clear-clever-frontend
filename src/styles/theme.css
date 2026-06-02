@@ -196,3 +196,29 @@
     scroll-behavior: auto !important;
   }
 }
+
+.dark .provider-dashboard-theme .bg-white {
+  background-color: var(--card) !important;
+}
+
+.dark .provider-dashboard-theme .text-slate-900,
+.dark .provider-dashboard-theme .text-slate-800 {
+  color: var(--foreground) !important;
+}
+
+.dark .provider-dashboard-theme .text-slate-700,
+.dark .provider-dashboard-theme .text-slate-600,
+.dark .provider-dashboard-theme .text-slate-500 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .provider-dashboard-theme .border,
+.dark .provider-dashboard-theme .border-b,
+.dark .provider-dashboard-theme .border-t {
+  border-color: var(--border) !important;
+}
+
+.dark .provider-dashboard-theme .bg-slate-50,
+.dark .provider-dashboard-theme .bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}

@@ -16,3 +16,17 @@ export async function submitSupportContact(body: {
     body: JSON.stringify(body),
   });
 }
+
+export async function submitPublicSupportContact(body: {
+  fullName: string;
+  email: string;
+  roleLabel: SupportInquiryRole;
+  reason: SupportInquiryReason;
+  message: string;
+}): Promise<{ inquiry: { id: string; createdAt: string } }> {
+  return apiRequest("/api/support/contact", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify(body),
+  });
+}
