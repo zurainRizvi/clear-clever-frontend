@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { ClearCleverLogo } from "../auth/clearclever-logo";
@@ -11,15 +10,14 @@ import {
   type SupportInquiryRole,
 } from "@/lib/support-api";
 import { SupportChatCta } from "./support-chat-cta";
+import { useAssistantWidget } from "../assistant/assistant-widget-context";
 
 export function SupportHubPage({ portalRole }: { portalRole: "user" | "insurer" }) {
-  const navigate = useNavigate();
   const { user, userName, userEmail } = useAuth();
   const defaultRoleLabel: SupportInquiryRole =
     portalRole === "insurer" ? "insurance_provider" : "policy_seeker";
 
-  const messagesPath =
-    portalRole === "insurer" ? "/provider-dashboard/messages" : "/dashboard/messages";
+  const { openAssistant } = useAssistantWidget();
 
   const [fullName, setFullName] = useState(userName ?? "");
   const [email, setEmail] = useState(userEmail ?? user?.email ?? "");
@@ -27,10 +25,6 @@ export function SupportHubPage({ portalRole }: { portalRole: "user" | "insurer" 
   const [reason, setReason] = useState<SupportInquiryReason>("technical");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  const openSupportMessages = () => {
-    navigate(messagesPath, { state: { tab: "support", openSupport: true } });
-  };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -75,7 +69,7 @@ export function SupportHubPage({ portalRole }: { portalRole: "user" | "insurer" 
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         <section className="lg:w-[40%] flex flex-col min-h-0 border border-border rounded-2xl overflow-hidden bg-card">
-          <SupportChatCta onClick={openSupportMessages} />
+          <SupportChatCta onClick={() => openAssistant()} />
         </section>
 
         <section className="lg:w-[60%] flex flex-col min-h-0 border border-border rounded-2xl overflow-hidden bg-card">

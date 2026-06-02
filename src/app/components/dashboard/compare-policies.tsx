@@ -25,6 +25,9 @@ import { assignRecommendationBadges, badgeLabel } from "@/lib/recommendations";
 import type { CategoryItem, PolicyQuestion, ScoredRecommendation } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
 import { InsurerLogo } from "./insurer-logo";
+import { useAssistantWidget } from "../assistant/assistant-widget-context";
+import { explainRecommendation } from "@/lib/assistant-api";
+import { useAuth } from "../auth-context";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   home: Home,
@@ -53,6 +56,9 @@ type UiCategoryItem = CategoryItem & {
 export function ComparePolicies() {
   const navigate = useNavigate();
   const { savePolicy, removeSavedPolicy, isPolicySaved } = useSavedPolicies();
+  const { openAssistant, setAssistantCategory } = useAssistantWidget();
+  const { isAuthenticated, user } = useAuth();
+  const [explainingPolicyId, setExplainingPolicyId] = useState<string | null>(null);
 
   const [step, setStep] = useState<Step>("category");
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -137,6 +143,30 @@ export function ComparePolicies() {
   const progress =
     questions.length > 0 ? ((currentQuestion + 1) / questions.length) * 100 : 0;
 
+  const handleExplainPolicy = async (policyId: string, policyName: string) => {
+    if (!selectedCategory) return;
+    if (!isAuthenticated || user?.role !== "user") {
+      toast.message("Sign in as a policy seeker for AI explanations");
+      return;
+    }
+    setExplainingPolicyId(policyId);
+    try {
+      const result = await explainRecommendation({
+        category: selectedCategory.slug,
+        policyId,
+      });
+      openAssistant({
+        category: selectedCategory.slug,
+        presetUserMessage: `Explain why ${policyName} is recommended for me.`,
+        presetReply: result.reply,
+      });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
+    } finally {
+      setExplainingPolicyId(null);
+    }
+  };
+
   const submitAnswers = async (finalAnswers: Record<string, unknown>) => {
     if (!selectedCategory) return;
     setLoadingResults(true);
@@ -146,6 +176,7 @@ export function ComparePolicies() {
         answers: finalAnswers,
       });
       setRecommendations(data.recommendations ?? []);
+      setAssistantCategory(selectedCategory.slug);
       setStep("results");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
@@ -434,6 +465,19 @@ export function ComparePolicies() {
                             <p className="text-xs text-muted-foreground mt-2 mb-1">Coverage</p>
                             <p className="text-sm font-medium">{rec.policy.coverageSummary}</p>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => void handleExplainPolicy(rec.policy.id, rec.policy.name)}
+                            disabled={explainingPolicyId === rec.policy.id}
+                            className="w-full py-2.5 border border-primary/40 text-primary rounded-lg hover:bg-primary/5 transition-all text-sm font-medium inline-flex items-center justify-center gap-2"
+                          >
+                            {explainingPolicyId === rec.policy.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-4 h-4" />
+                            )}
+                            Explain with AI
+                          </button>
                           <button
                             type="button"
                             onClick={() =>

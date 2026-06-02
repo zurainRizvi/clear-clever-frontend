@@ -48,6 +48,8 @@ import { SeekerSettingsPage } from "./components/dashboard/seeker-settings-page"
 import { StaticPage } from "./components/static-page";
 import { PublicSupportFormPage } from "./components/public-support-form-page";
 import { AboutPage, PartnersPage } from "./components/marketing-pages";
+import { AssistantWidgetProvider } from "./components/assistant/assistant-widget-context";
+import { AssistantWidget } from "./components/assistant/assistant-widget";
 
 export default function App() {
   return (
@@ -55,6 +57,7 @@ export default function App() {
       <Toaster position="top-right" richColors />
       <AuthProvider>
         <SavedPoliciesProvider>
+          <AssistantWidgetProvider>
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<LandingPage />} />
@@ -157,7 +160,9 @@ export default function App() {
               <Route path="/cookies" element={<StaticPage title="Cookie Policy" body="ClearClever uses cookies and similar technologies for secure sessions, analytics, and product performance improvements." />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            <AssistantWidget />
           </BrowserRouter>
+          </AssistantWidgetProvider>
         </SavedPoliciesProvider>
       </AuthProvider>
     </ThemeProvider>
