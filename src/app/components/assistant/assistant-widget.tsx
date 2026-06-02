@@ -292,11 +292,30 @@ export function AssistantWidget() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const clearChat = () => {
+  const resetChatState = useCallback(() => {
     setMessages([]);
     setPendingFiles([]);
+    setInput("");
+  }, []);
+
+  const clearChat = () => {
+    resetChatState();
     toast.message("Chat cleared");
   };
+
+  const handleClose = useCallback(() => {
+    resetChatState();
+    closeAssistant();
+  }, [resetChatState, closeAssistant]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, handleClose]);
 
   if (configured === false) {
     return null;
@@ -320,12 +339,20 @@ export function AssistantWidget() {
       )}
 
       {isOpen && (
-        <div
-          className="fixed bottom-4 right-4 z-50 flex w-[min(100vw-1.5rem,440px)] flex-col overflow-hidden border border-slate-900/[0.06] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.10)] sm:bottom-6 sm:right-6"
-          style={{ borderRadius: "24px", maxHeight: "min(90vh, 720px)", height: "min(90vh, 720px)" }}
-          role="dialog"
-          aria-label="ClearClever AI Assistant"
-        >
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default bg-slate-900/25"
+            aria-label="Close assistant"
+            onClick={handleClose}
+          />
+          <div
+            className="fixed bottom-4 right-4 z-50 flex w-[min(100vw-1.5rem,440px)] flex-col overflow-hidden border border-slate-900/[0.06] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.10)] sm:bottom-6 sm:right-6"
+            style={{ borderRadius: "24px", maxHeight: "min(90vh, 720px)", height: "min(90vh, 720px)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="ClearClever AI Assistant"
+          >
           {/* Header */}
           <header
             className="flex shrink-0 items-center justify-between px-5 py-4 text-white"
@@ -362,7 +389,7 @@ export function AssistantWidget() {
               </button>
               <button
                 type="button"
-                onClick={closeAssistant}
+                onClick={handleClose}
                 className="flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
                 aria-label="Close assistant"
               >
@@ -412,7 +439,7 @@ export function AssistantWidget() {
                 <div
                   className="rounded-3xl bg-white px-4 py-3 shadow-[0_10px_40px_rgba(15,23,42,0.06)]"
                 >
-                  <p className="text-[15px] leading-relaxed text-slate-900">{welcomeMessage}</p>
+                  <AssistantMessageMarkdown content={welcomeMessage} />
                 </div>
               </div>
             )}
@@ -565,7 +592,8 @@ export function AssistantWidget() {
               </p>
             </form>
           </div>
-        </div>
+          </div>
+        </>
       )}
     </>
   );
