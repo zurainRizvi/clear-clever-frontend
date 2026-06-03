@@ -109,6 +109,7 @@ export function AssistantWidget() {
   const [explaining, setExplaining] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatInFlightRef = useRef(false);
 
   const persistKey = useMemo(() => {
     if (!isAuthenticated || !user?.id || !user.role) return null;
@@ -235,8 +236,9 @@ export function AssistantWidget() {
   const sendMessage = useCallback(
     async (text: string, files: PendingFile[] = pendingFiles) => {
       const trimmed = text.trim();
-      if ((!trimmed && files.length === 0) || sending) return;
+      if ((!trimmed && files.length === 0) || sending || chatInFlightRef.current) return;
 
+      chatInFlightRef.current = true;
       const threadId = ensureActiveThread();
 
       const attachmentPayloads: AssistantAttachmentPayload[] = [];
@@ -245,6 +247,7 @@ export function AssistantWidget() {
           attachmentPayloads.push(await fileToAttachment(pf.file));
         }
       } catch (err) {
+        chatInFlightRef.current = false;
         toast.error(err instanceof Error ? err.message : "Invalid attachment");
         return;
       }
@@ -293,8 +296,11 @@ export function AssistantWidget() {
         setMessages(withAssistant);
         if (threadId) applyThreadMessages(threadId, withAssistant);
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : "Assistant could not reply");
+        const message =
+          err instanceof ApiError ? err.message : "Assistant could not reply";
+        toast.error(message);
       } finally {
+        chatInFlightRef.current = false;
         setSending(false);
       }
     },
@@ -351,6 +357,8 @@ export function AssistantWidget() {
       toast.message("Sign in as a policy seeker to get personalized explanations");
       return;
     }
+    if (chatInFlightRef.current || sending || explaining) return;
+    chatInFlightRef.current = true;
     const threadId = ensureActiveThread();
     setExplaining(true);
     try {
@@ -375,6 +383,7 @@ export function AssistantWidget() {
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not explain recommendation");
     } finally {
+      chatInFlightRef.current = false;
       setExplaining(false);
     }
   };

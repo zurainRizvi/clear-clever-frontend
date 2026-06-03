@@ -174,6 +174,7 @@ export interface AssistantHealthReport {
     modelOutputTokenLimit?: number;
     assistantRateLimitPerMin: number;
     anonymousRateLimitPerMin: number;
+    geminiUpstreamRpm: number;
     maxAttachmentsPerMessage: number;
     maxBytesPerAttachment: number;
     allowedAttachmentMimeTypes: string[];

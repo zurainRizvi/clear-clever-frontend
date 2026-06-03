@@ -115,6 +115,9 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
               {assistant.limits.anonymousRateLimitPerMin}/min guest
             </li>
             <li>
+              Upstream Gemini cap: {assistant.limits.geminiUpstreamRpm}/min (all users, process-wide)
+            </li>
+            <li>
               Attachments: {assistant.limits.maxAttachmentsPerMessage} files · max{" "}
               {formatBytes(assistant.limits.maxBytesPerAttachment)} each
             </li>
