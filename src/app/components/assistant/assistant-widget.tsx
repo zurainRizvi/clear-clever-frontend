@@ -57,6 +57,7 @@ const ALLOWED_TYPES = [
 ];
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_FILES = 3;
+const DRAG_CLICK_THRESHOLD_PX = 6;
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -547,11 +548,22 @@ export function AssistantWidget() {
     ? "w-[min(100vw-1.5rem,680px)]"
     : "w-[min(100vw-1.5rem,440px)]";
 
-  const handleDragPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLElement>) => {
-      if (event.button !== 0) return;
+  const startWindowDrag = useCallback(
+    (
+      event: React.PointerEvent<HTMLElement>,
+      options?: {
+        skipInteractiveTargets?: boolean;
+        onPointerUp?: (moved: boolean) => void;
+      }
+    ) => {
+      if (event.button !== 0) return false;
       const target = event.target as HTMLElement;
-      if (target.closest("button, a, input, textarea, [data-no-drag]")) return;
+      if (
+        options?.skipInteractiveTargets &&
+        target.closest("button, a, input, textarea, [data-no-drag]")
+      ) {
+        return false;
+      }
 
       event.preventDefault();
       dragCleanupRef.current?.();
@@ -560,11 +572,16 @@ export function AssistantWidget() {
       const startY = event.clientY;
       const originX = panelOffset.x;
       const originY = panelOffset.y;
+      let moved = false;
 
       const onPointerMove = (moveEvent: PointerEvent) => {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        if (!moved && Math.hypot(dx, dy) < DRAG_CLICK_THRESHOLD_PX) return;
+        moved = true;
         setPanelOffset({
-          x: originX + (moveEvent.clientX - startX),
-          y: originY + (moveEvent.clientY - startY),
+          x: originX + dx,
+          y: originY + dy,
         });
       };
 
@@ -573,14 +590,34 @@ export function AssistantWidget() {
         window.removeEventListener("pointerup", endDrag);
         window.removeEventListener("pointercancel", endDrag);
         dragCleanupRef.current = null;
+        options?.onPointerUp?.(moved);
       };
 
       dragCleanupRef.current = endDrag;
       window.addEventListener("pointermove", onPointerMove);
       window.addEventListener("pointerup", endDrag);
       window.addEventListener("pointercancel", endDrag);
+      return true;
     },
     [panelOffset.x, panelOffset.y]
+  );
+
+  const handleDragPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLElement>) => {
+      startWindowDrag(event, { skipInteractiveTargets: true });
+    },
+    [startWindowDrag]
+  );
+
+  const handleLauncherPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      startWindowDrag(event, {
+        onPointerUp: (moved) => {
+          if (!moved) toggleAssistant();
+        },
+      });
+    },
+    [startWindowDrag, toggleAssistant]
   );
 
   if (availability === "unconfigured") {
@@ -592,8 +629,9 @@ export function AssistantWidget() {
       {!isOpen && (
         <button
           type="button"
-          onClick={toggleAssistant}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-semibold text-sm shadow-lg hover:opacity-95 transition-opacity"
+          onPointerDown={handleLauncherPointerDown}
+          className="fixed bottom-6 right-6 z-50 flex cursor-grab active:cursor-grabbing touch-none select-none items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-semibold text-sm shadow-lg hover:opacity-95 transition-opacity"
+          style={{ transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)` }}
           aria-label="Open AI assistant"
         >
           <MessageCircle className="h-5 w-5" />
