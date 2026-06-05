@@ -165,10 +165,19 @@ export function ProviderAnalyticsPage() {
     return analytics.interestTrends.xAxis.map((label, i) => {
       const row: Record<string, string | number> = { label };
       for (const ds of analytics.interestTrends.datasets) {
-        row[ds.label] = ds.values[i] ?? 0;
+        row[ds.key] = ds.values[i] ?? 0;
       }
       return row;
     });
+  }, [analytics]);
+
+  const interestMaxValue = useMemo(() => {
+    if (!analytics) return 1;
+    const peak = analytics.interestTrends.datasets.reduce(
+      (max, dataset) => Math.max(max, ...dataset.values),
+      0
+    );
+    return Math.max(peak, 1);
   }, [analytics]);
 
   const revenueChartData = useMemo(() => {
@@ -282,20 +291,42 @@ export function ProviderAnalyticsPage() {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_180px] gap-4 min-w-0">
               <div className="h-52 min-w-0 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={interestChartData}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                  <LineChart data={interestChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: chartColors.axis }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: chartColors.axis }} width={32} axisLine={false} tickLine={false} />
-                    <Tooltip />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 10, fill: chartColors.axis }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                      minTickGap={16}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: chartColors.axis }}
+                      width={32}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                      domain={[0, interestMaxValue]}
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string) => {
+                        const dataset = analytics.interestTrends.datasets.find((item) => item.key === name);
+                        return [value, dataset?.label ?? name];
+                      }}
+                    />
                     {analytics.interestTrends.datasets.map((ds) => (
                       <Line
-                        key={ds.label}
+                        key={ds.key}
                         type="monotone"
-                        dataKey={ds.label}
+                        dataKey={ds.key}
+                        name={ds.label}
                         stroke={ds.color}
                         strokeWidth={2}
-                        dot={false}
+                        dot={{ r: 2, strokeWidth: 0 }}
+                        activeDot={{ r: 4 }}
+                        connectNulls
                       />
                     ))}
                   </LineChart>

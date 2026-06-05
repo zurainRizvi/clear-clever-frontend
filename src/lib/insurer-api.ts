@@ -60,6 +60,34 @@ export interface InsurerLeadSummary {
   };
 }
 
+export interface InsurerCustomerPurchaseSummary {
+  id: string;
+  status: string;
+  completedAt?: string;
+  createdAt: string;
+  policy?: {
+    id: string;
+    slug: string;
+    name: string;
+    category: string;
+    premiumMonthlyPkr?: number;
+    premiumYearlyPkr?: number;
+  };
+}
+
+export interface InsurerCustomerGroup {
+  seeker: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+  };
+  leads: InsurerLeadSummary[];
+  purchases: InsurerCustomerPurchaseSummary[];
+  isNew: boolean;
+  latestActivityAt: string;
+}
+
 export interface InsurerPolicyInput {
   slug: string;
   name: string;
@@ -169,7 +197,7 @@ export interface InsurerAnalyticsPayload {
   }>;
   interestTrends: {
     xAxis: string[];
-    datasets: Array<{ label: string; color: string; values: number[] }>;
+    datasets: Array<{ key: string; label: string; color: string; values: number[] }>;
     sideLegend: Array<{ label: string; percentage: string; trend: string }>;
     insightBanner: { text: string; badge: string };
   };
@@ -275,8 +303,27 @@ export async function fetchInsurerLeads(): Promise<{
   count: number;
   unseenNewCount: number;
   leads: InsurerLeadSummary[];
+  customers: InsurerCustomerGroup[];
 }> {
   return apiRequest("/api/insurer/leads", { auth: true });
+}
+
+export async function revokeInsurerPurchase(purchaseId: string): Promise<{
+  purchase: { id: string; status: string };
+}> {
+  return apiRequest(`/api/insurer/purchases/${purchaseId}/revoke`, {
+    method: "PATCH",
+    auth: true,
+  });
+}
+
+export async function terminateInsurerPurchase(purchaseId: string): Promise<{
+  purchase: { id: string; status: string };
+}> {
+  return apiRequest(`/api/insurer/purchases/${purchaseId}/terminate`, {
+    method: "PATCH",
+    auth: true,
+  });
 }
 
 export async function markInsurerLeadSeen(leadId: string): Promise<{

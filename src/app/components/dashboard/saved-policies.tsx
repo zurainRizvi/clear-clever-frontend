@@ -85,7 +85,7 @@ export function SavedPolicies() {
                   type="button"
                   onClick={() =>
                     navigate("/dashboard/purchase", {
-                      state: { policy, category: policy.category },
+                      state: { policy, category: policy.category, returnTo: "/dashboard/saved" },
                     })
                   }
                   className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"

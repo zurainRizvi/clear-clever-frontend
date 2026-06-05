@@ -13,7 +13,6 @@ import {
   X,
   LogOut,
   Shield,
-  ChevronDown,
   Bell,
   type LucideIcon,
 } from "lucide-react";
@@ -123,21 +122,31 @@ function ProviderDashboardInner() {
         className="sticky top-0 h-screen bg-card border-r border-border flex flex-col overflow-hidden shrink-0"
       >
         <div className="w-[260px] flex flex-col h-full">
-          <div className="p-5 border-b border-border">
-            <Link to="/provider-dashboard" className="flex items-center gap-3">
+          <div className="p-5 border-b border-border flex items-center justify-between gap-2">
+            <Link to="/provider-dashboard" className="flex items-center gap-3 min-w-0">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                 style={{ backgroundColor: "#2563EB" }}
               >
                 <ShieldCheck className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <span className="font-bold text-base text-foreground block leading-tight">
+              <div className="min-w-0">
+                <span className="font-bold text-base text-foreground block leading-tight truncate">
                   ClearClever
                 </span>
                 <span className="text-xs text-muted-foreground">Provider Portal</span>
               </div>
             </Link>
+            {sidebarOpen ? (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="p-2 hover:bg-accent rounded-xl text-muted-foreground shrink-0"
+                aria-label="Close navigation"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            ) : null}
           </div>
 
           <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 min-h-0">
@@ -196,17 +205,14 @@ function ProviderDashboardInner() {
                   Verified
                 </span>
               </div>
-              <div className="flex flex-col items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="text-muted-foreground hover:text-destructive p-1"
-                  title="Sign out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-muted-foreground hover:text-destructive p-1 shrink-0"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
             <p className="text-[10px] text-muted-foreground truncate px-3 mt-1">{userEmail ?? ""}</p>
           </div>
@@ -220,13 +226,16 @@ function ProviderDashboardInner() {
           >
             <div className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 hover:bg-accent rounded-xl text-muted-foreground"
-                >
-                  {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                </button>
+                {!sidebarOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setSidebarOpen(true)}
+                    className="p-2 hover:bg-accent rounded-xl text-muted-foreground"
+                    aria-label="Open navigation"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
+                ) : null}
                 <Link
                   to="/provider-dashboard"
                   className="text-sm font-medium hover:underline"
@@ -251,13 +260,18 @@ function ProviderDashboardInner() {
           </header>
         ) : (
           <div className="px-6 pt-4 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-accent rounded-xl text-muted-foreground border border-border"
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+            {!sidebarOpen ? (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 hover:bg-accent rounded-xl text-muted-foreground border border-border"
+                aria-label="Open navigation"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            ) : (
+              <div />
+            )}
             <div className="flex items-center gap-3">
               <Link
                 to="/provider-dashboard/notifications"

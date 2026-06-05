@@ -176,6 +176,11 @@ export function MyPurchases() {
               <p className="text-sm text-muted-foreground">
                 {purchase.insurer?.companyName} · {purchase.policy?.category}
               </p>
+              {purchase.status === "terminated" ? (
+                <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+                  This policy is no longer being served by the insurer.
+                </p>
+              ) : null}
               <div className="mt-2">
                 <InsurerLogo companyName={purchase.insurer?.companyName} />
               </div>
@@ -275,54 +280,62 @@ export function MyPurchases() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRescheduleTarget(purchase);
-                      const scheduled = purchase.timeline.callScheduled?.scheduledAt;
-                      if (scheduled) {
-                        const pkt = new Date(new Date(scheduled).getTime() + 5 * 60 * 60 * 1000);
-                        setScheduledDate(pkt.toISOString().slice(0, 10));
-                        setScheduledTime(pkt.toISOString().slice(11, 16));
-                      }
-                    }}
-                    className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
-                  >
-                    <Phone className="w-4 h-4" />
-                    Reschedule agent
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!purchase.insurer?.id) {
-                        toast.error("Insurer contact is not available for this purchase yet.");
-                        return;
-                      }
-                      navigate("/dashboard/messages", {
-                        state: {
-                          defaultConversation: {
-                            type: "user_insurer",
-                            insurerProfileId: purchase.insurer.id,
-                            purchaseId: purchase.id,
-                            subject: `Purchase support: ${purchase.policy?.name ?? "policy"}`,
-                            initialMessage: `Hi ${purchase.insurer.companyName}, I have a question about my ${purchase.policy?.name ?? "policy"} purchase.`,
-                          },
-                        },
-                      });
-                    }}
-                    className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Message agent
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/dashboard/claims?purchaseId=${purchase.id}`)}
-                    className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm inline-flex items-center gap-2"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Start claim
-                  </button>
+                  {purchase.status === "completed" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRescheduleTarget(purchase);
+                          const scheduled = purchase.timeline.callScheduled?.scheduledAt;
+                          if (scheduled) {
+                            const pkt = new Date(new Date(scheduled).getTime() + 5 * 60 * 60 * 1000);
+                            setScheduledDate(pkt.toISOString().slice(0, 10));
+                            setScheduledTime(pkt.toISOString().slice(11, 16));
+                          }
+                        }}
+                        className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
+                      >
+                        <Phone className="w-4 h-4" />
+                        Reschedule agent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!purchase.insurer?.id) {
+                            toast.error("Insurer contact is not available for this purchase yet.");
+                            return;
+                          }
+                          navigate("/dashboard/messages", {
+                            state: {
+                              defaultConversation: {
+                                type: "user_insurer",
+                                insurerProfileId: purchase.insurer.id,
+                                purchaseId: purchase.id,
+                                subject: `Purchase support: ${purchase.policy?.name ?? "policy"}`,
+                                initialMessage: `Hi ${purchase.insurer.companyName}, I have a question about my ${purchase.policy?.name ?? "policy"} purchase.`,
+                              },
+                            },
+                          });
+                        }}
+                        className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Message agent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/dashboard/claims?purchaseId=${purchase.id}`)}
+                        className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm inline-flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Start claim
+                      </button>
+                    </>
+                  ) : purchase.status === "terminated" ? (
+                    <p className="text-sm text-muted-foreground">
+                      Contact the insurer through Messages if you need support about this policy.
+                    </p>
+                  ) : null}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Premium:{" "}
@@ -403,9 +416,11 @@ function StatusBadge({ status }: { status: string }) {
   const styles =
     status === "completed"
       ? "bg-success/10 text-success"
-      : status === "pending"
-        ? "bg-amber-500/10 text-amber-600"
-        : "bg-muted text-muted-foreground";
+      : status === "terminated"
+        ? "bg-amber-500/10 text-amber-700"
+        : status === "pending"
+          ? "bg-amber-500/10 text-amber-600"
+          : "bg-muted text-muted-foreground";
 
   return (
     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium capitalize ${styles}`}>

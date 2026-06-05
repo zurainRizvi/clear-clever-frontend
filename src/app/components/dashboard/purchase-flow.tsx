@@ -33,6 +33,7 @@ interface PurchaseLocationState {
   policy?: PublicPolicy;
   answers?: Record<string, unknown>;
   category?: string;
+  returnTo?: string;
 }
 
 interface ContactForm {
@@ -95,6 +96,15 @@ export function PurchaseFlow() {
 
   const category =
     locationState.category ?? policy?.category ?? storedDraft?.category ?? "";
+
+  const returnTo =
+    typeof locationState.returnTo === "string" && locationState.returnTo.startsWith("/dashboard")
+      ? locationState.returnTo
+      : "/dashboard/compare";
+
+  const returnLabel = returnTo.includes("/saved")
+    ? "Back to saved policies"
+    : "Back to comparison";
 
   const [step, setStep] = useState<Step>("contact");
   const [questions, setQuestions] = useState<PolicyQuestion[]>([]);
@@ -170,7 +180,7 @@ export function PurchaseFlow() {
         </p>
         <button
           type="button"
-          onClick={() => navigate("/dashboard/compare")}
+          onClick={() => navigate(returnTo)}
           className="px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all"
         >
           Compare policies
@@ -269,11 +279,11 @@ export function PurchaseFlow() {
     <div className="max-w-4xl mx-auto">
       <button
         type="button"
-        onClick={() => navigate("/dashboard/compare")}
+        onClick={() => navigate(returnTo)}
         className="text-primary hover:underline mb-6 flex items-center gap-2"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to comparison
+        {returnLabel}
       </button>
 
       <div className="bg-card border border-border rounded-2xl p-8">

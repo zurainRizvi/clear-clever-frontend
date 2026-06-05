@@ -15,6 +15,7 @@ import {
   fetchInsurerPolicies,
   fetchInsurerProfile,
   type InsurerClaimSummary,
+  type InsurerCustomerGroup,
   type InsurerLeadSummary,
   type InsurerPolicySummary,
   type InsurerProfile,
@@ -25,6 +26,7 @@ interface ProviderContextType {
   profile: InsurerProfile | null;
   policies: InsurerPolicySummary[];
   leads: InsurerLeadSummary[];
+  customers: InsurerCustomerGroup[];
   claims: InsurerClaimSummary[];
   pendingClaimsCount: number;
   unseenNewLeadsCount: number;
@@ -41,6 +43,7 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<InsurerProfile | null>(null);
   const [policies, setPolicies] = useState<InsurerPolicySummary[]>([]);
   const [leads, setLeads] = useState<InsurerLeadSummary[]>([]);
+  const [customers, setCustomers] = useState<InsurerCustomerGroup[]>([]);
   const [claims, setClaims] = useState<InsurerClaimSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +59,7 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
       setProfile(profileData.profile);
       setPolicies(policyData.policies);
       setLeads(leadData.leads);
+      setCustomers(leadData.customers ?? []);
       setClaims(claimData.claims);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not load provider dashboard");
@@ -74,8 +78,8 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
     [claims]
   );
   const unseenNewLeadsCount = useMemo(
-    () => leads.filter((lead) => lead.isNew).length,
-    [leads]
+    () => customers.filter((customer) => customer.isNew).length,
+    [customers]
   );
 
   const value = useMemo(
@@ -83,6 +87,7 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
       profile,
       policies,
       leads,
+      customers,
       claims,
       pendingClaimsCount,
       unseenNewLeadsCount,
@@ -92,7 +97,7 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
       setProfile,
       setPolicies,
     }),
-    [profile, policies, leads, claims, pendingClaimsCount, unseenNewLeadsCount, policyRows, loading, refresh]
+    [profile, policies, leads, customers, claims, pendingClaimsCount, unseenNewLeadsCount, policyRows, loading, refresh]
   );
 
   return <ProviderContext.Provider value={value}>{children}</ProviderContext.Provider>;

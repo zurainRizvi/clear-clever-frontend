@@ -640,6 +640,7 @@ export function ComparePolicies() {
                                   policy: rec.policy,
                                   answers,
                                   category: selectedCategory?.slug,
+                                  returnTo: "/dashboard/compare",
                                 },
                               })
                             }

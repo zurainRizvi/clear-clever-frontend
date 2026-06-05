@@ -121,13 +121,23 @@ function PolicySeekerDashboardInner() {
           className="sticky top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0"
         >
           <div className="w-[280px] flex flex-col h-full">
-            <div className="p-6 border-b border-sidebar-border">
-              <Link to="/dashboard" className="flex items-center gap-2">
+            <div className="p-6 border-b border-sidebar-border flex items-center justify-between gap-2">
+              <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
                   <Shield className="w-6 h-6 text-primary-foreground" />
                 </div>
-                <span className="font-bold text-lg font-[Poppins]">ClearClever</span>
+                <span className="font-bold text-lg font-[Poppins] truncate">ClearClever</span>
               </Link>
+              {sidebarOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-2 hover:bg-sidebar-accent rounded-xl transition-colors shrink-0"
+                  aria-label="Close navigation"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              ) : null}
             </div>
 
             <nav className="flex-1 overflow-y-auto py-6 px-3 min-h-0">
@@ -217,13 +227,16 @@ function PolicySeekerDashboardInner() {
           <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
             <div className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 hover:bg-accent rounded-xl transition-colors"
-                >
-                  {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                </button>
+                {!sidebarOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setSidebarOpen(true)}
+                    className="p-2 hover:bg-accent rounded-xl transition-colors"
+                    aria-label="Open navigation"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
+                ) : null}
                 {!isDashboardHome && (
                   <Link
                     to="/dashboard"

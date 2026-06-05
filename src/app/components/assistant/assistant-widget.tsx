@@ -58,6 +58,33 @@ const ALLOWED_TYPES = [
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_FILES = 3;
 const DRAG_CLICK_THRESHOLD_PX = 6;
+const VIEWPORT_PADDING_PX = 12;
+
+function clampPanelOffset(
+  offset: { x: number; y: number },
+  element: HTMLElement | null
+): { x: number; y: number } {
+  if (!element) return offset;
+
+  let { x, y } = offset;
+  const rect = element.getBoundingClientRect();
+  const pad = VIEWPORT_PADDING_PX;
+
+  if (rect.left < pad) {
+    x += rect.left - pad;
+  }
+  if (rect.right > window.innerWidth - pad) {
+    x += rect.right - (window.innerWidth - pad);
+  }
+  if (rect.top < pad) {
+    y += rect.top - pad;
+  }
+  if (rect.bottom > window.innerHeight - pad) {
+    y += rect.bottom - (window.innerHeight - pad);
+  }
+
+  return { x, y };
+}
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -122,7 +149,25 @@ export function AssistantWidget() {
   const shouldScrollToBottomRef = useRef(false);
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  const clampToViewport = useCallback((offset: { x: number; y: number }) => {
+    const element = isOpen ? panelRef.current : launcherRef.current;
+    return clampPanelOffset(offset, element);
+  }, [isOpen]);
+
+  useEffect(() => {
+    setPanelOffset((current) => clampToViewport(current));
+  }, [isOpen, clampToViewport]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setPanelOffset((current) => clampToViewport(current));
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [clampToViewport]);
 
   const persistKey = useMemo(() => {
     if (!isAuthenticated || !user?.id || !user.role) return null;
@@ -579,10 +624,12 @@ export function AssistantWidget() {
         const dy = moveEvent.clientY - startY;
         if (!moved && Math.hypot(dx, dy) < DRAG_CLICK_THRESHOLD_PX) return;
         moved = true;
-        setPanelOffset({
-          x: originX + dx,
-          y: originY + dy,
-        });
+        setPanelOffset((current) =>
+          clampToViewport({
+            x: originX + dx,
+            y: originY + dy,
+          })
+        );
       };
 
       const endDrag = () => {
@@ -590,6 +637,7 @@ export function AssistantWidget() {
         window.removeEventListener("pointerup", endDrag);
         window.removeEventListener("pointercancel", endDrag);
         dragCleanupRef.current = null;
+        setPanelOffset((current) => clampToViewport(current));
         options?.onPointerUp?.(moved);
       };
 
@@ -599,7 +647,7 @@ export function AssistantWidget() {
       window.addEventListener("pointercancel", endDrag);
       return true;
     },
-    [panelOffset.x, panelOffset.y]
+    [panelOffset.x, panelOffset.y, clampToViewport]
   );
 
   const handleDragPointerDown = useCallback(
@@ -628,10 +676,11 @@ export function AssistantWidget() {
     <>
       {!isOpen && (
         <button
+          ref={launcherRef}
           type="button"
           onPointerDown={handleLauncherPointerDown}
           className="fixed bottom-6 right-6 z-50 flex cursor-grab active:cursor-grabbing touch-none select-none items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-semibold text-sm shadow-lg hover:opacity-95 transition-opacity"
-          style={{ transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)` }}
+          style={{ transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)`, transformOrigin: "bottom right" }}
           aria-label="Open AI assistant"
         >
           <MessageCircle className="h-5 w-5" />
@@ -655,6 +704,7 @@ export function AssistantWidget() {
               maxHeight: "min(90vh, 720px)",
               height: "min(90vh, 720px)",
               transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)`,
+              transformOrigin: "bottom right",
             }}
             role="dialog"
             aria-modal="true"
