@@ -120,12 +120,8 @@ export function AssistantWidget() {
   const lastUserMessageIdRef = useRef<string | null>(null);
   const shouldScrollToBottomRef = useRef(false);
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 });
-  const dragStateRef = useRef<{
-    startX: number;
-    startY: number;
-    originX: number;
-    originY: number;
-  } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
 
   const persistKey = useMemo(() => {
     if (!isAuthenticated || !user?.id || !user.role) return null;
@@ -242,9 +238,11 @@ export function AssistantWidget() {
   }, [refreshAssistantStatus]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setPanelOffset({ x: 0, y: 0 });
-  }, [isOpen]);
+    return () => {
+      dragCleanupRef.current?.();
+      dragCleanupRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!scrollRef.current || !isOpen) return;
@@ -448,6 +446,15 @@ export function AssistantWidget() {
     setInput("");
   }, []);
 
+  const clearCurrentChat = useCallback(() => {
+    setMessages([]);
+    setPendingFiles([]);
+    setInput("");
+    if (persistKey && activeThreadId) {
+      applyThreadMessages(activeThreadId, []);
+    }
+  }, [persistKey, activeThreadId, applyThreadMessages]);
+
   const startNewChat = useCallback(() => {
     if (persistKey) {
       const active = threads.find((thread) => thread.id === activeThreadId);
@@ -540,30 +547,41 @@ export function AssistantWidget() {
     ? "w-[min(100vw-1.5rem,680px)]"
     : "w-[min(100vw-1.5rem,440px)]";
 
-  const handleHeaderPointerDown = (event: React.PointerEvent<HTMLElement>) => {
-    if (event.button !== 0) return;
-    dragStateRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: panelOffset.x,
-      originY: panelOffset.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
+  const handleDragPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLElement>) => {
+      if (event.button !== 0) return;
+      const target = event.target as HTMLElement;
+      if (target.closest("button, a, input, textarea, [data-no-drag]")) return;
 
-  const handleHeaderPointerMove = (event: React.PointerEvent<HTMLElement>) => {
-    if (!dragStateRef.current) return;
-    const dx = event.clientX - dragStateRef.current.startX;
-    const dy = event.clientY - dragStateRef.current.startY;
-    setPanelOffset({
-      x: dragStateRef.current.originX + dx,
-      y: dragStateRef.current.originY + dy,
-    });
-  };
+      event.preventDefault();
+      dragCleanupRef.current?.();
 
-  const handleHeaderPointerUp = () => {
-    dragStateRef.current = null;
-  };
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const originX = panelOffset.x;
+      const originY = panelOffset.y;
+
+      const onPointerMove = (moveEvent: PointerEvent) => {
+        setPanelOffset({
+          x: originX + (moveEvent.clientX - startX),
+          y: originY + (moveEvent.clientY - startY),
+        });
+      };
+
+      const endDrag = () => {
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", endDrag);
+        window.removeEventListener("pointercancel", endDrag);
+        dragCleanupRef.current = null;
+      };
+
+      dragCleanupRef.current = endDrag;
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", endDrag);
+      window.addEventListener("pointercancel", endDrag);
+    },
+    [panelOffset.x, panelOffset.y]
+  );
 
   if (availability === "unconfigured") {
     return null;
@@ -587,11 +605,12 @@ export function AssistantWidget() {
         <>
           <button
             type="button"
-            className="fixed inset-0 z-40 cursor-default bg-slate-900/25 dark:bg-black/50"
+            className="fixed inset-0 z-40 cursor-default bg-background/30 backdrop-blur-[2px] dark:bg-black/20"
             aria-label="Close assistant"
             onClick={handleClose}
           />
           <div
+            ref={panelRef}
             className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-border bg-card shadow-2xl sm:bottom-6 sm:right-6`}
             style={{
               borderRadius: "24px",
@@ -603,6 +622,14 @@ export function AssistantWidget() {
             aria-modal="true"
             aria-label="ClearClever AI Assistant"
           >
+            <div
+              className="flex h-9 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center border-b border-border/70 bg-muted/40 touch-none select-none"
+              onPointerDown={handleDragPointerDown}
+              aria-label="Drag assistant panel"
+            >
+              <span className="h-1.5 w-12 rounded-full bg-border" />
+            </div>
+
             <div className="flex min-h-0 flex-1">
               {persistKey && (
                 <AssistantThreadSidebar
@@ -615,13 +642,7 @@ export function AssistantWidget() {
               )}
 
               <div className="flex min-w-0 flex-1 flex-col">
-                <header
-                  className="flex shrink-0 cursor-grab active:cursor-grabbing items-center justify-between border-b border-border bg-card px-5 py-4"
-                  onPointerDown={handleHeaderPointerDown}
-                  onPointerMove={handleHeaderPointerMove}
-                  onPointerUp={handleHeaderPointerUp}
-                  onPointerCancel={handleHeaderPointerUp}
-                >
+                <header className="flex shrink-0 items-center justify-between border-b border-border bg-card px-5 py-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-primary">
                       <MessageCircle className="h-5 w-5" />
@@ -642,10 +663,13 @@ export function AssistantWidget() {
                   <div className="flex gap-2 shrink-0">
                     <button
                       type="button"
-                      onClick={startNewChat}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        clearCurrentChat();
+                      }}
                       className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                      aria-label="Start new chat"
-                      title={persistKey ? "New chat" : "Clear chat"}
+                      aria-label="Clear current chat"
+                      title="Clear current chat"
                     >
                       <History className="h-5 w-5" />
                     </button>

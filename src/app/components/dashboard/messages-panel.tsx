@@ -3,6 +3,7 @@ import { useLocation } from "react-router";
 import { Building2, MessageSquare, Paperclip, Send, Shield, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
+import { useProviderOptional } from "./provider-context";
 import { useMessagesOptional } from "./messages-context";
 import { ChatShell } from "./chat-shell";
 import { ApiError } from "@/lib/api";
@@ -73,6 +74,8 @@ export function MessagesPanel({
   openSupportOnMount?: boolean;
 }) {
   const { user } = useAuth();
+  const providerContext = useProviderOptional();
+  const insurerProfileId = providerContext?.profile?.id;
   const messagesContext = useMessagesOptional();
   const refreshFromContext = messagesContext?.refreshConversations;
   const [localConversations, setLocalConversations] = useState<ConversationSummary[]>([]);
@@ -96,9 +99,17 @@ export function MessagesPanel({
   const openedSupportFromNavRef = useRef(false);
 
   const conversations = useMemo(() => {
-    if (!activeTab || tabMode === "none") return allConversations;
-    return allConversations.filter((c) => conversationMatchesTab(c, tabMode, activeTab));
-  }, [allConversations, tabMode, activeTab]);
+    let scoped = allConversations;
+    if (tabMode === "provider" && insurerProfileId) {
+      scoped = scoped.filter(
+        (conversation) =>
+          conversation.type !== "user_insurer" ||
+          conversation.insurer?.id === insurerProfileId
+      );
+    }
+    if (!activeTab || tabMode === "none") return scoped;
+    return scoped.filter((c) => conversationMatchesTab(c, tabMode, activeTab));
+  }, [allConversations, tabMode, activeTab, insurerProfileId]);
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);

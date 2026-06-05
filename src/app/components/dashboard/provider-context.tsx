@@ -105,3 +105,7 @@ export function useProvider() {
   }
   return context;
 }
+
+export function useProviderOptional() {
+  return useContext(ProviderContext);
+}

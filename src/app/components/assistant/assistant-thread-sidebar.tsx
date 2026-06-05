@@ -19,7 +19,11 @@ export function AssistantThreadSidebar({
       <div className="border-b border-border p-2">
         <button
           type="button"
-          onClick={onNewThread}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onNewThread();
+          }}
           className="flex w-full items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
         >
           <MessageSquarePlus className="h-4 w-4 shrink-0" />
@@ -38,7 +42,11 @@ export function AssistantThreadSidebar({
               <div key={thread.id} className="group relative">
                 <button
                   type="button"
-                  onClick={() => onSelectThread(thread.id)}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSelectThread(thread.id);
+                  }}
                   className={`w-full rounded-xl px-3 py-2.5 text-left text-xs leading-snug transition-colors ${
                     active
                       ? "bg-card text-foreground shadow-sm border border-border"
@@ -50,7 +58,11 @@ export function AssistantThreadSidebar({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDeleteThread(thread.id)}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDeleteThread(thread.id);
+                  }}
                   className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg p-1 text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 transition-opacity"
                   aria-label={`Delete ${thread.title}`}
                 >
