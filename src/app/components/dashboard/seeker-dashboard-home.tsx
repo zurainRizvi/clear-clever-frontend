@@ -26,6 +26,12 @@ import {
   type PurchaseSummary,
 } from "@/lib/purchase-api";
 import type { CategorySlug } from "@/lib/types";
+import {
+  allAnswersFlat,
+  buildCrossCategorySuggestions,
+  mergeAnswersByCategory,
+  type CrossCategorySuggestion,
+} from "@/lib/cross-category-suggestions";
 
 const CATEGORIES: Exclude<CategorySlug, "others">[] = ["home", "auto", "life", "pet"];
 
@@ -69,7 +75,17 @@ export function SeekerDashboardHome() {
             answersByCategory[CATEGORIES[index]] = result.response.answers;
           }
         });
-        setQuestionnaireAnswers(answersByCategory);
+
+        const purchaseAnswerSources = purchaseData.purchases
+          .filter((purchase) => purchase.policy?.category && purchase.answers)
+          .map((purchase) => ({
+            category: purchase.policy!.category!,
+            answers: purchase.answers,
+          }));
+
+        setQuestionnaireAnswers(
+          mergeAnswersByCategory(answersByCategory, purchaseAnswerSources)
+        );
 
         const averages: Record<string, number> = {};
         await Promise.all(
@@ -106,7 +122,7 @@ export function SeekerDashboardHome() {
   const insuranceScore = Math.min(100, activeCategories.size * 20 + (savedPolicies.length > 0 ? 10 : 0));
 
   const crossSells = useMemo(
-    () => inferCrossSells(questionnaireAnswers, activeCategories),
+    () => mapCrossCategorySuggestions(questionnaireAnswers, activeCategories),
     [questionnaireAnswers, activePolicies.length]
   );
   const protectionOpportunities = useMemo(
@@ -287,106 +303,49 @@ export function SeekerDashboardHome() {
   );
 }
 
-function inferCrossSells(
+function crossSellIcon(key: string): LucideIcon {
+  if (key.startsWith("pet")) return PawPrint;
+  if (key === "motorcycle") return Bike;
+  if (key === "vehicle") return Car;
+  if (key === "home") return FileText;
+  return Shield;
+}
+
+function mapCrossCategorySuggestions(
   answersByCategory: Record<string, Record<string, unknown>>,
   activeCategories: Set<string | undefined>
 ): CrossSell[] {
-  const allAnswers = Object.values(answersByCategory).flatMap((answers) =>
-    Object.entries(answers)
-  );
-  const answerText = (value: unknown) =>
-    Array.isArray(value) ? value.join(" ").toLowerCase() : String(value ?? "").toLowerCase();
-  const answerHasPositiveSignal = (value: unknown, reject = ['no', 'none']) => {
-    const values = Array.isArray(value) ? value.map(answerText) : [answerText(value)];
-    return values.some(
-      (item) => item.trim() !== "" && !reject.some((word) => item.includes(word))
-    );
+  const flatAnswers = allAnswersFlat(answersByCategory);
+  return buildCrossCategorySuggestions(flatAnswers)
+    .filter((item) => {
+      if (item.slug === "auto" && item.key === "vehicle" && activeCategories.has("auto")) {
+        return false;
+      }
+      if (item.slug !== "auto" && activeCategories.has(item.slug)) {
+        return false;
+      }
+      return true;
+    })
+    .map((item) => toDashboardCrossSell(item, activeCategories));
+}
+
+function toDashboardCrossSell(
+  item: CrossCategorySuggestion,
+  activeCategories: Set<string | undefined>
+): CrossSell {
+  const reason =
+    item.key === "motorcycle" && activeCategories.has("auto")
+      ? "Your auto policy is active — motorcycle-specific plans may still offer better bike cover."
+      : item.reason;
+
+  return {
+    category: item.slug,
+    label: item.label,
+    reason,
+    score: item.score ?? 80,
+    to: "/dashboard/compare",
+    icon: crossSellIcon(item.key),
   };
-  const hasSignal = (keys: string[], reject = ['no', 'none']) =>
-    allAnswers.some(([key, value]) => {
-      if (!keys.includes(key)) return false;
-      return answerHasPositiveSignal(value, reject);
-    });
-  const signalText = (keys: string[]) =>
-    allAnswers
-      .filter(([key, value]) => keys.includes(key) && answerHasPositiveSignal(value))
-      .map(([, value]) => answerText(value))
-      .join(" ");
-
-  const suggestions: CrossSell[] = [];
-  const vehicleSignal = signalText(["owns_vehicle", "vehicle_type", "vehicle_make_model"]);
-  if (hasSignal(["owns_vehicle", "vehicle_type", "vehicle_make_model"])) {
-    if (vehicleSignal.includes("motorcycle") || vehicleSignal.includes("bike")) {
-      suggestions.push({
-        category: "auto",
-        label: "Motorcycle insurance",
-        reason: activeCategories.has("auto")
-          ? "Recommended because your auto policy may include it, but motorcycle-specific options deserve their own comparison."
-          : "Recommended because user owns vehicle.",
-        score: 92,
-        to: "/dashboard/compare",
-        icon: Bike,
-      });
-    }
-    if (!activeCategories.has("auto") && (vehicleSignal.includes("car") || vehicleSignal.includes("vehicle") || !vehicleSignal.includes("motorcycle"))) {
-      suggestions.push({
-        category: "auto",
-        label: "Vehicle insurance",
-        reason: "Recommended because user owns vehicle.",
-        score: 92,
-        to: "/dashboard/compare",
-        icon: Car,
-      });
-    }
-  }
-  if (!activeCategories.has("pet") && hasSignal(["has_pet", "pet_type"])) {
-    const petSignal = signalText(["has_pet", "pet_type"]);
-    const pet = petSignal.includes("dog") ? "dog" : petSignal.includes("cat") ? "cat" : "pet";
-    suggestions.push({
-      category: "pet",
-      label: pet === "pet" ? "Pet insurance" : `${pet[0].toUpperCase()}${pet.slice(1)} insurance`,
-      reason: `Recommended because user owns ${pet === "pet" ? "a pet" : `a ${pet}`}.`,
-      score: 86,
-      to: "/dashboard/compare",
-      icon: PawPrint,
-    });
-  }
-  if (!activeCategories.has("life") && hasSignal(["health_condition", "occupation_risk"], ["no", "none", "office"])) {
-    suggestions.push({
-      category: "life",
-      label: "Life insurance",
-      reason: "Recommended due to high medical risk profile.",
-      score: 90,
-      to: "/dashboard/compare",
-      icon: Shield,
-    });
-  }
-  if (
-    !activeCategories.has("life") &&
-    !suggestions.some((item) => item.category === "life") &&
-    hasSignal(["family_dependents", "dependents"])
-  ) {
-    suggestions.push({
-      category: "life",
-      label: "Life insurance",
-      reason: "Recommended because family dependency detected.",
-      score: 88,
-      to: "/dashboard/compare",
-      icon: Shield,
-    });
-  }
-  if (!activeCategories.has("home") && hasSignal(["home_owner", "ownership_status"])) {
-    suggestions.push({
-      category: "home",
-      label: "Home insurance",
-      reason: "Recommended because home ownership or residence need was detected.",
-      score: 84,
-      to: "/dashboard/compare",
-      icon: FileText,
-    });
-  }
-
-  return suggestions;
 }
 
 function inferProtectionOpportunities(
@@ -401,15 +360,42 @@ function inferProtectionOpportunities(
     opportunities.push({ category, label, icon, reason, score: 75, to: "/dashboard/compare" });
   };
 
-  if (hasAnswers("auto")) {
-    queue("auto", "Vehicle insurance", Car, "you shared vehicle details, so auto coverage options are available.");
-    queue("auto", "Motorcycle insurance", Bike, "motorcycle answers were detected, so bike protection options are available.");
+  const flatAnswers = allAnswersFlat(answersByCategory);
+  const autoSuggestions = buildCrossCategorySuggestions(flatAnswers, "home").filter(
+    (item) => item.slug === "auto"
+  );
+  for (const item of autoSuggestions) {
+    if (activeCategories.has("auto") && item.key === "vehicle") continue;
+    opportunities.push({
+      category: "auto",
+      label: item.label,
+      icon: crossSellIcon(item.key),
+      reason: item.reason,
+      score: item.score ?? 75,
+      to: "/dashboard/compare",
+    });
   }
   if (hasAnswers("life")) {
     queue("life", "Life insurance", Shield, "you completed life-related questions.");
   }
   if (hasAnswers("pet")) {
-    queue("pet", "Pet insurance", PawPrint, "you completed pet profile questions.");
+    const petSuggestions = buildCrossCategorySuggestions(flatAnswers, "home").filter(
+      (item) => item.slug === "pet"
+    );
+    if (petSuggestions.length > 0) {
+      for (const item of petSuggestions) {
+        opportunities.push({
+          category: "pet",
+          label: item.label,
+          icon: PawPrint,
+          reason: item.reason,
+          score: item.score ?? 75,
+          to: "/dashboard/compare",
+        });
+      }
+    } else {
+      queue("pet", "Pet insurance", PawPrint, "you completed pet profile questions.");
+    }
   }
   if (hasAnswers("home")) {
     queue("home", "Home insurance", FileText, "you completed home/property questions.");

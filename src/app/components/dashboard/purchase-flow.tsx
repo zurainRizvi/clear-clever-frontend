@@ -15,7 +15,7 @@ import { useAuth } from "../auth-context";
 import { fetchCategoryQuestions, fetchRecommendations } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
-import { formatPkrYearly } from "@/lib/format";
+import { formatPkr, formatPkrYearly } from "@/lib/format";
 import { isValidPkPhone, normalizePkPhone } from "@/lib/phone";
 import { createPurchase } from "@/lib/purchase-api";
 import {
@@ -486,6 +486,46 @@ export function PurchaseFlow() {
                 Payment card details are collected securely on {policy.insurer.companyName}&apos;s
                 checkout page (simulated for demo — no real charge).
               </p>
+
+              <div className="rounded-xl border border-border p-5 space-y-4">
+                <div className="flex items-start gap-4">
+                  <InsurerLogo insurer={policy.insurer} className="w-14 h-14 rounded-lg shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg font-semibold">{policy.name}</h3>
+                    <p className="text-sm text-muted-foreground">{policy.insurer.companyName}</p>
+                    <p className="text-sm text-muted-foreground mt-2">{policy.description}</p>
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-3 text-sm">
+                  <div className="rounded-lg bg-muted/40 p-3">
+                    <p className="text-muted-foreground text-xs mb-1">Monthly premium</p>
+                    <p className="font-semibold">{formatPkr(policy.premiumMonthlyPkr)}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/40 p-3">
+                    <p className="text-muted-foreground text-xs mb-1">Yearly premium</p>
+                    <p className="font-semibold">{formatPkrYearly(policy.premiumYearlyPkr)}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/40 p-3">
+                    <p className="text-muted-foreground text-xs mb-1">Deductible</p>
+                    <p className="font-semibold">
+                      {policy.deductiblePkr > 0 ? formatPkr(policy.deductiblePkr) : "None"}
+                    </p>
+                  </div>
+                </div>
+                {policy.features.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">What&apos;s covered</h4>
+                    <ul className="grid sm:grid-cols-2 gap-2 text-sm">
+                      {policy.features.map((feature) => (
+                        <li key={feature} className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
 
               <div className="rounded-xl border border-border p-5 space-y-2 text-sm">
                 <p>

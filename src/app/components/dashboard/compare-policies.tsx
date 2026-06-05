@@ -39,6 +39,10 @@ import {
   loadCompareFlowDraft,
   saveCompareFlowDraft,
 } from "@/lib/compare-flow-draft";
+import {
+  buildCrossCategorySuggestions,
+  type CrossCategorySuggestion,
+} from "@/lib/cross-category-suggestions";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   home: Home,
@@ -146,7 +150,7 @@ export function ComparePolicies() {
     [recommendations]
   );
   const crossCategorySuggestions = useMemo(
-    () => inferCrossCategorySuggestions(answers, selectedCategory?.slug),
+    () => buildCrossCategorySuggestions(answers, selectedCategory?.slug),
     [answers, selectedCategory?.slug]
   );
   const visibleCategories = useMemo<UiCategoryItem[]>(
@@ -175,7 +179,10 @@ export function ComparePolicies() {
     [categories]
   );
 
-  const handleCategorySelect = async (category: UiCategoryItem) => {
+  const startCategoryFlow = async (
+    category: CategoryItem,
+    presetAnswers?: Record<string, unknown>
+  ) => {
     if (!category.available || category.slug === "others") {
       toast.message(copy.compare.othersTitle, {
         description: copy.compare.othersBody,
@@ -193,14 +200,37 @@ export function ComparePolicies() {
         return;
       }
       setQuestions(data.questions);
-      setAnswers(category.presetAnswers ?? {});
+      setAnswers(presetAnswers ?? {});
       setCurrentQuestion(0);
+      setRecommendations([]);
       setStep("questionnaire");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
     } finally {
       setLoadingQuestions(false);
     }
+  };
+
+  const handleCategorySelect = async (category: UiCategoryItem) => {
+    if (!category.available || category.slug === "others") {
+      toast.message(copy.compare.othersTitle, {
+        description: copy.compare.othersBody,
+      });
+      return;
+    }
+
+    await startCategoryFlow(category, category.presetAnswers);
+  };
+
+  const handleCrossCategorySelect = async (suggestion: CrossCategorySuggestion) => {
+    const category =
+      categories.find((item) => item.slug === suggestion.slug) ??
+      ({
+        slug: suggestion.slug,
+        name: suggestion.label,
+        available: true,
+      } as CategoryItem);
+    await startCategoryFlow(category, suggestion.presetAnswers);
   };
 
   const currentQ = questions[currentQuestion];
@@ -467,12 +497,12 @@ export function ComparePolicies() {
                 <div className="flex flex-wrap gap-2">
                   {crossCategorySuggestions.map((item) => (
                     <button
-                      key={item.category}
+                      key={item.key}
                       type="button"
-                      onClick={() => resetFlow()}
-                      className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-left"
+                      onClick={() => void handleCrossCategorySelect(item)}
+                      className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-left hover:border-primary/40 hover:bg-accent/40 transition-colors"
                     >
-                      <span className="font-medium capitalize">{item.category} insurance</span>
+                      <span className="font-medium">{item.label}</span>
                       <span className="block text-xs text-muted-foreground">{item.reason}</span>
                     </button>
                   ))}
@@ -535,7 +565,7 @@ export function ComparePolicies() {
                             </ul>
                           )}
                           <ul className="space-y-1">
-                            {rec.policy.features.slice(0, 4).map((feature) => (
+                            {rec.policy.features.slice(0, 6).map((feature) => (
                               <li
                                 key={feature}
                                 className="text-sm flex items-start gap-2"
@@ -547,7 +577,7 @@ export function ComparePolicies() {
                           </ul>
                         </div>
 
-                        <div className="lg:w-56 flex flex-col gap-3">
+                        <div className="lg:w-64 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
                           <div className="bg-muted/30 rounded-lg p-4 border border-border">
                             <p className="text-xs text-muted-foreground mb-1">Premium</p>
                             <p className="text-lg font-bold">
@@ -796,61 +826,3 @@ function MultiQuestionInput({
   );
 }
 
-function inferCrossCategorySuggestions(
-  answers: Record<string, unknown>,
-  currentCategory?: string
-): { category: string; reason: string }[] {
-  const answerText = (value: unknown) =>
-    Array.isArray(value) ? value.join(" ").toLowerCase() : String(value ?? "").toLowerCase();
-  const answerHasPositiveSignal = (value: unknown) => {
-    const values = Array.isArray(value) ? value.map(answerText) : [answerText(value)];
-    return values.some((item) => item.trim() !== "" && !item.includes("no") && !item.includes("none"));
-  };
-  const signal = (keys: string[]) =>
-    Object.entries(answers).some(([key, value]) => {
-      if (!keys.includes(key)) return false;
-      return answerHasPositiveSignal(value);
-    });
-  const signalText = (keys: string[]) =>
-    Object.entries(answers)
-      .filter(([key, value]) => keys.includes(key) && answerHasPositiveSignal(value))
-      .map(([, value]) => answerText(value))
-      .join(" ");
-
-  return [
-    {
-      category: signalText(["owns_vehicle", "vehicle_type", "vehicle_make_model"]).includes("motorcycle")
-        ? "motorcycle"
-        : "vehicle",
-      reason: "based on the vehicle details you shared",
-      show: currentCategory !== "auto" && signal(["owns_vehicle", "vehicle_type", "vehicle_make_model"]),
-    },
-    {
-      category: "pet",
-      reason: petReason(answers),
-      show: currentCategory !== "pet" && signal(["has_pet", "pet_type"]),
-    },
-    {
-      category: "life",
-      reason: "family/dependent signal",
-      show: currentCategory !== "life" && signal(["family_dependents", "dependents"]),
-    },
-    {
-      category: "home",
-      reason: "home ownership signal",
-      show: currentCategory !== "home" && signal(["home_owner", "ownership_status"]),
-    },
-  ]
-    .filter((item) => item.show)
-    .map(({ category, reason }) => ({ category, reason }));
-}
-
-function petReason(answers: Record<string, unknown>): string {
-  const petValues = [answers.has_pet, answers.pet_type]
-    .map((value) => (Array.isArray(value) ? value.join(" ") : String(value ?? "")))
-    .join(" ")
-    .toLowerCase();
-  if (petValues.includes("dog")) return "dog insurance with vet-care add-ons";
-  if (petValues.includes("cat")) return "cat insurance with vet-care add-ons";
-  return "pet insurance with ClearClever special add-ons";
-}
