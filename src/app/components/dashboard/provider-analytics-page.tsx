@@ -43,6 +43,7 @@ import {
   type DateRangeValue,
 } from "@/lib/provider-date-range";
 import { ProviderDateRangePicker } from "./provider-date-range-picker";
+import { PakistanUsersByRegion } from "./pakistan-users-by-region";
 import { PROVIDER_PAGE_CLASS, PROVIDER_THEME } from "./provider-portal-theme";
 import { toast } from "sonner";
 
@@ -303,6 +304,8 @@ export function ProviderAnalyticsPage() {
       </header>
 
       <DashboardStatsCarousel items={metricItems} />
+
+      <PakistanUsersByRegion data={analytics.usersByRegion} cardStyle={cardStyle} />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 min-w-0">
         {/* Left column */}

@@ -233,7 +233,7 @@ export function SeekerDashboardHome() {
           <div className="flex-1">
             <h3 className="text-xl font-semibold mb-2">AI-assisted recommendations</h3>
             {crossSells.length > 0 ? (
-              <div className="grid md:grid-cols-2 gap-3 mb-4">
+              <div className="grid md:grid-cols-2 gap-4 md:gap-5 mb-4">
                 {crossSells.map((item, idx) => (
                   <motion.div
                     key={item.label}
@@ -241,20 +241,17 @@ export function SeekerDashboardHome() {
                     initial="hidden"
                     animate="visible"
                     transition={{ delay: 0.4 + idx * 0.08 }}
+                    className="min-w-0"
                   >
                   <Link
                     to={item.to}
-                    className="block rounded-lg border border-primary/15 bg-background/70 p-4 hover:border-primary/35 transition-colors"
+                    className="block h-full rounded-lg border border-primary/15 bg-background/70 p-4 hover:border-primary/35 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <span className="font-medium text-foreground">{item.label}</span>
-                      <motion.span
-                        animate={{ scale: [1, 1.05, 1] }}
-                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 2 }}
-                        className="text-xs font-semibold text-primary"
-                      >
+                      <span className="text-xs font-semibold text-primary shrink-0">
                         Recommended score: {item.score}
-                      </motion.span>
+                      </span>
                     </div>
                     <p className="text-sm text-muted-foreground">{item.reason}</p>
                   </Link>

@@ -1,3 +1,17 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+@keyframes stats-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.stats-marquee-track {
+  animation: stats-marquee 36s linear infinite;
+  will-change: transform;
+}

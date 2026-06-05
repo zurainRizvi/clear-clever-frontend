@@ -20,10 +20,9 @@ import { motion } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
 import { DashboardStatsCarousel, type DashboardStatItem } from "../ui/dashboard-stats-carousel";
 import { fadeUpItem } from "@/lib/motion-presets";
+import { LiveSparkline } from "../ui/live-sparkline";
 import {
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -87,37 +86,12 @@ function insightActionLink(actionType?: string): string {
   }
 }
 
-function MiniSparkline({ data, color }: { data: number[]; color: string }) {
-  const chartData = useMemo(() => data.map((value, index) => ({ index, value })), [data]);
-  return (
-    <div className="h-10 w-24">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData}>
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke={color}
-            strokeWidth={2}
-            dot={false}
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
+function MiniSparkline({ data, color, seed }: { data: number[]; color: string; seed: string }) {
+  return <LiveSparkline seed={seed} color={color} data={data} className="h-10 w-24" width={96} height={40} />;
 }
 
-function PolicyTrendSparkline({ data }: { data: number[] }) {
-  const chartData = data.map((value, index) => ({ index, value }));
-  return (
-    <div className="h-8 w-16">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData}>
-          <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
+function PolicyTrendSparkline({ data, seed }: { data: number[]; seed: string }) {
+  return <LiveSparkline seed={seed} color="#10B981" data={data} className="h-8 w-16" width={64} height={32} />;
 }
 
 function DonutChartBlock({ dashboard }: { dashboard: InsurerDashboardPayload }) {
@@ -356,7 +330,7 @@ export function ProviderDashboardHome() {
                 Insights will appear as seekers complete questionnaires and interact with your policies.
               </p>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 gap-5">
                 {dashboard.smartInsights.map((insight, index) => {
                   const palette = INSIGHT_THEMES[insight.theme];
                   return (
@@ -386,7 +360,11 @@ export function ProviderDashboardHome() {
                           <p className="text-xs text-slate-400">{insight.metricLabel}</p>
                           <p className="text-lg font-bold text-slate-900">{insight.metricValue}</p>
                         </div>
-                        <MiniSparkline data={insight.sparkline} color={palette.chart} />
+                        <MiniSparkline
+                          data={insight.sparkline}
+                          color={palette.chart}
+                          seed={`insight-${insight.title}`}
+                        />
                       </div>
                     </motion.button>
                   );
@@ -454,7 +432,7 @@ export function ProviderDashboardHome() {
                           <td className="py-4 px-2 text-slate-600">{row.audience}</td>
                           <td className="py-4 px-2 font-medium text-slate-900">{row.revenue}</td>
                           <td className="py-4 px-2">
-                            <PolicyTrendSparkline data={row.trend} />
+                            <PolicyTrendSparkline data={row.trend} seed={`policy-trend-${row.policyId}`} />
                           </td>
                         </tr>
                       );

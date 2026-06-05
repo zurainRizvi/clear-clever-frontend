@@ -236,6 +236,17 @@ export interface InsurerAnalyticsPayload {
     }>;
     footerSuggestion: string;
   };
+  usersByRegion: {
+    title: string;
+    subtitle: string;
+    totalUsers: number;
+    regions: Array<{
+      slug: string;
+      label: string;
+      color: string;
+      userCount: number;
+    }>;
+  };
 }
 
 export async function fetchInsurerAnalytics(params?: {
