@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router";
 import { getMe } from "@/lib/auth-api";
-import { routeForRole } from "@/lib/auth-api";
+import { routeForInsurer, routeForRole } from "@/lib/auth-api";
 import {
   clearAuthSession,
   getStoredUser,
@@ -120,6 +120,11 @@ export function useAuthRedirect() {
 
   return (token: string, nextUser: AuthUser, overridePath?: string) => {
     setSession(token, nextUser);
-    navigate(overridePath ?? routeForRole(nextUser.role));
+    navigate(
+      overridePath ??
+        (nextUser.role === "insurer"
+          ? routeForInsurer(nextUser)
+          : routeForRole(nextUser.role, nextUser))
+    );
   };
 }

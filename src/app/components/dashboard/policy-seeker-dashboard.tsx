@@ -47,7 +47,7 @@ const menuItems: MenuItem[] = [
 ];
 
 const REFERRAL_MESSAGE =
-  "Join me on ClearClever to compare insurance in one place. New users get a joining reward with specialized insurance offers, discounts, and useful add-ons. Try it here: https://clear-clever-frontend.vercel.app";
+  "Join me on ClearClever to compare insurance in one place. New users get a joining reward with specialized insurance offers, discounts, and useful add-ons. Try it here: https://clearclever.vercel.app";
 
 export function PolicySeekerDashboard() {
   return (

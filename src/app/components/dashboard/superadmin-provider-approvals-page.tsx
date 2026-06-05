@@ -80,8 +80,13 @@ export function SuperadminProviderApprovalsPage() {
                     <div className="text-xs text-muted-foreground mt-1">
                       Slug: {entry.profile.slug} · {entry.pendingPolicies} pending polic
                       {entry.pendingPolicies === 1 ? "y" : "ies"}
+                      {(entry.starterPoliciesCount ?? 0) > 0
+                        ? ` · ${entry.starterPoliciesCount} starter template${entry.starterPoliciesCount === 1 ? "" : "s"}`
+                        : ""}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="text-xs text-warning mt-1">Setup not completed yet</div>
+                  )}
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-sm w-fit ${statusBadgeClass(entry.user.status)}`}

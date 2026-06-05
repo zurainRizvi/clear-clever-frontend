@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router";
-import { routeForRole } from "@/lib/auth-api";
+import { routeForInsurer, routeForRole } from "@/lib/auth-api";
 import type { ReactNode } from "react";
 import type { UserRole } from "@/lib/types";
 import { useAuth } from "./auth-context";
@@ -32,7 +32,16 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to={routeForRole(user.role)} replace />;
+    return (
+      <Navigate
+        to={
+          user.role === "insurer"
+            ? routeForInsurer(user)
+            : routeForRole(user.role, user)
+        }
+        replace
+      />
+    );
   }
 
   return <>{children}</>;

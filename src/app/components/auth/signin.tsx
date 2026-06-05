@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -44,6 +44,7 @@ const ROLE_ICONS = {
 
 export function SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
   const authRedirect = useAuthRedirect();
   const [step, setStep] = useState<"role" | "credentials">("role");
   const [selectedRoleId, setSelectedRoleId] = useState<SignInRoleId | null>(null);
@@ -62,6 +63,14 @@ export function SignIn() {
   useEffect(() => {
     reset({ email: "", password: "" });
   }, [reset]);
+
+  useEffect(() => {
+    const message = (location.state as { message?: string } | null)?.message;
+    if (message) {
+      toast.success(message);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     if (step === "credentials") {
@@ -255,6 +264,14 @@ export function SignIn() {
                   {errors.password ? (
                     <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
                   ) : null}
+                  <div className="mt-2 text-right">
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm text-primary hover:underline font-medium"
+                    >
+                      {copy.auth.forgotPasswordLink}
+                    </Link>
+                  </div>
                 </motion.div>
 
                 <motion.button

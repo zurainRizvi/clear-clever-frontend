@@ -22,6 +22,15 @@ export function slugifyName(name: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+export function isStarterPolicySlug(slug: string) {
+  return slug.endsWith("-starter");
+}
+
+export function hasStarterPolicySet(policies: { slug: string; status: string }[]) {
+  if (policies.length === 0) return false;
+  return policies.every((policy) => policy.status === "pending" && isStarterPolicySlug(policy.slug));
+}
+
 export interface PolicyRow extends InsurerPolicySummary {
   categoryLabel: string;
   statusLabel: string;

@@ -4,7 +4,8 @@ import type { ProviderOutletContext } from "./provider-dashboard";
 import { CheckCircle2, Eye, Loader2, Plus, Trash2 } from "lucide-react";
 import { deleteInsurerPolicy, fetchInsurerPolicy, type InsurerPolicyDetail } from "@/lib/insurer-api";
 import { ActionConfirmDialog } from "./action-confirm-dialog";
-import { statusClass } from "@/lib/provider-utils";
+import { hasStarterPolicySet, statusClass } from "@/lib/provider-utils";
+import { StarterPoliciesBanner } from "./starter-policies-banner";
 import { useProvider } from "./provider-context";
 import { ApiError } from "@/lib/api";
 import { toast } from "sonner";
@@ -39,8 +40,11 @@ export function ProviderPoliciesPage() {
     );
   }
 
+  const showStarterBanner = hasStarterPolicySet(policyRows);
+
   return (
     <AnimatedPage className="space-y-6">
+      {showStarterBanner ? <StarterPoliciesBanner /> : null}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-1">My policies</h1>

@@ -5,7 +5,7 @@ import { BackToHomeLink } from "./back-to-home";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import { setRole, routeForRole } from "@/lib/auth-api";
+import { setRole, routeForInsurer, routeForRole } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { useAuth } from "../auth-context";
@@ -37,8 +37,16 @@ export function RoleSelection() {
     try {
       const result = await setRole(selectedRole);
       await refreshUser();
-      toast.success("Your profile is ready");
-      navigate(routeForRole(result.user.role));
+      toast.success(
+        selectedRole === "insurer"
+          ? "Let's set up your provider portal"
+          : "Your profile is ready"
+      );
+      navigate(
+        selectedRole === "insurer"
+          ? routeForInsurer(result.user)
+          : routeForRole(result.user.role, result.user)
+      );
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
     } finally {
@@ -48,7 +56,12 @@ export function RoleSelection() {
 
   useEffect(() => {
     if (user && user.role !== "user") {
-      navigate(routeForRole(user.role), { replace: true });
+      navigate(
+        user.role === "insurer"
+          ? routeForInsurer(user)
+          : routeForRole(user.role, user),
+        { replace: true }
+      );
     }
   }, [navigate, user]);
 

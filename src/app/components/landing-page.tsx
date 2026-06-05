@@ -2,6 +2,16 @@ import { useState } from "react";
 import { Shield, TrendingUp, Zap, Users, Star, ArrowRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
+import {
+  cardLiftHover,
+  cardLiftHoverStrong,
+  iconWiggleHover,
+  mediumTransition,
+  primaryButtonHover,
+  quickTransition,
+  sectionGradientShift,
+  staggerDelay,
+} from "@/lib/motion-presets";
 import { LandingHeroSection } from "./landing-hero-section";
 
 export function LandingPage() {
@@ -69,7 +79,7 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.3 }}
+            transition={mediumTransition}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -86,13 +96,13 @@ export function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.28 }}
+                transition={{ ...quickTransition, delay: staggerDelay(index, false) }}
                 viewport={{ once: true }}
-                whileHover={{ y: -6, boxShadow: "0 20px 40px rgba(37,99,235,0.12)" }}
-                className="group p-6 bg-card border border-border rounded-2xl transition-all duration-300"
+                {...cardLiftHoverStrong}
+                className="group p-6 bg-card border border-border rounded-2xl"
               >
                 <motion.div
-                  whileHover={{ scale: 1.15, rotate: 6 }}
+                  {...iconWiggleHover}
                   className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-primary mb-4"
                 >
                   {feature.icon}
@@ -133,7 +143,7 @@ export function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.28 }}
+                transition={{ ...quickTransition, delay: staggerDelay(index, false, 0.06) }}
                 viewport={{ once: true }}
                 className="relative"
               >
@@ -141,8 +151,8 @@ export function LandingPage() {
                   {item.step}
                 </div>
                 <motion.div
-                  whileHover={{ y: -4, boxShadow: "0 16px 32px rgba(15,23,42,0.1)" }}
-                  className="relative bg-card border border-border rounded-2xl p-8 transition-all duration-300"
+                  {...cardLiftHoverStrong}
+                  className="relative bg-card border border-border rounded-2xl p-8"
                 >
                   <div
                     className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center font-bold mb-4"
@@ -181,10 +191,10 @@ export function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.28 }}
+                transition={{ ...quickTransition, delay: staggerDelay(index, false) }}
                 viewport={{ once: true }}
-                whileHover={{ y: -6, boxShadow: "0 20px 40px rgba(15,23,42,0.08)" }}
-                className="bg-card border border-border rounded-2xl p-6 transition-all duration-300"
+                {...cardLiftHover}
+                className="bg-card border border-border rounded-2xl p-6"
               >
                 <div className="flex gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
@@ -193,7 +203,7 @@ export function LandingPage() {
                       initial={{ opacity: 0, scale: 0 }}
                       whileInView={{ opacity: 1, scale: 1 }}
                       viewport={{ once: true }}
-                      transition={{ delay: index * 0.1 + i * 0.08 }}
+                      transition={{ delay: staggerDelay(index, false, 0.06) + i * 0.04 }}
                     >
                       <Star className="w-5 h-5 fill-warning text-warning" />
                     </motion.span>
@@ -253,7 +263,7 @@ export function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.28 }}
+                transition={{ ...quickTransition, delay: staggerDelay(index, false) }}
                 viewport={{ once: true }}
                 className="bg-card border border-border rounded-2xl overflow-hidden"
               >
@@ -274,7 +284,7 @@ export function LandingPage() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
+                    transition={quickTransition}
                     className="overflow-hidden"
                   >
                     <p className="px-6 pb-6 text-muted-foreground leading-relaxed">{faq.answer}</p>
@@ -290,8 +300,7 @@ export function LandingPage() {
       {/* CTA Section */}
       <section id="contact" className="py-20 px-6 relative overflow-hidden">
         <motion.div
-          animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+          {...sectionGradientShift}
           className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/10 to-primary/10"
           style={{ backgroundSize: "200% 200%" }}
         />
@@ -309,9 +318,8 @@ export function LandingPage() {
           </p>
           <Link to="/signup">
             <motion.button
-              whileHover={{ scale: 1.04, boxShadow: "0 20px 40px rgba(37,99,235,0.3)" }}
-              whileTap={{ scale: 0.98 }}
-              className="px-10 py-5 bg-gradient-to-r from-primary to-secondary text-white rounded-xl text-lg transition-all duration-300 flex items-center gap-2 mx-auto group"
+              {...primaryButtonHover}
+              className="px-10 py-5 bg-gradient-to-r from-primary to-secondary text-white rounded-xl text-lg flex items-center gap-2 mx-auto group"
             >
               Get Started Free
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

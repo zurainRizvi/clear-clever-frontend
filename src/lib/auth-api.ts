@@ -2,10 +2,20 @@ import { apiRequest } from "./api";
 import type { AuthUser, CategoryItem, PublicPolicy, ScoredRecommendation } from "./types";
 import type { PolicyQuestion } from "./types";
 
-export function routeForRole(role: AuthUser["role"]): string {
+export function routeForInsurer(user: Pick<AuthUser, "status" | "insurerOnboarding">): string {
+  const hasProfile = user.insurerOnboarding?.hasProfile ?? false;
+
+  if (user.status !== "active") {
+    return hasProfile ? "/provider-pending" : "/provider-setup";
+  }
+
+  return hasProfile ? "/provider-dashboard" : "/provider-setup";
+}
+
+export function routeForRole(role: AuthUser["role"], user?: AuthUser | null): string {
   switch (role) {
     case "insurer":
-      return "/provider-dashboard";
+      return user ? routeForInsurer(user) : "/provider-setup";
     case "admin":
       return "/employee-dashboard";
     case "superadmin":
@@ -32,6 +42,28 @@ export async function login(body: { email: string; password: string }): Promise<
   user: AuthUser;
 }> {
   return apiRequest("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function forgotPassword(body: { email: string }): Promise<{
+  message?: string;
+  emailSent?: boolean | null;
+  resetUrl?: string;
+}> {
+  return apiRequest("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function resetPassword(body: {
+  token: string;
+  password: string;
+  confirmPassword: string;
+}): Promise<{ message: string }> {
+  return apiRequest("/api/auth/reset-password", {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -107,6 +139,17 @@ export async function fetchRecommendations(body: {
     method: "POST",
     auth: true,
     body: JSON.stringify(body),
+  });
+}
+
+export async function trackComparePolicies(policyIds: string[]): Promise<{
+  count: number;
+  policies: ScoredRecommendation["policy"][];
+}> {
+  return apiRequest("/api/compare", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ policyIds }),
   });
 }
 

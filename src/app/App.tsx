@@ -6,8 +6,12 @@ import { ProtectedRoute } from "./components/protected-route";
 import { LandingPage } from "./components/landing-page";
 import { SignIn } from "./components/auth/signin";
 import { SignUp } from "./components/auth/signup";
+import { ForgotPassword } from "./components/auth/forgot-password";
+import { ResetPassword } from "./components/auth/reset-password";
 import { OTPVerification } from "./components/auth/otp-verification";
 import { RoleSelection } from "./components/auth/role-selection";
+import { ProviderSetup } from "./components/auth/provider-setup";
+import { ProviderPending } from "./components/auth/provider-pending";
 import { PolicySeekerDashboard } from "./components/dashboard/policy-seeker-dashboard";
 import { SeekerDashboardHome } from "./components/dashboard/seeker-dashboard-home";
 import { ComparePolicies } from "./components/dashboard/compare-policies";
@@ -18,6 +22,7 @@ import { NotificationsPage } from "./components/dashboard/notifications-page";
 import { ClaimsPage } from "./components/dashboard/claims-page";
 import { MessagesPage } from "./components/dashboard/messages-panel";
 import { ProviderDashboard } from "./components/dashboard/provider-dashboard";
+import { ProviderDashboardGuard } from "./components/dashboard/provider-portal-guard";
 import { ProviderDashboardHome } from "./components/dashboard/provider-dashboard-home";
 import { ProviderPoliciesPage } from "./components/dashboard/provider-policies-page";
 import { ProviderLeadsPage } from "./components/dashboard/provider-leads-page";
@@ -63,6 +68,8 @@ export default function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/signin" element={<SignIn />} />
               <Route path="/signup" element={<SignUp />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/otp-verification" element={<OTPVerification />} />
               <Route
                 path="/role-selection"
@@ -95,10 +102,28 @@ export default function App() {
                 <Route path="settings" element={<SeekerSettingsPage />} />
               </Route>
               <Route
+                path="/provider-setup"
+                element={
+                  <ProtectedRoute allowedRoles={["insurer"]}>
+                    <ProviderSetup />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/provider-pending"
+                element={
+                  <ProtectedRoute allowedRoles={["insurer"]}>
+                    <ProviderPending />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/provider-dashboard"
                 element={
                   <ProtectedRoute allowedRoles={["insurer"]}>
-                    <ProviderDashboard />
+                    <ProviderDashboardGuard>
+                      <ProviderDashboard />
+                    </ProviderDashboardGuard>
                   </ProtectedRoute>
                 }
               >

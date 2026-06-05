@@ -7,15 +7,13 @@ import {
   Loader2,
   Plus,
   ShieldCheck,
-  Smile,
-  Star,
   Tag,
   TrendingUp,
   Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
 import { DashboardStatsCarousel, type DashboardStatItem } from "../ui/dashboard-stats-carousel";
@@ -40,6 +38,8 @@ import {
   type DateRangeValue,
 } from "@/lib/provider-date-range";
 import { useProvider } from "./provider-context";
+import { StarterPoliciesBanner } from "./starter-policies-banner";
+import { hasStarterPolicySet } from "@/lib/provider-utils";
 import { ProviderDateRangePicker } from "./provider-date-range-picker";
 import { PROVIDER_PAGE_CLASS, PROVIDER_THEME } from "./provider-portal-theme";
 import { toast } from "sonner";
@@ -60,10 +60,11 @@ const INSIGHT_THEMES: Record<
 const STAT_ICONS: Record<string, LucideIcon> = {
   "clipboard-check": ClipboardCheck,
   users: Users,
+  inbox: Bell,
   "trending-up": TrendingUp,
   wallet: Wallet,
-  star: Star,
-  smile: Smile,
+  "shopping-bag": Tag,
+  "badge-percent": TrendingUp,
 };
 
 function greeting(): string {
@@ -163,7 +164,7 @@ function DonutChartBlock({ dashboard }: { dashboard: InsurerDashboardPayload }) 
 
 export function ProviderDashboardHome() {
   const { onAddPolicy } = useOutletContext<ProviderOutletContext>();
-  const { profile } = useProvider();
+  const { profile, policies, unseenNewLeadsCount } = useProvider();
   const { unreadCount: unreadNotificationsCount } = useNotifications();
   const navigate = useNavigate();
   const [range, setRange] = useState<DateRangeValue>(defaultProviderRange);
@@ -186,6 +187,14 @@ export function ProviderDashboardHome() {
   useEffect(() => {
     void loadDashboard(range);
   }, []);
+
+  const prevUnseenLeads = useRef(unseenNewLeadsCount);
+  useEffect(() => {
+    if (prevUnseenLeads.current !== unseenNewLeadsCount && dashboard) {
+      void loadDashboard(range);
+    }
+    prevUnseenLeads.current = unseenNewLeadsCount;
+  }, [unseenNewLeadsCount, dashboard, range, loadDashboard]);
 
   const companyName = profile?.companyName ?? "Provider";
 
@@ -250,11 +259,18 @@ export function ProviderDashboardHome() {
     );
   }
 
+  const showStarterBanner = hasStarterPolicySet(policies);
+
   return (
     <AnimatedPage
       className={`${PROVIDER_PAGE_CLASS} min-h-full`}
       style={{ backgroundColor: THEME.bg, fontFamily: "Inter, sans-serif" }}
     >
+      {showStarterBanner ? (
+        <div className="mb-6">
+          <StarterPoliciesBanner />
+        </div>
+      ) : null}
       {/* Top header */}
       <motion.header
         initial={{ opacity: 0, y: 12 }}
@@ -445,8 +461,8 @@ export function ProviderDashboardHome() {
 
           {/* Quick Actions */}
           <section
-            className="p-6 border bg-white"
-            style={{ borderRadius: THEME.radius, borderColor: THEME.border, boxShadow: THEME.shadow }}
+            className="provider-portal-card p-6 border border-border bg-card"
+            style={{ borderRadius: THEME.radius, boxShadow: THEME.shadow }}
           >
             <div className="mb-5">
               <h2 className="text-lg font-bold text-slate-900">Quick Actions</h2>
@@ -527,7 +543,7 @@ export function ProviderDashboardHome() {
             style={{ borderRadius: THEME.radius, borderColor: THEME.border, boxShadow: THEME.shadow }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900">Recent Leads</h2>
+              <h2 className="text-lg font-bold text-slate-900">Recent customers</h2>
               <Link
                 to="/provider-dashboard/leads"
                 className="text-sm font-medium hover:underline"
@@ -540,36 +556,48 @@ export function ProviderDashboardHome() {
               <p className="text-sm text-slate-500 py-4">No leads yet.</p>
             ) : (
               <ul className="space-y-4">
-                {dashboard.recentLeads.map((lead, idx) => (
+                {dashboard.recentLeads.map((customer, idx) => (
                   <motion.li
-                    key={lead.id}
+                    key={customer.id}
                     variants={fadeUpItem}
                     initial="hidden"
                     animate="visible"
                     transition={{ delay: idx * 0.06 }}
-                    className="flex items-center gap-3"
                   >
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
-                      style={{ backgroundColor: `${THEME.primary}15`, color: THEME.primary }}
+                    <Link
+                      to="/provider-dashboard/leads"
+                      className="flex items-center gap-3 rounded-xl p-2 -mx-2 hover:bg-slate-50 transition-colors"
                     >
-                      {lead.name.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 truncate">{lead.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {lead.category} · {lead.time}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${
-                        lead.status === "Hot"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-amber-50 text-amber-700"
-                      }`}
-                    >
-                      {lead.status}
-                    </span>
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 relative"
+                        style={{ backgroundColor: `${THEME.primary}15`, color: THEME.primary }}
+                      >
+                        {customer.name.charAt(0)}
+                        {customer.isNew ? (
+                          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white" />
+                        ) : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900 truncate">{customer.name}</p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {customer.leadCount} lead{customer.leadCount === 1 ? "" : "s"}
+                          {customer.purchaseCount > 0
+                            ? ` · ${customer.purchaseCount} purchase${customer.purchaseCount === 1 ? "" : "s"}`
+                            : ""}{" "}
+                          · {customer.category} · {customer.time}
+                        </p>
+                        <p className="text-xs text-slate-600 mt-0.5 truncate">{customer.preview}</p>
+                      </div>
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${
+                          customer.status === "Hot"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}
+                      >
+                        {customer.isNew ? "New" : customer.status}
+                      </span>
+                    </Link>
                   </motion.li>
                 ))}
               </ul>
@@ -642,10 +670,10 @@ function QuickAction({
   const inner = (
     <>
       <motion.div
-        whileHover={{ scale: 1.15 }}
-        className="relative w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-slate-50"
+        whileHover={{ scale: 1.12 }}
+        className="relative w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-muted border border-border"
       >
-        <Icon className="w-5 h-5 text-slate-700" />
+        <Icon className="w-5 h-5 text-foreground" />
         {badge && badge > 0 ? (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold">
             {badge}
@@ -658,17 +686,15 @@ function QuickAction({
   );
 
   const className =
-    "text-left p-4 rounded-[20px] border bg-white transition-all";
-  const style = { borderColor: THEME.border, boxShadow: THEME.shadow };
+    "provider-portal-card block h-full text-left p-4 rounded-[20px] border border-border bg-card transition-all hover:bg-accent/40";
 
   if (onClick) {
     return (
       <motion.button
         type="button"
         onClick={onClick}
-        whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(15,23,42,0.1)" }}
+        whileHover={{ y: -3 }}
         className={className}
-        style={style}
       >
         {inner}
       </motion.button>
@@ -676,10 +702,10 @@ function QuickAction({
   }
 
   return (
-    <motion.div whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(15,23,42,0.1)" }}>
-    <Link to={to ?? "#"} className={className} style={style}>
-      {inner}
-    </Link>
+    <motion.div whileHover={{ y: -3 }}>
+      <Link to={to ?? "#"} className={className}>
+        {inner}
+      </Link>
     </motion.div>
   );
 }

@@ -14,6 +14,19 @@ export const copy = {
     verifyCta: "Verify and continue",
     signInCta: "Sign in securely",
     signUpCta: "Create account",
+    forgotPasswordLink: "Forgot password?",
+    forgotPasswordTitle: "Reset your password",
+    forgotPasswordSubtitle: "Enter the email linked to your ClearClever account",
+    forgotPasswordCta: "Send reset link",
+    forgotPasswordSuccess:
+      "If an account exists for that email, we sent a password reset link. Check your inbox.",
+    resetPasswordTitle: "Set a new password",
+    resetPasswordSubtitle: "Choose a strong password for your ClearClever account",
+    resetPasswordCta: "Update password",
+    resetPasswordSuccess: "Password updated. Sign in with your new password.",
+    resetPasswordInvalidTitle: "Invalid reset link",
+    resetPasswordInvalidSubtitle:
+      "This password reset link is missing or expired. Request a new one to continue.",
     pendingVerification:
       "Please verify your email before signing in. We can send you a new code.",
     roleTitle: "How will you use ClearClever?",

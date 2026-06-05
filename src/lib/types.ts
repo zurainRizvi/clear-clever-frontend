@@ -2,6 +2,12 @@ export type UserRole = "user" | "insurer" | "admin" | "superadmin";
 
 export type UserStatus = "pendingVerification" | "active" | "inactive";
 
+export interface InsurerOnboardingHint {
+  hasProfile: boolean;
+  companyName?: string;
+  slug?: string;
+}
+
 export interface AuthUser {
   id: string;
   fullName: string;
@@ -9,6 +15,7 @@ export interface AuthUser {
   phone: string;
   role: UserRole;
   status: UserStatus;
+  insurerOnboarding?: InsurerOnboardingHint;
   profile?: {
     id: string;
     userId: string;

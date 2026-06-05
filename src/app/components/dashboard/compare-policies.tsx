@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { useSavedPolicies } from "../saved-policies-context";
-import { fetchCategories, fetchCategoryQuestions, fetchRecommendations } from "@/lib/auth-api";
+import { fetchCategories, fetchCategoryQuestions, fetchRecommendations, trackComparePolicies } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { formatPkr, formatPkrYearly } from "@/lib/format";
@@ -270,7 +270,13 @@ export function ComparePolicies() {
         category: selectedCategory.slug,
         answers: finalAnswers,
       });
-      setRecommendations(data.recommendations ?? []);
+      const recs = data.recommendations ?? [];
+      setRecommendations(recs);
+      if (isAuthenticated && recs.length > 0) {
+        void trackComparePolicies(recs.map((rec) => rec.policy.id)).catch(() => {
+          /* compare tracking is best-effort */
+        });
+      }
       setAssistantCategory(selectedCategory.slug);
       setStep("results");
     } catch (err) {

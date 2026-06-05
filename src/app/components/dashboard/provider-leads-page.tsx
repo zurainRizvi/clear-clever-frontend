@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
 import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
@@ -21,7 +21,6 @@ import { useProvider } from "./provider-context";
 import { statusClass, titleCase } from "@/lib/provider-utils";
 import { createConversation, fetchConversations } from "@/lib/messaging-api";
 import {
-  markInsurerLeadSeen,
   revokeInsurerPurchase,
   terminateInsurerPurchase,
   type InsurerCustomerGroup,
@@ -97,7 +96,8 @@ function PurchasedPolicyRow({
 }
 
 export function ProviderLeadsPage() {
-  const { customers, loading, profile, refresh } = useProvider();
+  const { customers, loading, profile, refresh, markLeadsSeen, unseenNewLeadsCount } =
+    useProvider();
   const navigate = useNavigate();
   const [contactingId, setContactingId] = useState<string | null>(null);
   const [actionPurchaseId, setActionPurchaseId] = useState<string | null>(null);
@@ -109,30 +109,30 @@ export function ProviderLeadsPage() {
     policyName: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (filter !== "new") return;
-    const unseenLeads = customers.flatMap((customer) =>
-      customer.leads.filter((lead) => lead.isNew)
-    );
-    if (unseenLeads.length === 0) return;
-    void Promise.all(
-      unseenLeads.map((lead) => markInsurerLeadSeen(lead.id).catch(() => undefined))
-    ).then(() => refresh());
-  }, [filter, customers, refresh]);
-
   const filteredCustomers = useMemo(
     () => customers.filter((customer) => customerMatchesFilter(customer, filter)),
     [customers, filter]
   );
+
+  const toggleLeadActivity = async (customer: InsurerCustomerGroup) => {
+    const willExpand = expandedEmail !== customer.seeker.email;
+    setExpandedEmail(willExpand ? customer.seeker.email : null);
+    if (!willExpand) return;
+
+    const unseenIds = customer.leads.filter((lead) => lead.isNew).map((lead) => lead.id);
+    if (unseenIds.length > 0) {
+      await markLeadsSeen(unseenIds);
+    }
+  };
 
   const openConversation = async (customer: InsurerCustomerGroup) => {
     const seekerId = customer.seeker.id;
     if (!seekerId || !profile?.id) return;
     setContactingId(seekerId);
     try {
-      const unseen = customer.leads.filter((lead) => lead.isNew);
-      if (unseen.length > 0) {
-        await Promise.all(unseen.map((lead) => markInsurerLeadSeen(lead.id).catch(() => undefined)));
+      const unseenIds = customer.leads.filter((lead) => lead.isNew).map((lead) => lead.id);
+      if (unseenIds.length > 0) {
+        await markLeadsSeen(unseenIds);
       }
       const data = await fetchConversations();
       const existing = data.conversations.find(
@@ -156,7 +156,6 @@ export function ProviderLeadsPage() {
       navigate("/provider-dashboard/messages", {
         state: { focusConversationId: created.conversation.id },
       });
-      await refresh();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not open conversation");
     } finally {
@@ -176,7 +175,7 @@ export function ProviderLeadsPage() {
         toast.success("Policy terminated. The policy seeker has been notified.");
       }
       setPendingAction(null);
-      await refresh();
+      await refresh({ silent: true });
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not update purchase");
     } finally {
@@ -194,7 +193,7 @@ export function ProviderLeadsPage() {
 
   const filterTabs = [
     { id: "all", label: "All" },
-    { id: "new", label: "New" },
+    { id: "new", label: unseenNewLeadsCount > 0 ? `New (${unseenNewLeadsCount})` : "New" },
     { id: "purchases", label: "Purchases" },
     { id: "in_progress", label: "In progress" },
     { id: "closed", label: "Closed" },
@@ -219,7 +218,9 @@ export function ProviderLeadsPage() {
       <div className="bg-card border border-border rounded-xl p-6">
         {filteredCustomers.length === 0 ? (
           <p className="text-center text-muted-foreground py-10">
-            No customers in this view yet. Completed purchases and inquiries appear here automatically.
+            {filter === "new"
+              ? "No unread leads right now. New customer activity will appear here."
+              : "No customers in this view yet. Completed purchases and inquiries appear here automatically."}
           </p>
         ) : (
           <div className="space-y-4">
@@ -244,7 +245,9 @@ export function ProviderLeadsPage() {
                       <div className="font-semibold flex items-center gap-2">
                         {customer.seeker.fullName}
                         {customer.isNew ? (
-                          <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                            New
+                          </span>
                         ) : null}
                       </div>
                       <div className="text-sm text-muted-foreground flex flex-wrap gap-3 mt-1">
@@ -270,9 +273,7 @@ export function ProviderLeadsPage() {
                       {leadCount > 0 ? (
                         <button
                           type="button"
-                          onClick={() =>
-                            setExpandedEmail(expanded ? null : customer.seeker.email)
-                          }
+                          onClick={() => void toggleLeadActivity(customer)}
                           className="px-4 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
                         >
                           {expanded ? (
@@ -338,7 +339,14 @@ export function ProviderLeadsPage() {
                             key={lead.id}
                             className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
                           >
-                            <span className="font-medium">{titleCase(lead.type)}</span>
+                            <div className="flex items-center gap-2 min-w-[88px]">
+                              <span className="font-medium">{titleCase(lead.type)}</span>
+                              {lead.isNew ? (
+                                <span className="text-[10px] font-semibold uppercase text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                                  New
+                                </span>
+                              ) : null}
+                            </div>
                             <span className="text-muted-foreground flex-1">
                               {lead.summary || lead.policy?.name || "General inquiry"}
                             </span>

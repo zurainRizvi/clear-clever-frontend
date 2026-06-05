@@ -40,7 +40,7 @@ interface LiveSparklineProps {
   height?: number;
 }
 
-/** Continuously animated sparkline — SVG dash flow + subtle pulse. */
+/** Sparkline with a always-visible track and a drawing stroke that loops forward then back. */
 export function LiveSparkline({
   seed,
   color,
@@ -52,7 +52,15 @@ export function LiveSparkline({
   const reducedMotion = useReducedMotion();
   const points = useMemo(() => buildPoints(seed, data), [seed, data]);
   const pathD = useMemo(() => pathFromPoints(points, width, height), [points, width, height]);
-  const gradientId = useMemo(() => `spark-grad-${hashSeed(seed) >>> 0}`, [seed]);
+
+  const strokeProps = {
+    d: pathD,
+    fill: "none" as const,
+    stroke: color,
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
 
   return (
     <svg
@@ -60,51 +68,24 @@ export function LiveSparkline({
       className={`block w-full max-w-full overflow-visible ${className}`}
       aria-hidden
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor={color} stopOpacity={0.15} />
-          <stop offset="50%" stopColor={color} stopOpacity={0.85} />
-          <stop offset="100%" stopColor={color} stopOpacity={0.15} />
-        </linearGradient>
-      </defs>
+      <path {...strokeProps} opacity={0.32} />
 
-      <motion.path
-        d={`${pathD} L ${width} ${height} L 0 ${height} Z`}
-        fill={`url(#${gradientId})`}
-        initial={{ opacity: 0.2 }}
-        animate={reducedMotion ? { opacity: 0.25 } : { opacity: [0.18, 0.32, 0.18] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      <motion.path
-        d={pathD}
-        fill="none"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        initial={{ pathLength: 1, opacity: 0.85 }}
-        animate={
-          reducedMotion
-            ? { opacity: 0.85 }
-            : { opacity: [0.65, 1, 0.65], pathLength: [0.92, 1, 0.92] }
-        }
-        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      {!reducedMotion ? (
+      {reducedMotion ? (
+        <path {...strokeProps} opacity={0.9} />
+      ) : (
         <motion.path
-          d={pathD}
-          fill="none"
-          stroke={color}
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeDasharray="6 10"
-          animate={{ strokeDashoffset: [0, -32] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
-          opacity={0.55}
+          {...strokeProps}
+          opacity={0.95}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: [0, 1, 0] }}
+          transition={{
+            duration: 5.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+            times: [0, 0.38, 1],
+          }}
         />
-      ) : null}
+      )}
     </svg>
   );
 }

@@ -16,7 +16,19 @@ import {
   Users,
 } from "lucide-react";
 import { DarkModeToggle } from "./dark-mode-toggle";
-import { layoutSpring } from "@/lib/motion-presets";
+import {
+  buttonPress,
+  cardLiftHoverStrong,
+  floatBadge,
+  gradientShineClass,
+  iconWiggleHover,
+  layoutSpring,
+  mediumTransition,
+  navUnderlineClass,
+  primaryButtonHover,
+  quickTransition,
+  staggerDelay,
+} from "@/lib/motion-presets";
 import heroVehicle from "@/assets/landing/hero-vehicle.png";
 import heroVehicleBike from "@/assets/landing/hero-vehicle-bike.png";
 import heroVehicleJeep from "@/assets/landing/hero-vehicle-jeep.png";
@@ -265,11 +277,11 @@ function HeroInsuranceCarousel() {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           >
             <Link to={card.href} className="block">
               <motion.div
-                whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(15,23,42,0.1)" }}
+                {...cardLiftHoverStrong}
                 className="flex flex-col gap-5 rounded-2xl border border-border p-5 md:flex-row md:items-center md:gap-6 md:p-6"
                 style={{ backgroundColor: card.background }}
               >
@@ -282,7 +294,7 @@ function HeroInsuranceCarousel() {
                       initial={{ opacity: 0, scale: 0.92 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 1.04 }}
-                      transition={{ duration: 0.35 }}
+                      transition={quickTransition}
                       className="h-full w-full object-contain object-center"
                     />
                   </AnimatePresence>
@@ -394,7 +406,7 @@ function PartnerLogoMarquee() {
       <motion.div
         className="flex w-max items-center gap-14 px-4 opacity-90"
         animate={{ x: ["0%", "-50%"] }}
-        transition={{ repeat: Infinity, duration: 28, ease: "linear" }}
+        transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
       >
         {track.map((partner, index) => (
           <img
@@ -451,7 +463,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
         }`}
       >
         <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between px-5 md:px-10 xl:px-20">
-          <motion.div whileHover={{ scale: 1.02 }} className="shrink-0">
+          <motion.div {...buttonPress} className="shrink-0">
           <Link to="/" className="flex items-center gap-2.5">
             <ShieldCheck className="h-8 w-8 text-[#2563EB]" strokeWidth={2.25} />
             <span className="text-xl font-bold text-[#2563EB]">ClearClever</span>
@@ -471,7 +483,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                   className="group relative text-[15px] font-medium text-muted-foreground transition-colors hover:text-primary"
                 >
                   {item}
-                  <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full" />
+                  <span className={navUnderlineClass} />
                 </a>
               );
             })}
@@ -512,7 +524,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              transition={mediumTransition}
               className="max-w-[680px]"
             >
               <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#EEF4FF] px-4 py-2 text-sm font-medium text-[#2563EB]">
@@ -524,7 +536,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                 <motion.span
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05, duration: 0.3 }}
+                  transition={{ ...quickTransition, delay: 0.03 }}
                   className="block"
                 >
                   Find Insurance
@@ -532,7 +544,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                 <motion.span
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.3 }}
+                  transition={{ ...quickTransition, delay: 0.06 }}
                   className="block"
                 >
                   That Fits <span className="text-[#2563EB]">Your Life</span>
@@ -547,19 +559,17 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
               <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
                 <Link to="/compare">
                   <motion.button
-                    whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(37,99,235,0.35)" }}
-                    whileTap={{ scale: 0.98 }}
-                    className="relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-[#2563EB] px-8 text-base font-semibold text-white shadow-lg shadow-[#2563EB]/20 transition-shadow sm:w-auto md:h-16 md:px-8"
+                    {...primaryButtonHover}
+                    className="group relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-[#2563EB] px-8 text-base font-semibold text-white shadow-lg shadow-[#2563EB]/20 sm:w-auto md:h-16 md:px-8"
                   >
-                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                    <span className={gradientShineClass} />
                     Start Your Assessment
                     <ArrowRight className="h-5 w-5" />
                   </motion.button>
                 </Link>
                 <motion.button
                   type="button"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  {...buttonPress}
                   onClick={onWatchDemo}
                   className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-[#CBD5E1] bg-white px-7 text-base font-semibold text-[#0F172A] transition-colors hover:border-[#2563EB]/40 hover:bg-[#F8FAFF] sm:w-auto md:h-16"
                 >
@@ -576,7 +586,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                       key={item.title}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.08 + index * 0.04, duration: 0.28 }}
+                      transition={{ ...quickTransition, delay: 0.05 + staggerDelay(index, false, 0.03) }}
                       className="flex items-start gap-3 rounded-xl border border-border bg-card/80 p-3"
                     >
                       <div
@@ -599,7 +609,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             <motion.div
               initial={{ opacity: 0, y: 32 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: 0.06 }}
+              transition={{ ...mediumTransition, delay: 0.04 }}
               className="relative mx-auto w-full max-w-xl lg:max-w-none"
             >
               <div className="relative overflow-visible rounded-[32px] border border-border bg-card p-6 shadow-[0_30px_60px_rgba(15,23,42,0.08)] md:p-10 md:pb-16">
@@ -613,8 +623,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                     </p>
                   </div>
                   <motion.div
-                    animate={{ y: [0, -4, 0], opacity: [1, 0.85, 1] }}
-                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                    {...floatBadge(4, 1.1)}
                     className="hidden shrink-0 rounded-2xl border border-border bg-card px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:block"
                   >
                     <div className="flex items-center gap-3">
@@ -634,8 +643,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                 <HeroInsuranceCarousel />
 
                 <motion.div
-                  animate={{ y: [0, 5, 0], opacity: [1, 0.88, 1] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+                  {...floatBadge(5, 1, 0.15)}
                   className="absolute -bottom-7 left-1/2 z-20 hidden -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] md:block"
                 >
                   <div className="flex items-center gap-3 whitespace-nowrap">
@@ -657,7 +665,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
+            transition={mediumTransition}
             className="mt-14 rounded-3xl border border-border bg-card p-6 md:mt-20 md:p-9"
           >
             <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-6">
@@ -669,12 +677,12 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                     initial={{ opacity: 0, y: 16 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: index * 0.08 }}
-                    whileHover={{ y: -4 }}
+                    transition={{ ...quickTransition, delay: staggerDelay(index, false, 0.04) }}
+                    {...cardLiftHoverStrong}
                     className="flex flex-col items-center text-center md:flex-row md:items-center md:gap-4 md:text-left"
                   >
                     <motion.div
-                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      {...iconWiggleHover}
                       className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted md:mb-0"
                     >
                       <Icon className="h-6 w-6" style={{ color: stat.iconColor }} />

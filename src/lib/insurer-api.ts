@@ -153,9 +153,14 @@ export interface InsurerDashboardPayload {
   recentLeads: Array<{
     id: string;
     name: string;
+    email: string;
     category: string;
     time: string;
     status: "Hot" | "Warm";
+    isNew: boolean;
+    leadCount: number;
+    purchaseCount: number;
+    preview: string;
   }>;
   pendingClaims: Array<{
     id: string;
@@ -184,41 +189,55 @@ export async function fetchInsurerDashboard(params?: {
 
 export type InsurerAnalyticsTrend = "up" | "down" | "neutral" | "down-positive";
 
+export interface InsurerAnalyticsMetric {
+  title: string;
+  value: string;
+  change: string;
+  trend: InsurerAnalyticsTrend;
+  icon: string;
+  iconColor: string;
+  definition: string;
+  whyItMatters: string;
+  sparkline: number[];
+}
+
 export interface InsurerAnalyticsPayload {
   dateRange: { from: string; to: string; label: string };
-  overviewMetrics: Array<{
-    title: string;
-    value: string;
-    change: string;
-    trend: InsurerAnalyticsTrend;
-    icon: string;
-    iconColor: string;
-    sparkline: number[];
-  }>;
+  overviewMetrics: InsurerAnalyticsMetric[];
   interestTrends: {
+    title: string;
+    definition: string;
     xAxis: string[];
     datasets: Array<{ key: string; label: string; color: string; values: number[] }>;
     sideLegend: Array<{ label: string; percentage: string; trend: string }>;
     insightBanner: { text: string; badge: string };
   };
   funnel: {
-    steps: Array<{ name: string; users: number; conversion?: string }>;
+    title: string;
+    definition: string;
+    steps: Array<{ name: string; users: number; conversion?: string; dropOff?: number }>;
   };
+  leadSources: Array<{ source: string; label: string; count: number; sharePct: number }>;
   customerSegments: Array<{
     segment: string;
-    interest: string;
-    level: "High" | "Medium" | "Low";
-    conversion: string;
-    conversionPct: number;
+    category: string;
+    seekers: number;
+    leads: number;
+    purchaseRate: string;
+    purchaseRatePct: number;
+    opportunity: "High" | "Medium" | "Low";
   }>;
   smartInsights: Array<{
     icon: string;
     title: string;
     description: string;
+    evidence: string;
     suggestion: string;
     theme: "purple" | "orange" | "green" | "blue";
   }>;
   revenue: {
+    title: string;
+    definition: string;
     totalRevenue: string;
     totalRevenuePkr: number;
     growth: string;
@@ -226,20 +245,30 @@ export interface InsurerAnalyticsPayload {
     chartValues: number[];
     xAxis: string[];
   };
-  topPolicies: Array<{ policy: string; revenue: string; conversion: string }>;
-  competitiveness: {
-    score: number;
-    label: string;
-    indicators: Array<{
-      metric: string;
-      status: "Strong" | "Average" | "Needs Improvement";
-    }>;
-    footerSuggestion: string;
-  };
+  policyPerformance: Array<{
+    policy: string;
+    recommended: number;
+    saved: number;
+    checkouts: number;
+    sold: number;
+    premiumPkr: number;
+    premiumFormatted: string;
+    purchaseRatePct: number;
+    purchaseRate: string;
+  }>;
+  operations: Array<{
+    metric: string;
+    value: string;
+    status: "Strong" | "Needs attention";
+    definition: string;
+    whyItMatters: string;
+  }>;
   usersByRegion: {
     title: string;
     subtitle: string;
     totalUsers: number;
+    mappedUsers: number;
+    coverageNote?: string;
     regions: Array<{
       slug: string;
       label: string;
@@ -258,6 +287,20 @@ export async function fetchInsurerAnalytics(params?: {
   if (params?.to) search.set("to", params.to);
   const query = search.toString();
   return apiRequest(`/api/insurer/analytics${query ? `?${query}` : ""}`, { auth: true });
+}
+
+export async function createInsurerProfile(body: {
+  companyName: string;
+  slug: string;
+  contactPhone: string;
+  description?: string;
+  websiteUrl?: string;
+}): Promise<{ profile: InsurerProfile; policiesCreated: number }> {
+  return apiRequest("/api/insurer/profile", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
 }
 
 export async function fetchInsurerProfile(): Promise<{ profile: InsurerProfile }> {

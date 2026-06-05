@@ -65,6 +65,7 @@ export interface AdminInsurerRecord {
     contactPhone: string;
   } | null;
   pendingPolicies: number;
+  starterPoliciesCount?: number;
 }
 
 export async function fetchPendingPolicies(): Promise<{
