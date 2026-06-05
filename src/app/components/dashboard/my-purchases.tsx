@@ -355,7 +355,7 @@ export function MyPurchases() {
 
       {rescheduleTarget && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md">
+          <div className="bg-popover text-popover-foreground border border-border rounded-xl p-6 w-full max-w-md shadow-xl">
             <h2 className="text-xl font-bold mb-2">Reschedule agent call</h2>
             <p className="text-sm text-muted-foreground mb-4">
               Choose a future date and time in Pakistan Standard Time (PKT).

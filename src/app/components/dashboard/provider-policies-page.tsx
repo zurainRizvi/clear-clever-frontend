@@ -148,7 +148,7 @@ export function ProviderPoliciesPage() {
 
       {viewing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+          <div className="bg-popover text-popover-foreground border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-xl">
             <h2 className="text-xl font-bold mb-2">{viewing.name}</h2>
             <p className="text-sm text-muted-foreground mb-4">{viewing.coverageSummary}</p>
             <p className="text-sm mb-4">{viewing.description}</p>

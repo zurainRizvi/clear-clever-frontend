@@ -25,6 +25,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  type DotProps,
 } from "recharts";
 import {
   fetchInsurerAnalytics,
@@ -60,6 +61,44 @@ const INSIGHT_STYLES = {
   blue: "border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/30",
 } as const;
 
+const INTEREST_DOT_OFFSETS: Record<string, number> = {
+  home: -10,
+  auto: -4,
+  life: 4,
+  pet: 10,
+};
+
+const INTEREST_LINE_DASHES: Record<string, string | undefined> = {
+  home: undefined,
+  auto: "5 4",
+  life: "2 3",
+  pet: undefined,
+};
+
+function InterestTrendDot({
+  cx,
+  cy,
+  stroke,
+  payload,
+  dataKey,
+}: DotProps & { dataKey?: string | number; payload?: Record<string, number> }) {
+  const key = String(dataKey ?? "");
+  if (cx == null || cy == null || !payload) return null;
+  const value = payload[key];
+  if (value == null || value <= 0) return null;
+
+  return (
+    <circle
+      cx={cx + (INTEREST_DOT_OFFSETS[key] ?? 0)}
+      cy={cy}
+      r={4}
+      fill={stroke}
+      stroke="var(--popover)"
+      strokeWidth={2}
+    />
+  );
+}
+
 function useChartColors() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -67,6 +106,9 @@ function useChartColors() {
     grid: isDark ? "rgba(148, 163, 184, 0.12)" : "#F1F5F9",
     axis: isDark ? "#94A3B8" : "#64748B",
     gaugeTrack: isDark ? "rgba(148, 163, 184, 0.2)" : "#E2E8F0",
+    tooltipBg: isDark ? "#111827" : "#FFFFFF",
+    tooltipBorder: isDark ? "rgba(255,255,255,0.12)" : "#E2E8F0",
+    tooltipText: isDark ? "#F8FAFC" : "#0F172A",
   };
 }
 
@@ -169,15 +211,6 @@ export function ProviderAnalyticsPage() {
       }
       return row;
     });
-  }, [analytics]);
-
-  const interestMaxValue = useMemo(() => {
-    if (!analytics) return 1;
-    const peak = analytics.interestTrends.datasets.reduce(
-      (max, dataset) => Math.max(max, ...dataset.values),
-      0
-    );
-    return Math.max(peak, 1);
   }, [analytics]);
 
   const revenueChartData = useMemo(() => {
@@ -308,11 +341,20 @@ export function ProviderAnalyticsPage() {
                       axisLine={false}
                       tickLine={false}
                       allowDecimals={false}
-                      domain={[0, interestMaxValue]}
+                      domain={[0, (max: number) => Math.max(Math.ceil(max * 1.15), 1)]}
                     />
                     <Tooltip
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        borderColor: chartColors.tooltipBorder,
+                        color: chartColors.tooltipText,
+                        borderRadius: 12,
+                      }}
+                      labelStyle={{ color: chartColors.tooltipText }}
                       formatter={(value: number, name: string) => {
-                        const dataset = analytics.interestTrends.datasets.find((item) => item.key === name);
+                        const dataset = analytics.interestTrends.datasets.find(
+                          (item) => item.key === name
+                        );
                         return [value, dataset?.label ?? name];
                       }}
                     />
@@ -323,10 +365,12 @@ export function ProviderAnalyticsPage() {
                         dataKey={ds.key}
                         name={ds.label}
                         stroke={ds.color}
-                        strokeWidth={2}
-                        dot={{ r: 2, strokeWidth: 0 }}
-                        activeDot={{ r: 4 }}
+                        strokeWidth={2.5}
+                        strokeDasharray={INTEREST_LINE_DASHES[ds.key]}
+                        dot={<InterestTrendDot dataKey={ds.key} />}
+                        activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--popover)" }}
                         connectNulls
+                        isAnimationActive={false}
                       />
                     ))}
                   </LineChart>

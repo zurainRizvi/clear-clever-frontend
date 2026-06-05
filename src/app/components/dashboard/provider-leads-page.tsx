@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Phone,
   ShieldOff,
+  ShoppingBag,
   User,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,14 +21,75 @@ import {
   revokeInsurerPurchase,
   terminateInsurerPurchase,
   type InsurerCustomerGroup,
+  type InsurerCustomerPurchaseSummary,
 } from "@/lib/insurer-api";
 import { ApiError } from "@/lib/api";
+import { ActionConfirmDialog } from "./action-confirm-dialog";
 
 function customerMatchesFilter(customer: InsurerCustomerGroup, filter: string): boolean {
   if (filter === "all") return true;
   if (filter === "new") return customer.isNew;
   if (filter === "purchases") return customer.purchases.length > 0;
   return customer.leads.some((lead) => lead.status === filter);
+}
+
+function PurchasedPolicyRow({
+  purchase,
+  busy,
+  onRevoke,
+  onTerminate,
+}: {
+  purchase: InsurerCustomerPurchaseSummary;
+  busy: boolean;
+  onRevoke: (purchaseId: string) => void;
+  onTerminate: (purchaseId: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-popover px-3 py-3 text-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <ShoppingBag className="w-4 h-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium">{purchase.policy?.name ?? "Policy"}</p>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              {titleCase(purchase.status)}
+              {purchase.completedAt
+                ? ` · Completed ${new Date(purchase.completedAt).toLocaleDateString()}`
+                : ""}
+            </p>
+          </div>
+        </div>
+        {purchase.status === "completed" ? (
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onRevoke(purchase.id)}
+              className="px-3 py-1.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 inline-flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Ban className="w-3.5 h-3.5" />
+              Revoke
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onTerminate(purchase.id)}
+              className="px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 inline-flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <ShieldOff className="w-3.5 h-3.5" />
+              Terminate
+            </button>
+          </div>
+        ) : purchase.status === "terminated" ? (
+          <span className="text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-500/10 px-2 py-1 rounded-full shrink-0">
+            No longer served
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export function ProviderLeadsPage() {
@@ -37,6 +99,11 @@ export function ProviderLeadsPage() {
   const [actionPurchaseId, setActionPurchaseId] = useState<string | null>(null);
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
+  const [pendingAction, setPendingAction] = useState<{
+    purchaseId: string;
+    action: "revoke" | "terminate";
+    policyName: string;
+  } | null>(null);
 
   useEffect(() => {
     if (filter !== "new") return;
@@ -93,19 +160,18 @@ export function ProviderLeadsPage() {
     }
   };
 
-  const handlePurchaseAction = async (
-    purchaseId: string,
-    action: "revoke" | "terminate"
-  ) => {
-    setActionPurchaseId(purchaseId);
+  const runPurchaseAction = async () => {
+    if (!pendingAction) return;
+    setActionPurchaseId(pendingAction.purchaseId);
     try {
-      if (action === "revoke") {
-        await revokeInsurerPurchase(purchaseId);
+      if (pendingAction.action === "revoke") {
+        await revokeInsurerPurchase(pendingAction.purchaseId);
         toast.success("Purchase revoked. The policy seeker has been notified.");
       } else {
-        await terminateInsurerPurchase(purchaseId);
+        await terminateInsurerPurchase(pendingAction.purchaseId);
         toast.success("Policy terminated. The policy seeker has been notified.");
       }
+      setPendingAction(null);
       await refresh();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not update purchase");
@@ -125,9 +191,9 @@ export function ProviderLeadsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-1">Customer leads</h1>
+        <h1 className="text-3xl font-bold mb-1">Leads &amp; customers</h1>
         <p className="text-muted-foreground">
-          Customers grouped by email with inquiries, favorites, and purchased policies
+          Customers grouped by email with lead activity and purchased policies you can revoke or terminate
         </p>
       </div>
 
@@ -199,25 +265,27 @@ export function ProviderLeadsPage() {
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedEmail(expanded ? null : customer.seeker.email)
-                        }
-                        className="px-4 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
-                      >
-                        {expanded ? (
-                          <>
-                            <ChevronUp className="w-4 h-4" />
-                            Hide details
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="w-4 h-4" />
-                            View details
-                          </>
-                        )}
-                      </button>
+                      {leadCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedEmail(expanded ? null : customer.seeker.email)
+                          }
+                          className="px-4 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
+                        >
+                          {expanded ? (
+                            <>
+                              <ChevronUp className="w-4 h-4" />
+                              Hide leads
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-4 h-4" />
+                              View leads
+                            </>
+                          )}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         disabled={contactingId === customer.seeker.id}
@@ -230,85 +298,56 @@ export function ProviderLeadsPage() {
                     </div>
                   </div>
 
-                  {expanded ? (
-                    <div className="border-t border-border bg-card/80 p-4 space-y-4">
-                      {customer.leads.length > 0 ? (
-                        <div>
-                          <h3 className="text-sm font-semibold mb-2">Lead activity</h3>
-                          <div className="space-y-2">
-                            {customer.leads.map((lead) => (
-                              <div
-                                key={lead.id}
-                                className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
-                              >
-                                <span className="font-medium">{titleCase(lead.type)}</span>
-                                <span className="text-muted-foreground flex-1">
-                                  {lead.summary || lead.policy?.name || "General inquiry"}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs w-fit ${statusClass(lead.status)}`}>
-                                  {titleCase(lead.status)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
+                  {customer.purchases.length > 0 ? (
+                    <div className="border-t border-border bg-card/50 px-4 py-4 space-y-3">
+                      <h3 className="text-sm font-semibold">Purchased policies</h3>
+                      <div className="space-y-2">
+                        {customer.purchases.map((purchase) => (
+                          <PurchasedPolicyRow
+                            key={purchase.id}
+                            purchase={purchase}
+                            busy={actionPurchaseId === purchase.id}
+                            onRevoke={(purchaseId) =>
+                              setPendingAction({
+                                purchaseId,
+                                action: "revoke",
+                                policyName: purchase.policy?.name ?? "this policy",
+                              })
+                            }
+                            onTerminate={(purchaseId) =>
+                              setPendingAction({
+                                purchaseId,
+                                action: "terminate",
+                                policyName: purchase.policy?.name ?? "this policy",
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
-                      {customer.purchases.length > 0 ? (
-                        <div>
-                          <h3 className="text-sm font-semibold mb-2">Purchased policies</h3>
-                          <div className="space-y-2">
-                            {customer.purchases.map((purchase) => (
-                              <div
-                                key={purchase.id}
-                                className="rounded-lg border border-border px-3 py-3 text-sm space-y-3"
-                              >
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium">{purchase.policy?.name ?? "Policy"}</p>
-                                    <p className="text-muted-foreground text-xs mt-0.5">
-                                      {titleCase(purchase.status)}
-                                      {purchase.completedAt
-                                        ? ` · Completed ${new Date(purchase.completedAt).toLocaleDateString()}`
-                                        : ""}
-                                    </p>
-                                  </div>
-                                  {purchase.status === "completed" ? (
-                                    <div className="flex flex-wrap gap-2">
-                                      <button
-                                        type="button"
-                                        disabled={actionPurchaseId === purchase.id}
-                                        onClick={() =>
-                                          void handlePurchaseAction(purchase.id, "revoke")
-                                        }
-                                        className="px-3 py-1.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 inline-flex items-center gap-1.5 disabled:opacity-50"
-                                      >
-                                        <Ban className="w-3.5 h-3.5" />
-                                        Revoke
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={actionPurchaseId === purchase.id}
-                                        onClick={() =>
-                                          void handlePurchaseAction(purchase.id, "terminate")
-                                        }
-                                        className="px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-700 hover:bg-amber-500/10 inline-flex items-center gap-1.5 disabled:opacity-50"
-                                      >
-                                        <ShieldOff className="w-3.5 h-3.5" />
-                                        Terminate
-                                      </button>
-                                    </div>
-                                  ) : purchase.status === "terminated" ? (
-                                    <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
-                                      No longer served
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            ))}
+                  {expanded && customer.leads.length > 0 ? (
+                    <div className="border-t border-border bg-card/80 px-4 py-4">
+                      <h3 className="text-sm font-semibold mb-2">Lead activity</h3>
+                      <div className="space-y-2">
+                        {customer.leads.map((lead) => (
+                          <div
+                            key={lead.id}
+                            className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+                          >
+                            <span className="font-medium">{titleCase(lead.type)}</span>
+                            <span className="text-muted-foreground flex-1">
+                              {lead.summary || lead.policy?.name || "General inquiry"}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs w-fit ${statusClass(lead.status)}`}
+                            >
+                              {titleCase(lead.status)}
+                            </span>
                           </div>
-                        </div>
-                      ) : null}
+                        ))}
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -317,6 +356,27 @@ export function ProviderLeadsPage() {
           </div>
         )}
       </div>
+
+      <ActionConfirmDialog
+        open={!!pendingAction}
+        title={
+          pendingAction?.action === "revoke"
+            ? "Revoke purchased policy?"
+            : "Terminate purchased policy?"
+        }
+        description={
+          pendingAction
+            ? pendingAction.action === "revoke"
+              ? `Revoke ${pendingAction.policyName}? It will be removed from the policy seeker's purchases and they will be notified by email and message.`
+              : `Terminate ${pendingAction.policyName}? The seeker will be notified that this policy is no longer being served.`
+            : ""
+        }
+        confirmLabel={pendingAction?.action === "revoke" ? "Revoke policy" : "Terminate policy"}
+        confirmTone={pendingAction?.action === "revoke" ? "destructive" : "default"}
+        loading={!!actionPurchaseId}
+        onConfirm={() => void runPurchaseAction()}
+        onCancel={() => setPendingAction(null)}
+      />
     </div>
   );
 }

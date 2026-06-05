@@ -257,6 +257,14 @@
   background-color: rgba(16, 185, 129, 0.15) !important;
 }
 
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+[data-slot="sheet-content"],
+.modal-surface {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+}
+
 .dark .provider-dashboard-theme .text-emerald-700 {
   color: #6ee7b7 !important;
 }

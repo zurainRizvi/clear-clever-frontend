@@ -131,7 +131,7 @@ export function ProviderPolicyFormDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-popover text-popover-foreground border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-popover text-popover-foreground border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
         <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-xl font-semibold">{isEdit ? "Edit policy" : "Add new policy"}</h2>
           <button type="button" onClick={onClose} className="p-2 hover:bg-accent rounded-lg">
