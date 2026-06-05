@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { Heart, Trash2, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
 import { useSavedPolicies } from "../saved-policies-context";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy";
@@ -48,7 +49,7 @@ export function SavedPolicies() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <AnimatedPage className="max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Saved policies</h1>
         <p className="text-muted-foreground">
@@ -105,6 +106,6 @@ export function SavedPolicies() {
           </motion.div>
         ))}
       </div>
-    </div>
+    </AnimatedPage>
   );
 }

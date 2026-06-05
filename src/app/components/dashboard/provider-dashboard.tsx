@@ -16,7 +16,8 @@ import {
   Bell,
   type LucideIcon,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { PortalScrollNav } from "../ui/portal-scroll-nav";
 import { useAuth, useLogout } from "../auth-context";
 import { MessagesProvider, useMessages } from "./messages-context";
 import { NotificationsProvider, useNotifications } from "./notifications-context";
@@ -158,25 +159,31 @@ function ProviderDashboardInner() {
                 <Link
                   key={`${item.path}-${item.label}`}
                   to={item.path}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                     active
                       ? "font-medium"
                       : "text-muted-foreground hover:bg-accent"
                   }`}
-                  style={
-                    active
-                      ? { backgroundColor: "#EFF6FF", color: "#2563EB" }
-                      : undefined
-                  }
+                  style={active ? { color: "#2563EB" } : undefined}
                 >
+                  {active ? (
+                    <motion.span
+                      layoutId="provider-sidebar-active"
+                      className="absolute inset-0 rounded-xl"
+                      style={{ backgroundColor: "#EFF6FF" }}
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  ) : null}
+                  <motion.span whileHover={{ scale: 1.1 }} className="relative z-[1] shrink-0">
                   <Icon
-                    className={`w-[18px] h-[18px] shrink-0 ${active ? "" : "text-muted-foreground"}`}
+                    className={`w-[18px] h-[18px] ${active ? "" : "text-muted-foreground"}`}
                     style={active ? { color: "#2563EB" } : undefined}
                   />
-                  <span className="flex-1">{item.label}</span>
+                  </motion.span>
+                  <span className="relative z-[1] flex-1">{item.label}</span>
                   {count > 0 ? (
                     <span
-                      className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-bold text-white"
+                      className="relative z-[1] min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-bold text-white"
                       style={{ backgroundColor: "#2563EB" }}
                     >
                       {count > 9 ? "9+" : count}
@@ -287,6 +294,18 @@ function ProviderDashboardInner() {
           </div>
         )}
 
+        <PortalScrollNav
+          items={menuItems.map((item) => ({
+            path: item.path,
+            label: item.label,
+            icon: item.icon,
+            badge: badgeCount(item.badgeKey) || undefined,
+          }))}
+          isActive={isActive}
+          theme="provider"
+          layoutId="provider-top-nav-active"
+        />
+
         <main
           className={`flex-1 min-w-0 overflow-x-hidden ${
             location.pathname.includes("/messages") || location.pathname.includes("/support")
@@ -301,7 +320,17 @@ function ProviderDashboardInner() {
                 : ""
             }`}
           >
-            <Outlet context={outletContext} />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Outlet context={outletContext} />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>

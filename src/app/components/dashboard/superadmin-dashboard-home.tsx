@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
 import { useAdmin } from "./admin-context";
 
 export function SuperadminDashboardHome() {
@@ -106,7 +107,7 @@ export function SuperadminDashboardHome() {
   }
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/15 via-primary/5 to-background p-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
@@ -250,6 +251,6 @@ export function SuperadminDashboardHome() {
           </Link>
         </div>
       </div>
-    </div>
+    </AnimatedPage>
   );
 }

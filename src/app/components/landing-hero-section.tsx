@@ -16,6 +16,8 @@ import {
   Users,
 } from "lucide-react";
 import { DarkModeToggle } from "./dark-mode-toggle";
+import { CountUp } from "./ui/count-up";
+import { layoutSpring } from "@/lib/motion-presets";
 import heroVehicle from "@/assets/landing/hero-vehicle.png";
 import heroVehicleBike from "@/assets/landing/hero-vehicle-bike.png";
 import heroVehicleJeep from "@/assets/landing/hero-vehicle-jeep.png";
@@ -188,6 +190,23 @@ function HeroInsuranceCarousel() {
   }, [activeIndex]);
 
   useEffect(() => {
+    setImageReady(false);
+    const img = new Image();
+    img.src = currentImage.src;
+    const markReady = () => setImageReady(true);
+    if (img.complete) {
+      markReady();
+    } else {
+      img.onload = markReady;
+      img.onerror = markReady;
+    }
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [currentImage.src, imageIndex, activeIndex]);
+
+  useEffect(() => {
     if (!imageReady) return;
 
     const isLastImage = imageIndex === IMAGES_PER_CATEGORY - 1;
@@ -265,10 +284,6 @@ function HeroInsuranceCarousel() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 1.04 }}
                       transition={{ duration: 0.35 }}
-                      onLoad={() => setImageReady(true)}
-                      ref={(node) => {
-                        if (node?.complete) setImageReady(true);
-                      }}
                       className="h-full w-full object-contain object-center"
                     />
                   </AnimatePresence>
@@ -304,25 +319,39 @@ function HeroInsuranceCarousel() {
         </AnimatePresence>
       </div>
 
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
-        {INSURANCE_CARDS.map((item, index) => {
-          const isActive = index === activeIndex;
-          return (
-            <button
-              key={item.title}
-              type="button"
-              onClick={() => goTo(index)}
-              aria-current={isActive ? "true" : undefined}
-              className="rounded-full px-3 py-2 text-xs font-medium transition-all sm:px-4 sm:text-sm"
-              style={{
-                backgroundColor: isActive ? item.accentColor : "#F1F5F9",
-                color: isActive ? "#FFFFFF" : "#64748B",
-              }}
-            >
-              {item.shortLabel}
-            </button>
-          );
-        })}
+      <div className="relative mt-5">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-card to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-card to-transparent" />
+        <div
+          className="flex justify-start gap-2 overflow-x-auto px-1 py-1 scroll-smooth snap-x snap-mandatory scrollbar-none"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {INSURANCE_CARDS.map((item, index) => {
+            const isActive = index === activeIndex;
+            return (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => goTo(index)}
+                aria-current={isActive ? "true" : undefined}
+                className="relative shrink-0 snap-start rounded-full px-3 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm"
+                style={{ color: isActive ? "#FFFFFF" : "#64748B" }}
+              >
+                {isActive ? (
+                  <motion.span
+                    layoutId="hero-category-pill"
+                    className="absolute inset-0 rounded-full"
+                    style={{ backgroundColor: item.accentColor }}
+                    transition={layoutSpring}
+                  />
+                ) : (
+                  <span className="absolute inset-0 rounded-full bg-[#F1F5F9] dark:bg-muted" />
+                )}
+                <span className="relative z-[1]">{item.shortLabel}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-4 flex justify-center gap-2">
@@ -339,12 +368,14 @@ function HeroInsuranceCarousel() {
               className="relative h-2 overflow-hidden rounded-full bg-[#CBD5E1] transition-[width] duration-300 dark:bg-muted"
               style={{ width: isActive ? 28 : 8 }}
             >
-              <span
-                className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-75 ease-linear"
+              <motion.span
+                className="absolute inset-y-0 left-0 w-full rounded-full origin-left"
                 style={{
-                  width: `${fill * 100}%`,
                   backgroundColor: isActive ? item.accentColor : "#2563EB",
                 }}
+                animate={{ scaleX: fill }}
+                initial={false}
+                transition={{ duration: 0.04, ease: "linear" }}
               />
             </button>
           );
@@ -421,10 +452,12 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
         }`}
       >
         <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between px-5 md:px-10 xl:px-20">
-          <Link to="/" className="flex items-center gap-2.5 shrink-0">
+          <motion.div whileHover={{ scale: 1.02 }} className="shrink-0">
+          <Link to="/" className="flex items-center gap-2.5">
             <ShieldCheck className="h-8 w-8 text-[#2563EB]" strokeWidth={2.25} />
             <span className="text-xl font-bold text-[#2563EB]">ClearClever</span>
           </Link>
+          </motion.div>
 
           <nav className="hidden items-center gap-10 lg:flex">
             {navLinks.map(({ item, href }) => {
@@ -436,9 +469,10 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                     event.preventDefault();
                     scrollToHash(href);
                   }}
-                  className="text-[15px] font-medium text-muted-foreground transition-colors hover:text-primary"
+                  className="group relative text-[15px] font-medium text-muted-foreground transition-colors hover:text-primary"
                 >
                   {item}
+                  <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full" />
                 </a>
               );
             })}
@@ -488,9 +522,22 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
               </div>
 
               <h1 className="mb-6 text-[2.5rem] font-extrabold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl xl:text-[4.75rem]">
-                Find Insurance
-                <br />
-                That Fits <span className="text-[#2563EB]">Your Life</span>
+                <motion.span
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.5 }}
+                  className="block"
+                >
+                  Find Insurance
+                </motion.span>
+                <motion.span
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.22, duration: 0.5 }}
+                  className="block"
+                >
+                  That Fits <span className="text-[#2563EB]">Your Life</span>
+                </motion.span>
               </h1>
 
               <p className="mb-8 max-w-[680px] text-lg leading-[1.8] text-[#64748B] md:text-2xl">
@@ -501,10 +548,11 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
               <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
                 <Link to="/compare">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(37,99,235,0.35)" }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563EB] px-8 text-base font-semibold text-white shadow-lg shadow-[#2563EB]/20 transition-shadow hover:shadow-xl sm:w-auto md:h-16 md:px-8"
+                    className="relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-[#2563EB] px-8 text-base font-semibold text-white shadow-lg shadow-[#2563EB]/20 transition-shadow sm:w-auto md:h-16 md:px-8"
                   >
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                     Start Your Assessment
                     <ArrowRight className="h-5 w-5" />
                   </motion.button>
@@ -566,7 +614,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                     </p>
                   </div>
                   <motion.div
-                    animate={{ y: [0, -4, 0] }}
+                    animate={{ y: [0, -4, 0], opacity: [1, 0.85, 1] }}
                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                     className="hidden shrink-0 rounded-2xl border border-border bg-card px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:block"
                   >
@@ -587,7 +635,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                 <HeroInsuranceCarousel />
 
                 <motion.div
-                  animate={{ y: [0, 5, 0] }}
+                  animate={{ y: [0, 5, 0], opacity: [1, 0.88, 1] }}
                   transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
                   className="absolute -bottom-7 left-1/2 z-20 hidden -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] md:block"
                 >
@@ -614,18 +662,31 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             className="mt-14 rounded-3xl border border-border bg-card p-6 md:mt-20 md:p-9"
           >
             <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-6">
-              {STATS.map((stat) => {
+              {STATS.map((stat, index) => {
                 const Icon = stat.icon;
                 return (
-                  <div key={stat.label} className="flex flex-col items-center text-center md:flex-row md:items-center md:gap-4 md:text-left">
-                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted md:mb-0">
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.08 }}
+                    whileHover={{ y: -4 }}
+                    className="flex flex-col items-center text-center md:flex-row md:items-center md:gap-4 md:text-left"
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted md:mb-0"
+                    >
                       <Icon className="h-6 w-6" style={{ color: stat.iconColor }} />
-                    </div>
+                    </motion.div>
                     <div>
-                      <p className="text-2xl font-extrabold text-foreground md:text-3xl">{stat.value}</p>
+                      <p className="text-2xl font-extrabold text-foreground md:text-3xl">
+                        <CountUp value={stat.value} />
+                      </p>
                       <p className="text-sm text-muted-foreground md:text-base">{stat.label}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

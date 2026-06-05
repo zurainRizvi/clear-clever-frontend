@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { useSavedPolicies } from "../saved-policies-context";
 import { fetchCategories, fetchCategoryQuestions, fetchRecommendations } from "@/lib/auth-api";
@@ -357,7 +358,7 @@ export function ComparePolicies() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <AnimatedPage className="max-w-7xl mx-auto">
       <AnimatePresence mode="wait">
         {step === "category" && (
           <motion.div
@@ -666,7 +667,7 @@ export function ComparePolicies() {
         description={drawerDescription}
         request={drawerRequest}
       />
-    </div>
+    </AnimatedPage>
   );
 }
 

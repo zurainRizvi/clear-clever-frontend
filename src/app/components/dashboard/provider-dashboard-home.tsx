@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
+import { fadeUpItem } from "@/lib/motion-presets";
 import {
   Cell,
   Line,
@@ -144,6 +146,9 @@ function DonutChartBlock({ dashboard }: { dashboard: InsurerDashboardPayload }) 
               outerRadius={88}
               paddingAngle={3}
               stroke="none"
+              isAnimationActive
+              animationBegin={0}
+              animationDuration={800}
             >
               {chartData.map((entry) => (
                 <Cell key={entry.name} fill={entry.color} />
@@ -234,7 +239,7 @@ export function ProviderDashboardHome() {
   }
 
   return (
-    <div
+    <AnimatedPage
       className={`${PROVIDER_PAGE_CLASS} min-h-full`}
       style={{ backgroundColor: THEME.bg, fontFamily: "Inter, sans-serif" }}
     >
@@ -301,12 +306,13 @@ export function ProviderDashboardHome() {
               }}
             >
               <div className="flex items-start justify-between mb-4">
-                <div
+                <motion.div
+                  whileHover={{ scale: 1.12, rotate: 4 }}
                   className="w-11 h-11 rounded-2xl flex items-center justify-center"
                   style={{ backgroundColor: `${stat.iconColor}18` }}
                 >
                   <Icon className="w-5 h-5" style={{ color: stat.iconColor }} />
-                </div>
+                </motion.div>
                 <span
                   className={`text-xs font-semibold ${
                     stat.trend === "up"
@@ -366,9 +372,13 @@ export function ProviderDashboardHome() {
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + index * 0.06 }}
-                      whileHover={{ y: -3 }}
-                      className={`text-left p-5 rounded-[20px] border bg-white hover:shadow-md transition-all ${palette.border}`}
+                      whileHover={{ y: -3, boxShadow: "0 12px 28px rgba(15,23,42,0.08)" }}
+                      className={`group relative overflow-hidden text-left p-5 rounded-[20px] border bg-white transition-all ${palette.border}`}
                     >
+                      <span
+                        className="absolute left-0 top-0 h-full w-1 -translate-x-full transition-transform group-hover:translate-x-0"
+                        style={{ backgroundColor: palette.chart }}
+                      />
                       <span
                         className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full mb-3 ${palette.badge}`}
                       >
@@ -557,8 +567,15 @@ export function ProviderDashboardHome() {
               <p className="text-sm text-slate-500 py-4">No leads yet.</p>
             ) : (
               <ul className="space-y-4">
-                {dashboard.recentLeads.map((lead) => (
-                  <li key={lead.id} className="flex items-center gap-3">
+                {dashboard.recentLeads.map((lead, idx) => (
+                  <motion.li
+                    key={lead.id}
+                    variants={fadeUpItem}
+                    initial="hidden"
+                    animate="visible"
+                    transition={{ delay: idx * 0.06 }}
+                    className="flex items-center gap-3"
+                  >
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
                       style={{ backgroundColor: `${THEME.primary}15`, color: THEME.primary }}
@@ -580,7 +597,7 @@ export function ProviderDashboardHome() {
                     >
                       {lead.status}
                     </span>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             )}
@@ -630,7 +647,7 @@ export function ProviderDashboardHome() {
           </section>
         </div>
       </div>
-    </div>
+    </AnimatedPage>
   );
 }
 
@@ -651,34 +668,45 @@ function QuickAction({
 }) {
   const inner = (
     <>
-      <div className="relative w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-slate-50">
+      <motion.div
+        whileHover={{ scale: 1.15 }}
+        className="relative w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-slate-50"
+      >
         <Icon className="w-5 h-5 text-slate-700" />
         {badge && badge > 0 ? (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold">
             {badge}
           </span>
         ) : null}
-      </div>
+      </motion.div>
       <p className="font-semibold text-slate-900 text-sm">{title}</p>
       <p className="text-xs text-slate-500 mt-0.5">{description}</p>
     </>
   );
 
   const className =
-    "text-left p-4 rounded-[20px] border bg-white hover:shadow-md hover:-translate-y-0.5 transition-all";
+    "text-left p-4 rounded-[20px] border bg-white transition-all";
   const style = { borderColor: THEME.border, boxShadow: THEME.shadow };
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={className} style={style}>
+      <motion.button
+        type="button"
+        onClick={onClick}
+        whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(15,23,42,0.1)" }}
+        className={className}
+        style={style}
+      >
         {inner}
-      </button>
+      </motion.button>
     );
   }
 
   return (
+    <motion.div whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(15,23,42,0.1)" }}>
     <Link to={to ?? "#"} className={className} style={style}>
       {inner}
     </Link>
+    </motion.div>
   );
 }

@@ -19,7 +19,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { PortalScrollNav } from "../ui/portal-scroll-nav";
 import { useAuth, useLogout } from "../auth-context";
 import { toast } from "sonner";
 import { MessagesProvider, useMessages } from "./messages-context";
@@ -148,18 +149,27 @@ function PolicySeekerDashboardInner() {
                   return (
                     <Link key={item.path} to={item.path} className="block">
                       <div
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
+                        className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
                           active
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            ? "text-sidebar-accent-foreground"
                             : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                         }`}
                       >
+                        {active ? (
+                          <motion.span
+                            layoutId="seeker-sidebar-active"
+                            className="absolute inset-0 rounded-xl bg-sidebar-accent"
+                            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                          />
+                        ) : null}
+                        <motion.span whileHover={{ scale: 1.1 }} className="relative z-[1] shrink-0">
                         <Icon
-                          className={`w-5 h-5 shrink-0 ${
+                          className={`w-5 h-5 ${
                             active ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                           }`}
                         />
-                        <span className="flex-1">{item.label}</span>
+                        </motion.span>
+                        <span className="relative z-[1] flex-1">{item.label}</span>
                         {item.path === "/dashboard/notifications" && unreadCount > 0 ? (
                           <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
                             {unreadCount}
@@ -280,6 +290,21 @@ function PolicySeekerDashboardInner() {
             </div>
           </header>
 
+          <PortalScrollNav
+            items={menuItems.map((item) => ({
+              ...item,
+              badge:
+                item.path === "/dashboard/notifications"
+                  ? unreadCount || undefined
+                  : item.path === "/dashboard/messages"
+                    ? unreadMessagesCount || undefined
+                    : undefined,
+            }))}
+            isActive={isActive}
+            theme="seeker"
+            layoutId="seeker-top-nav-active"
+          />
+
           <main
             className={`flex-1 p-6 ${
               location.pathname.includes("/messages") || location.pathname.includes("/support")
@@ -287,7 +312,17 @@ function PolicySeekerDashboardInner() {
                 : "overflow-y-auto"
             }`}
           >
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
     </motion.div>

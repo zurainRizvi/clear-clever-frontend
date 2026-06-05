@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { Clock, Loader2, Shield, Users } from "lucide-react";
 import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
 import { useAdmin } from "./admin-context";
 import { policyStatusDistribution, roleDistribution } from "@/lib/admin-utils";
 
@@ -43,7 +44,7 @@ export function EmployeeDashboardHome() {
   }
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">Admin dashboard</h1>
         <p className="text-muted-foreground">Platform operations, approvals, and live metrics</p>
@@ -155,6 +156,6 @@ export function EmployeeDashboardHome() {
           </div>
         </Link>
       </div>
-    </div>
+    </AnimatedPage>
   );
 }

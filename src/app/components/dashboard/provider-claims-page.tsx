@@ -11,6 +11,10 @@ import {
   type InsurerClaimStatus,
 } from "@/lib/insurer-api";
 import { statusClass, titleCase } from "@/lib/provider-utils";
+import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
+import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
+import { fadeUpItem } from "@/lib/motion-presets";
 
 const FILTERS: Array<"all" | InsurerClaimStatus> = [
   "all",
@@ -83,8 +87,13 @@ export function ProviderClaimsPage() {
     );
   }
 
+  const filterTabs = FILTERS.map((value) => ({
+    id: value,
+    label: value === "all" ? "All" : claimStatusLabel(value),
+  }));
+
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-1">Claims review</h1>
         <p className="text-muted-foreground">
@@ -98,22 +107,12 @@ export function ProviderClaimsPage() {
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setFilter(value)}
-            className={`px-3 py-1.5 rounded-lg text-sm border ${
-              filter === value
-                ? "bg-primary text-primary-foreground border-primary"
-                : "border-border hover:bg-accent"
-            }`}
-          >
-            {value === "all" ? "All" : claimStatusLabel(value)}
-          </button>
-        ))}
-      </div>
+      <AnimatedPillTabs
+        tabs={filterTabs}
+        activeId={filter}
+        onChange={(id) => setFilter(id as typeof filter)}
+        layoutId="provider-claims-filter"
+      />
 
       <div className="space-y-4">
         {filtered.length === 0 ? (
@@ -121,8 +120,15 @@ export function ProviderClaimsPage() {
             No claims in this view yet. New seeker claims will appear here for your approval.
           </div>
         ) : (
-          filtered.map((claim) => (
-            <article key={claim.id} className="bg-card border border-border rounded-xl p-6">
+          filtered.map((claim, idx) => (
+            <motion.article
+              key={claim.id}
+              variants={fadeUpItem}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: idx * 0.05 }}
+              className="bg-card border border-border rounded-xl p-6"
+            >
               <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <Shield className="w-6 h-6 text-primary" />
@@ -214,10 +220,10 @@ export function ProviderClaimsPage() {
                   )}
                 </div>
               </div>
-            </article>
+            </motion.article>
           ))
         )}
       </div>
-    </div>
+    </AnimatedPage>
   );
 }

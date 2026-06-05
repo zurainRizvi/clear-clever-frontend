@@ -21,6 +21,7 @@ import { isConversationUnread } from "@/lib/messaging-unread";
 import { titleForConversation } from "@/lib/messaging-display";
 import { ConversationActionsMenu } from "./conversation-actions-menu";
 import { SupportChatCta } from "./support-chat-cta";
+import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
 
 const SUPPORT_WELCOME_MESSAGE = "Hi ClearClever support, I need help with a query.";
 
@@ -324,60 +325,28 @@ export function MessagesPanel({
   const panel = (
     <ChatShell>
       {tabMode === "provider" ? (
-        <div className="flex gap-2 mb-4 shrink-0">
-          <button
-            type="button"
-            onClick={() => setProviderTab("seekers")}
-            className={`px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 ${
-              providerTab === "seekers"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            <User className="w-4 h-4" />
-            Policy seekers
-          </button>
-          <button
-            type="button"
-            onClick={() => setProviderTab("support")}
-            className={`px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 ${
-              providerTab === "support"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-            Support
-          </button>
-        </div>
+        <AnimatedPillTabs
+          className="mb-4 shrink-0"
+          tabs={[
+            { id: "seekers", label: "Policy seekers" },
+            { id: "support", label: "Support" },
+          ]}
+          activeId={providerTab}
+          onChange={(id) => setProviderTab(id as typeof providerTab)}
+          layoutId="provider-messages-tab"
+        />
       ) : null}
       {tabMode === "seeker" ? (
-        <div className="flex gap-2 mb-4 shrink-0">
-          <button
-            type="button"
-            onClick={() => setSeekerTab("insurers")}
-            className={`px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 ${
-              seekerTab === "insurers"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            Insurers
-          </button>
-          <button
-            type="button"
-            onClick={() => setSeekerTab("support")}
-            className={`px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 ${
-              seekerTab === "support"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-            Support
-          </button>
-        </div>
+        <AnimatedPillTabs
+          className="mb-4 shrink-0"
+          tabs={[
+            { id: "insurers", label: "Insurers" },
+            { id: "support", label: "Support" },
+          ]}
+          activeId={seekerTab}
+          onChange={(id) => setSeekerTab(id as typeof seekerTab)}
+          layoutId="seeker-messages-tab"
+        />
       ) : null}
 
       <div className="grid lg:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0">

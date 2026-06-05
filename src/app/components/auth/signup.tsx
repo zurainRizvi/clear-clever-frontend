@@ -133,7 +133,7 @@ export function SignUp() {
           <p className="text-muted-foreground mb-8">{copy.auth.signUpSubtitle}</p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
-            {(["fullName", "email", "phone"] as const).map((field) => {
+            {(["fullName", "email", "phone"] as const).map((field, index) => {
               const icons = { fullName: User, email: Mail, phone: Phone };
               const Icon = icons[field];
               const labels = {
@@ -147,7 +147,12 @@ export function SignUp() {
                 phone: "+92 300 1234567",
               };
               return (
-                <div key={field}>
+                <motion.div
+                  key={field}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.06 }}
+                >
                   <label className="block text-sm mb-2">{labels[field]}</label>
                   <div className="relative">
                     <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -161,11 +166,15 @@ export function SignUp() {
                   {errors[field] && (
                     <p className="text-sm text-destructive mt-1">{errors[field]?.message}</p>
                   )}
-                </div>
+                </motion.div>
               );
             })}
 
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
               <label className="block text-sm mb-2">Password</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -186,9 +195,13 @@ export function SignUp() {
               {errors.password && (
                 <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
               )}
-            </div>
+            </motion.div>
 
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.26 }}
+            >
               <label className="block text-sm mb-2">Confirm password</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -209,16 +222,21 @@ export function SignUp() {
               {errors.confirmPassword && (
                 <p className="text-sm text-destructive mt-1">{errors.confirmPassword.message}</p>
               )}
-            </div>
+            </motion.div>
 
-            <button
+            <motion.button
               type="submit"
               disabled={submitting}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.32 }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               className="w-full py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
             >
               {submitting ? "Creating account…" : copy.auth.signUpCta}
               <ArrowRight className="w-5 h-5" />
-            </button>
+            </motion.button>
           </form>
 
           <p className="mt-8 text-center text-sm text-muted-foreground">

@@ -17,7 +17,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { PortalScrollNav } from "../ui/portal-scroll-nav";
 import { useAuth, useLogout } from "../auth-context";
 import { useAdmin } from "./admin-context";
 import { PortalProfileAvatar } from "./portal-profile-avatar";
@@ -142,18 +143,27 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     active
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      ? "text-sidebar-accent-foreground"
                       : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                   }`}
                 >
+                  {active ? (
+                    <motion.span
+                      layoutId={`${variant}-sidebar-active`}
+                      className="absolute inset-0 rounded-xl bg-sidebar-accent"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  ) : null}
+                  <motion.span whileHover={{ scale: 1.1 }} className="relative z-[1] shrink-0">
                   <Icon
-                    className={`w-5 h-5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`}
+                    className={`w-5 h-5 ${active ? "text-primary" : "text-muted-foreground"}`}
                   />
-                  <span className="flex-1">{item.label}</span>
+                  </motion.span>
+                  <span className="relative z-[1] flex-1">{item.label}</span>
                   {item.badge ? (
-                    <span className="px-2 py-0.5 bg-warning text-warning-foreground text-xs rounded-full">
+                    <span className="relative z-[1] px-2 py-0.5 bg-warning text-warning-foreground text-xs rounded-full">
                       {item.badge}
                     </span>
                   ) : null}
@@ -235,13 +245,30 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
           </div>
         </header>
 
+        <PortalScrollNav
+          items={menuItems}
+          isActive={isActive}
+          theme="admin"
+          layoutId={`${variant}-top-nav-active`}
+        />
+
         <main
           className={`flex-1 p-6 ${
             isChatRoute ? "flex flex-col min-h-0 overflow-hidden" : "overflow-y-auto"
           }`}
         >
           <div className={contentWidthClass}>
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>

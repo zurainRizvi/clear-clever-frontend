@@ -14,7 +14,9 @@ import {
   Star,
   type LucideIcon,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
+import { fadeUpItem } from "@/lib/motion-presets";
 import {
   Area,
   AreaChart,
@@ -126,7 +128,7 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
     <div className="h-9 w-full min-w-0 mt-3">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData}>
-          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} isAnimationActive />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -142,20 +144,28 @@ function ScoreGauge({
   label: string;
   trackColor: string;
 }) {
+  const reducedMotion = useReducedMotion();
   const pct = Math.min(100, Math.max(0, score));
   return (
     <div className="flex flex-col items-center py-4">
-      <div
+      <motion.div
+        initial={{ background: `conic-gradient(#2563EB 0deg, ${trackColor} 0deg)` }}
+        animate={{ background: `conic-gradient(#2563EB ${pct * 3.6}deg, ${trackColor} 0deg)` }}
+        transition={{ duration: reducedMotion ? 0 : 1.2, ease: [0.22, 1, 0.36, 1] }}
         className="relative w-36 h-36 rounded-full flex items-center justify-center"
-        style={{
-          background: `conic-gradient(#2563EB ${pct * 3.6}deg, ${trackColor} 0deg)`,
-        }}
       >
         <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-card shadow-inner">
-          <span className="text-3xl font-bold text-slate-900">{score}</span>
+          <motion.span
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: reducedMotion ? 0 : 0.4 }}
+            className="text-3xl font-bold text-slate-900"
+          >
+            {score}
+          </motion.span>
           <span className="text-xs text-slate-500">/ 100</span>
         </div>
-      </div>
+      </motion.div>
       <p className="mt-3 font-semibold text-slate-900">{label}</p>
     </div>
   );
@@ -172,6 +182,7 @@ export function ProviderAnalyticsPage() {
   const [range, setRange] = useState<DateRangeValue>(defaultProviderRange);
   const [analytics, setAnalytics] = useState<InsurerAnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportFlash, setExportFlash] = useState(false);
 
   const cardStyle = {
     borderRadius: PROVIDER_THEME.radius,
@@ -231,6 +242,8 @@ export function ProviderAnalyticsPage() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Analytics report exported");
+    setExportFlash(true);
+    window.setTimeout(() => setExportFlash(false), 600);
   };
 
   if (loading && !analytics) {
@@ -250,7 +263,7 @@ export function ProviderAnalyticsPage() {
   const maxFunnel = Math.max(...analytics.funnel.steps.map((s) => s.users), 1);
 
   return (
-    <div className={PROVIDER_PAGE_CLASS} style={{ fontFamily: "Inter, sans-serif" }}>
+    <AnimatedPage className={PROVIDER_PAGE_CLASS} style={{ fontFamily: "Inter, sans-serif" }}>
       <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 min-w-0">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Analytics</h1>
@@ -260,15 +273,17 @@ export function ProviderAnalyticsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <ProviderDateRangePicker value={range} onChange={handleRangeChange} />
-          <button
+          <motion.button
             type="button"
             onClick={exportReport}
+            animate={exportFlash ? { scale: [1, 1.05, 1], backgroundColor: ["#FFFFFF", "#EFF6FF", "#FFFFFF"] } : {}}
+            transition={{ duration: 0.5 }}
             className="provider-portal-card inline-flex items-center gap-2 rounded-2xl border bg-card px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-accent"
             style={{ borderColor: PROVIDER_THEME.borderAlt, boxShadow: PROVIDER_THEME.shadow }}
           >
             <Download className="w-4 h-4" />
             Export Report
-          </button>
+          </motion.button>
         </div>
       </header>
 
@@ -308,7 +323,14 @@ export function ProviderAnalyticsPage() {
         {/* Left column */}
         <div className="xl:col-span-8 space-y-5 min-w-0">
           {/* Interest trends */}
-          <section className={PORTAL_CARD_CLASS} style={cardStyle}>
+          <motion.section
+            variants={fadeUpItem}
+            initial="hidden"
+            animate="visible"
+            transition={{ delay: 0.1 }}
+            className={PORTAL_CARD_CLASS}
+            style={cardStyle}
+          >
             <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Customer Interest Trends</h2>
@@ -370,7 +392,7 @@ export function ProviderAnalyticsPage() {
                         dot={<InterestTrendDot dataKey={ds.key} />}
                         activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--popover)" }}
                         connectNulls
-                        isAnimationActive={false}
+                        isAnimationActive
                       />
                     ))}
                   </LineChart>
@@ -403,10 +425,17 @@ export function ProviderAnalyticsPage() {
                 {analytics.interestTrends.insightBanner.badge}
               </span>
             </div>
-          </section>
+          </motion.section>
 
           {/* Funnel */}
-          <section className={PORTAL_CARD_CLASS} style={cardStyle}>
+          <motion.section
+            variants={fadeUpItem}
+            initial="hidden"
+            animate="visible"
+            transition={{ delay: 0.18 }}
+            className={PORTAL_CARD_CLASS}
+            style={cardStyle}
+          >
             <h2 className="text-base font-bold text-slate-900">Funnel Analytics</h2>
             <p className="text-xs text-slate-500 mb-4">
               Track user journey from discovery to purchase (your leads & questionnaires)
@@ -423,21 +452,23 @@ export function ProviderAnalyticsPage() {
                         {step.conversion ? ` · ${step.conversion}` : ""}
                       </span>
                     </div>
-                    <div
-                      className="h-9 rounded-lg flex items-center px-3 text-xs font-medium text-white transition-all mx-auto"
+                    <motion.div
+                      initial={{ width: 0, opacity: 0.6 }}
+                      animate={{ width: `${widthPct}%`, opacity: 1 }}
+                      transition={{ delay: index * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                      className="h-9 rounded-lg flex items-center px-3 text-xs font-medium text-white mx-auto"
                       style={{
-                        width: `${widthPct}%`,
                         backgroundColor: `hsl(${220 - index * 12}, 75%, ${48 + index * 4}%)`,
                         minWidth: 120,
                       }}
                     >
                       {index === analytics.funnel.steps.length - 1 ? "Purchase" : ""}
-                    </div>
+                    </motion.div>
                   </div>
                 );
               })}
             </div>
-          </section>
+          </motion.section>
 
           {/* Segments table */}
           <section className={`${PORTAL_CARD_CLASS} overflow-hidden`} style={cardStyle}>
@@ -548,7 +579,7 @@ export function ProviderAnalyticsPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: chartColors.axis }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: chartColors.axis }} width={28} axisLine={false} tickLine={false} />
                   <Tooltip formatter={(v: number) => [`Rs ${(v * 1000).toLocaleString()}`, "Revenue"]} />
-                  <Area type="monotone" dataKey="revenue" stroke="#2563EB" fill="url(#revGrad)" />
+                  <Area type="monotone" dataKey="revenue" stroke="#2563EB" fill="url(#revGrad)" isAnimationActive />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -615,6 +646,6 @@ export function ProviderAnalyticsPage() {
           <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
         </div>
       ) : null}
-    </div>
+    </AnimatedPage>
   );
 }

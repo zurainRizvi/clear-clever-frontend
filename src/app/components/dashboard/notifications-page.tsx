@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Bell, Check, Loader2, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { useNotifications } from "./notifications-context";
 
@@ -64,7 +65,7 @@ export function NotificationsPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <AnimatedPage className="max-w-3xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold">Notifications</h1>
@@ -126,6 +127,6 @@ export function NotificationsPage() {
           </motion.div>
         ))}
       </div>
-    </div>
+    </AnimatedPage>
   );
 }

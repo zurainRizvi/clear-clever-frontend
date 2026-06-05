@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
+import { CountUp } from "../ui/count-up";
+import { fadeUpItem } from "@/lib/motion-presets";
 import { useAuth } from "../auth-context";
 import { useSavedPolicies } from "../saved-policies-context";
 import { fetchRecommendations } from "@/lib/auth-api";
@@ -178,10 +181,24 @@ export function SeekerDashboardHome() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <AnimatedPage className="max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Welcome back, {firstName}</h1>
-        <p className="text-muted-foreground">Here&apos;s an overview of your insurance portfolio</p>
+        <motion.h1
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="text-3xl font-bold mb-2"
+        >
+          Welcome back, {firstName}
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="text-muted-foreground"
+        >
+          Here&apos;s an overview of your insurance portfolio
+        </motion.p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -193,13 +210,19 @@ export function SeekerDashboardHome() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.08 }}
-              className="bg-card border border-border rounded-xl p-6 hover:shadow-md transition-shadow"
+              whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(15,23,42,0.08)" }}
+              className="bg-card border border-border rounded-xl p-6 transition-shadow"
             >
               <Link to={stat.to} className="block">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${stat.colorClass}`}>
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: 4 }}
+                className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${stat.colorClass}`}
+              >
                 <Icon className="w-5 h-5" />
+              </motion.div>
+              <div className="text-3xl font-bold mb-1">
+                {/^\d+$/.test(stat.value) ? <CountUp value={stat.value} /> : stat.value}
               </div>
-              <div className="text-3xl font-bold mb-1">{stat.value}</div>
               <div className="text-sm text-muted-foreground mb-2">{stat.label}</div>
               <div className="text-xs text-success">{stat.trend}</div>
               </Link>
@@ -208,7 +231,12 @@ export function SeekerDashboardHome() {
         })}
       </div>
 
-      <div className="bg-primary/5 border border-border rounded-xl p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="bg-primary/5 border border-border rounded-xl p-6"
+      >
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shrink-0">
             <TrendingUp className="w-6 h-6 text-primary-foreground" />
@@ -217,20 +245,31 @@ export function SeekerDashboardHome() {
             <h3 className="text-xl font-semibold mb-2">AI-assisted recommendations</h3>
             {crossSells.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-3 mb-4">
-                {crossSells.map((item) => (
-                  <Link
+                {crossSells.map((item, idx) => (
+                  <motion.div
                     key={item.label}
+                    variants={fadeUpItem}
+                    initial="hidden"
+                    animate="visible"
+                    transition={{ delay: 0.4 + idx * 0.08 }}
+                  >
+                  <Link
                     to={item.to}
-                    className="rounded-lg border border-primary/15 bg-background/70 p-4 hover:border-primary/35 transition-colors"
+                    className="block rounded-lg border border-primary/15 bg-background/70 p-4 hover:border-primary/35 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <span className="font-medium text-foreground">{item.label}</span>
-                      <span className="text-xs font-semibold text-primary">
+                      <motion.span
+                        animate={{ scale: [1, 1.05, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 2 }}
+                        className="text-xs font-semibold text-primary"
+                      >
                         Recommended score: {item.score}
-                      </span>
+                      </motion.span>
                     </div>
                     <p className="text-sm text-muted-foreground">{item.reason}</p>
                   </Link>
+                  </motion.div>
                 ))}
               </div>
             ) : (
@@ -247,7 +286,7 @@ export function SeekerDashboardHome() {
             </Link>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-xl p-6">
@@ -256,12 +295,19 @@ export function SeekerDashboardHome() {
             {activePolicies.length === 0 ? (
               <p className="text-sm text-muted-foreground">No active policy yet.</p>
             ) : (
-              activePolicies.slice(0, 4).map((purchase) => (
-                <Link
+              activePolicies.slice(0, 4).map((purchase, idx) => (
+                <motion.div
                   key={purchase.id}
-                  to={`/dashboard/purchases?focus=${purchase.id}`}
-                  className="flex items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg hover:bg-accent/60"
+                  variants={fadeUpItem}
+                  initial="hidden"
+                  animate="visible"
+                  transition={{ delay: idx * 0.06 }}
                 >
+                <Link
+                  to={`/dashboard/purchases?focus=${purchase.id}`}
+                  className="group relative flex items-center justify-between gap-4 overflow-hidden p-4 bg-muted/30 rounded-lg hover:bg-accent/60"
+                >
+                  <span className="absolute left-0 top-0 h-full w-1 -translate-x-full bg-primary transition-transform group-hover:translate-x-0" />
                   <div>
                     <div className="font-medium text-sm">{purchase.policy?.name}</div>
                     <div className="text-xs text-muted-foreground">{purchase.insurer?.companyName}</div>
@@ -270,6 +316,7 @@ export function SeekerDashboardHome() {
                     {formatPkr(purchase.policy?.premiumMonthlyPkr ?? 0)}/mo
                   </div>
                 </Link>
+                </motion.div>
               ))
             )}
           </div>
@@ -283,23 +330,32 @@ export function SeekerDashboardHome() {
                 No additional recommendations yet. Add more questionnaire answers for smarter suggestions.
               </p>
             ) : (
-              relevantRecommendations.map((item) => {
+              relevantRecommendations.map((item, idx) => {
                 const Icon = item.icon;
                 return (
-                  <Link key={item.label} to={item.to} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50">
+                  <motion.div
+                    key={item.label}
+                    variants={fadeUpItem}
+                    initial="hidden"
+                    animate="visible"
+                    transition={{ delay: idx * 0.06 }}
+                  >
+                  <Link to={item.to} className="group relative flex items-start gap-3 overflow-hidden p-3 rounded-lg hover:bg-accent/50">
+                    <span className="absolute left-0 top-0 h-full w-1 -translate-x-full bg-primary transition-transform group-hover:translate-x-0" />
                     <Icon className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm">{item.label}</div>
                       <div className="text-xs text-muted-foreground">{item.reason}</div>
                     </div>
                   </Link>
+                  </motion.div>
                 );
               })
             )}
           </div>
         </div>
       </div>
-    </div>
+    </AnimatedPage>
   );
 }
 

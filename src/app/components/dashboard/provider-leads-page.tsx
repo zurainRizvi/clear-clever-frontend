@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
+import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
+import { fadeUpItem } from "@/lib/motion-presets";
 import { useNavigate } from "react-router";
 import {
   Ban,
@@ -188,8 +192,16 @@ export function ProviderLeadsPage() {
     );
   }
 
+  const filterTabs = [
+    { id: "all", label: "All" },
+    { id: "new", label: "New" },
+    { id: "purchases", label: "Purchases" },
+    { id: "in_progress", label: "In progress" },
+    { id: "closed", label: "Closed" },
+  ];
+
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-1">Leads &amp; customers</h1>
         <p className="text-muted-foreground">
@@ -197,26 +209,12 @@ export function ProviderLeadsPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {["all", "new", "purchases", "in_progress", "closed"].map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setFilter(value)}
-            className={`px-3 py-1.5 rounded-lg text-sm border ${
-              filter === value
-                ? "bg-primary text-primary-foreground border-primary"
-                : "border-border hover:bg-accent"
-            }`}
-          >
-            {value === "all"
-              ? "All"
-              : value === "purchases"
-                ? "Purchases"
-                : titleCase(value)}
-          </button>
-        ))}
-      </div>
+      <AnimatedPillTabs
+        tabs={filterTabs}
+        activeId={filter}
+        onChange={setFilter}
+        layoutId="provider-leads-filter"
+      />
 
       <div className="bg-card border border-border rounded-xl p-6">
         {filteredCustomers.length === 0 ? (
@@ -225,13 +223,17 @@ export function ProviderLeadsPage() {
           </p>
         ) : (
           <div className="space-y-4">
-            {filteredCustomers.map((customer) => {
+            {filteredCustomers.map((customer, idx) => {
               const expanded = expandedEmail === customer.seeker.email;
               const leadCount = customer.leads.length;
               const purchaseCount = customer.purchases.length;
               return (
-                <div
+                <motion.div
                   key={customer.seeker.email}
+                  variants={fadeUpItem}
+                  initial="hidden"
+                  animate="visible"
+                  transition={{ delay: idx * 0.05 }}
                   className="rounded-xl border border-border bg-muted/20 overflow-hidden"
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4">
@@ -350,7 +352,7 @@ export function ProviderLeadsPage() {
                       </div>
                     </div>
                   ) : null}
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -377,6 +379,6 @@ export function ProviderLeadsPage() {
         onConfirm={() => void runPurchaseAction()}
         onCancel={() => setPendingAction(null)}
       />
-    </div>
+    </AnimatedPage>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Shield, TrendingUp, Zap, Users, Star, ArrowRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { LandingHeroSection } from "./landing-hero-section";
 
 export function LandingPage() {
@@ -65,14 +65,20 @@ export function LandingPage() {
       {/* Features Section */}
       <section id="features" className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-16"
+          >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
               Why Choose ClearClever?
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               We've revolutionized insurance comparison with cutting-edge AI and a seamless user experience
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
@@ -82,11 +88,15 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="group p-6 bg-card border border-border rounded-2xl hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1"
+                whileHover={{ y: -6, boxShadow: "0 20px 40px rgba(37,99,235,0.12)" }}
+                className="group p-6 bg-card border border-border rounded-2xl transition-all duration-300"
               >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                <motion.div
+                  whileHover={{ scale: 1.15, rotate: 6 }}
+                  className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-primary mb-4"
+                >
                   {feature.icon}
-                </div>
+                </motion.div>
                 <h3 className="font-semibold mb-2">{feature.title}</h3>
                 <p className="text-sm text-muted-foreground">{feature.description}</p>
               </motion.div>
@@ -98,16 +108,22 @@ export function LandingPage() {
       {/* How It Works */}
       <section id="how-it-works" className="py-20 px-6 bg-card/30">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
               How It Works
             </h2>
             <p className="text-xl text-muted-foreground">
               Get insured in three simple steps
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="relative grid md:grid-cols-3 gap-8">
+            <div className="pointer-events-none absolute top-16 left-[16%] right-[16%] hidden h-0.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent md:block" />
             {[
               { step: "01", title: "Answer Questions", desc: "Tell us about your insurance needs through our smart questionnaire" },
               { step: "02", title: "Compare Options", desc: "Review AI-powered recommendations and compare policies side-by-side" },
@@ -124,13 +140,20 @@ export function LandingPage() {
                 <div className="absolute -top-4 -left-4 text-8xl font-bold text-primary/5">
                   {item.step}
                 </div>
-                <div className="relative bg-card border border-border rounded-2xl p-8 hover:shadow-xl transition-all duration-300">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center font-bold mb-4">
+                <motion.div
+                  whileHover={{ y: -4, boxShadow: "0 16px 32px rgba(15,23,42,0.1)" }}
+                  className="relative bg-card border border-border rounded-2xl p-8 transition-all duration-300"
+                >
+                  <motion.div
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                    className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center font-bold mb-4"
+                  >
                     {item.step}
-                  </div>
+                  </motion.div>
                   <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
                   <p className="text-muted-foreground">{item.desc}</p>
-                </div>
+                </motion.div>
               </motion.div>
             ))}
           </div>
@@ -140,14 +163,19 @@ export function LandingPage() {
       {/* Testimonials */}
       <section id="testimonials" className="py-20 px-6 bg-card/30">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
               What Our Customers Say
             </h2>
             <p className="text-xl text-muted-foreground">
               Join thousands of satisfied customers who found their perfect coverage
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
@@ -157,11 +185,20 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="bg-card border border-border rounded-2xl p-6 hover:shadow-xl transition-all duration-300"
+                whileHover={{ y: -6, boxShadow: "0 20px 40px rgba(15,23,42,0.08)" }}
+                className="bg-card border border-border rounded-2xl p-6 transition-all duration-300"
               >
                 <div className="flex gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-warning text-warning" />
+                    <motion.span
+                      key={i}
+                      initial={{ opacity: 0, scale: 0 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.1 + i * 0.08 }}
+                    >
+                      <Star className="w-5 h-5 fill-warning text-warning" />
+                    </motion.span>
                   ))}
                 </div>
                 <p className="text-muted-foreground mb-6 italic">"{testimonial.content}"</p>
@@ -233,17 +270,19 @@ export function LandingPage() {
                     }`}
                   />
                 </button>
+                <AnimatePresence initial={false}>
                 {openFaq === index && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="px-6 pb-6"
+                    className="overflow-hidden"
                   >
-                    <p className="text-muted-foreground leading-relaxed">{faq.answer}</p>
+                    <p className="px-6 pb-6 text-muted-foreground leading-relaxed">{faq.answer}</p>
                   </motion.div>
                 )}
+                </AnimatePresence>
               </motion.div>
             ))}
           </div>
@@ -252,8 +291,18 @@ export function LandingPage() {
 
       {/* CTA Section */}
       <section id="contact" className="py-20 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/10 to-primary/10" />
-        <div className="max-w-4xl mx-auto text-center relative z-10">
+        <motion.div
+          animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/10 to-primary/10"
+          style={{ backgroundSize: "200% 200%" }}
+        />
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="max-w-4xl mx-auto text-center relative z-10"
+        >
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Ready to Find Your Perfect Insurance?
           </h2>
@@ -261,12 +310,16 @@ export function LandingPage() {
             Join thousands of users and compare policies for free
           </p>
           <Link to="/signup">
-            <button className="px-10 py-5 bg-gradient-to-r from-primary to-secondary text-white rounded-xl text-lg hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 flex items-center gap-2 mx-auto group">
+            <motion.button
+              whileHover={{ scale: 1.04, boxShadow: "0 20px 40px rgba(37,99,235,0.3)" }}
+              whileTap={{ scale: 0.98 }}
+              className="px-10 py-5 bg-gradient-to-r from-primary to-secondary text-white rounded-xl text-lg transition-all duration-300 flex items-center gap-2 mx-auto group"
+            >
               Get Started Free
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </motion.button>
           </Link>
-        </div>
+        </motion.div>
       </section>
 
       {/* Footer */}

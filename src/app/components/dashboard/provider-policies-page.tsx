@@ -9,6 +9,7 @@ import { useProvider } from "./provider-context";
 import { ApiError } from "@/lib/api";
 import { toast } from "sonner";
 import { formatPkr } from "@/lib/format";
+import { AnimatedPage } from "../ui/animated-page";
 
 export function ProviderPoliciesPage() {
   const { onAddPolicy, onEditPolicy } = useOutletContext<ProviderOutletContext>();
@@ -39,7 +40,7 @@ export function ProviderPoliciesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-1">My policies</h1>
@@ -170,6 +171,6 @@ export function ProviderPoliciesPage() {
           </div>
         </div>
       ) : null}
-    </div>
+    </AnimatedPage>
   );
 }

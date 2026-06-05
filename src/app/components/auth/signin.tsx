@@ -217,7 +217,11 @@ export function SignIn() {
                     {errors.root.message}
                   </motion.div>
                 ) : null}
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08 }}
+                >
                   <label className="block text-sm mb-2">Email address</label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -231,9 +235,13 @@ export function SignIn() {
                   {errors.email ? (
                     <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
                   ) : null}
-                </div>
+                </motion.div>
 
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.14 }}
+                >
                   <label className="block text-sm mb-2">Password</label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -247,16 +255,21 @@ export function SignIn() {
                   {errors.password ? (
                     <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
                   ) : null}
-                </div>
+                </motion.div>
 
-                <button
+                <motion.button
                   type="submit"
                   disabled={submitting}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                   className="w-full py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   {submitting ? "Signing in…" : copy.auth.signInCta}
                   <ArrowRight className="w-5 h-5" />
-                </button>
+                </motion.button>
               </form>
             </>
           )}

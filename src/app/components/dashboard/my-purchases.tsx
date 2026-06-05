@@ -12,6 +12,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import { formatPkr, formatPkrYearly } from "@/lib/format";
@@ -125,7 +126,7 @@ export function MyPurchases() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <AnimatedPage className="max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-1">My purchases</h1>
         <p className="text-muted-foreground">
@@ -399,7 +400,7 @@ export function MyPurchases() {
           </div>
         </div>
       )}
-    </div>
+    </AnimatedPage>
   );
 }
 
