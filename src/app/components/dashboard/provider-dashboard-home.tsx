@@ -18,6 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
+import { DashboardStatsCarousel, type DashboardStatItem } from "../ui/dashboard-stats-carousel";
 import { fadeUpItem } from "@/lib/motion-presets";
 import {
   Cell,
@@ -30,7 +31,6 @@ import {
 import {
   fetchInsurerDashboard,
   type InsurerDashboardPayload,
-  type InsurerDashboardOverviewStat,
   type InsurerSmartInsight,
 } from "@/lib/insurer-api";
 import { ApiError } from "@/lib/api";
@@ -88,7 +88,7 @@ function insightActionLink(actionType?: string): string {
 }
 
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
-  const chartData = data.map((value, index) => ({ index, value }));
+  const chartData = useMemo(() => data.map((value, index) => ({ index, value })), [data]);
   return (
     <div className="h-10 w-24">
       <ResponsiveContainer width="100%" height="100%">
@@ -99,7 +99,7 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
             stroke={color}
             strokeWidth={2}
             dot={false}
-            isAnimationActive
+            isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -146,9 +146,7 @@ function DonutChartBlock({ dashboard }: { dashboard: InsurerDashboardPayload }) 
               outerRadius={88}
               paddingAngle={3}
               stroke="none"
-              isAnimationActive
-              animationBegin={0}
-              animationDuration={800}
+              isAnimationActive={false}
             >
               {chartData.map((entry) => (
                 <Cell key={entry.name} fill={entry.color} />
@@ -230,6 +228,46 @@ export function ProviderDashboardHome() {
 
   const notificationCount = unreadNotificationsCount;
 
+  const overviewStatItems = useMemo((): DashboardStatItem[] => {
+    if (!dashboard) return [];
+    return dashboard.overviewStats.map((stat) => {
+      const Icon = STAT_ICONS[stat.icon] ?? TrendingUp;
+      return {
+        id: stat.title,
+        icon: (
+          <div
+            className="w-11 h-11 rounded-2xl flex items-center justify-center"
+            style={{ backgroundColor: `${stat.iconColor}18` }}
+          >
+            <Icon className="w-5 h-5" style={{ color: stat.iconColor }} />
+          </div>
+        ),
+        value: <span className="text-slate-900">{stat.value}</span>,
+        label: stat.title,
+        meta: (
+          <span
+            className={
+              stat.trend === "up"
+                ? "text-emerald-600"
+                : stat.trend === "down"
+                  ? "text-amber-600"
+                  : "text-slate-500"
+            }
+          >
+            {stat.change}
+          </span>
+        ),
+        sparkColor: stat.iconColor,
+        cardClassName: "bg-white border-slate-200",
+        cardStyle: {
+          borderRadius: THEME.radius,
+          borderColor: THEME.border,
+          boxShadow: THEME.shadow,
+        },
+      };
+    });
+  }, [dashboard]);
+
   if (loading || !dashboard) {
     return (
       <div className="flex justify-center py-24" style={{ backgroundColor: THEME.bg }}>
@@ -287,50 +325,7 @@ export function ProviderDashboardHome() {
         </div>
       </motion.header>
 
-      {/* Overview stats — 6 column grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 min-w-0">
-        {dashboard.overviewStats.map((stat: InsurerDashboardOverviewStat, index) => {
-          const Icon = STAT_ICONS[stat.icon] ?? TrendingUp;
-          return (
-            <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              whileHover={{ y: -4 }}
-              className="p-5 border bg-white transition-shadow hover:shadow-lg"
-              style={{
-                borderRadius: THEME.radius,
-                borderColor: THEME.border,
-                boxShadow: THEME.shadow,
-              }}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <motion.div
-                  whileHover={{ scale: 1.12, rotate: 4 }}
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                  style={{ backgroundColor: `${stat.iconColor}18` }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: stat.iconColor }} />
-                </motion.div>
-                <span
-                  className={`text-xs font-semibold ${
-                    stat.trend === "up"
-                      ? "text-emerald-600"
-                      : stat.trend === "down"
-                        ? "text-amber-600"
-                        : "text-slate-500"
-                  }`}
-                >
-                  {stat.change}
-                </span>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-              <p className="text-sm text-slate-500 mt-1">{stat.title}</p>
-            </motion.div>
-          );
-        })}
-      </div>
+      <DashboardStatsCarousel items={overviewStatItems} />
 
       {/* Main 2-column layout */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 min-w-0">

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import {
   LayoutDashboard,
@@ -16,7 +16,7 @@ import {
   Bell,
   type LucideIcon,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { PortalScrollNav } from "../ui/portal-scroll-nav";
 import { useAuth, useLogout } from "../auth-context";
 import { MessagesProvider, useMessages } from "./messages-context";
@@ -76,20 +76,37 @@ function ProviderDashboardInner() {
     location.pathname === "/provider-dashboard" ||
     location.pathname === "/provider-dashboard/";
 
-  const isActive = (path: string) => {
-    if (path === "/provider-dashboard") {
-      return isHome;
-    }
-    return location.pathname.startsWith(path);
-  };
+  const isActive = useCallback(
+    (path: string) => {
+      if (path === "/provider-dashboard") {
+        return isHome;
+      }
+      return location.pathname.startsWith(path);
+    },
+    [isHome, location.pathname]
+  );
 
-  const badgeCount = (key?: MenuItemDef["badgeKey"]) => {
-    if (!key) return 0;
-    if (key === "claims") return pendingClaimsCount;
-    if (key === "messages") return unreadMessagesCount;
-    if (key === "notifications") return unreadNotificationsCount;
-    return 0;
-  };
+  const badgeCount = useCallback(
+    (key?: MenuItemDef["badgeKey"]) => {
+      if (!key) return 0;
+      if (key === "claims") return pendingClaimsCount;
+      if (key === "messages") return unreadMessagesCount;
+      if (key === "notifications") return unreadNotificationsCount;
+      return 0;
+    },
+    [pendingClaimsCount, unreadMessagesCount, unreadNotificationsCount]
+  );
+
+  const navItems = useMemo(
+    () =>
+      menuItems.map((item) => ({
+        path: item.path,
+        label: item.label,
+        icon: item.icon,
+        badge: badgeCount(item.badgeKey) || undefined,
+      })),
+    [badgeCount]
+  );
 
   const openCreatePolicy = () => {
     setEditingPolicy(null);
@@ -295,12 +312,7 @@ function ProviderDashboardInner() {
         )}
 
         <PortalScrollNav
-          items={menuItems.map((item) => ({
-            path: item.path,
-            label: item.label,
-            icon: item.icon,
-            badge: badgeCount(item.badgeKey) || undefined,
-          }))}
+          items={navItems}
           isActive={isActive}
           theme="provider"
           layoutId="provider-top-nav-active"
@@ -320,17 +332,7 @@ function ProviderDashboardInner() {
                 : ""
             }`}
           >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <Outlet context={outletContext} />
-              </motion.div>
-            </AnimatePresence>
+            <Outlet context={outletContext} />
           </div>
         </main>
       </div>

@@ -69,7 +69,7 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.3 }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -86,7 +86,7 @@ export function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.05, duration: 0.28 }}
                 viewport={{ once: true }}
                 whileHover={{ y: -6, boxShadow: "0 20px 40px rgba(37,99,235,0.12)" }}
                 className="group p-6 bg-card border border-border rounded-2xl transition-all duration-300"
@@ -133,7 +133,7 @@ export function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.2 }}
+                transition={{ delay: index * 0.1, duration: 0.28 }}
                 viewport={{ once: true }}
                 className="relative"
               >
@@ -144,13 +144,11 @@ export function LandingPage() {
                   whileHover={{ y: -4, boxShadow: "0 16px 32px rgba(15,23,42,0.1)" }}
                   className="relative bg-card border border-border rounded-2xl p-8 transition-all duration-300"
                 >
-                  <motion.div
-                    whileHover={{ rotate: 360 }}
-                    transition={{ duration: 0.6 }}
+                  <div
                     className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center font-bold mb-4"
                   >
                     {item.step}
-                  </motion.div>
+                  </div>
                   <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
                   <p className="text-muted-foreground">{item.desc}</p>
                 </motion.div>
@@ -183,7 +181,7 @@ export function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.05, duration: 0.28 }}
                 viewport={{ once: true }}
                 whileHover={{ y: -6, boxShadow: "0 20px 40px rgba(15,23,42,0.08)" }}
                 className="bg-card border border-border rounded-2xl p-6 transition-all duration-300"
@@ -255,7 +253,7 @@ export function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.05, duration: 0.28 }}
                 viewport={{ once: true }}
                 className="bg-card border border-border rounded-2xl overflow-hidden"
               >

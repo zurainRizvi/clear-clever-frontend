@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import {
   ArrowLeft,
@@ -19,7 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { PortalScrollNav } from "../ui/portal-scroll-nav";
 import { useAuth, useLogout } from "../auth-context";
 import { toast } from "sonner";
@@ -73,12 +73,29 @@ function PolicySeekerDashboardInner() {
     setProfilePhoto(user?.profile?.profilePhotoDataUrl ?? null);
   }, [user?.id, user?.profile?.profilePhotoDataUrl]);
 
-  const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return location.pathname === "/dashboard" || location.pathname === "/dashboard/";
-    }
-    return location.pathname.startsWith(path);
-  };
+  const isActive = useCallback(
+    (path: string) => {
+      if (path === "/dashboard") {
+        return location.pathname === "/dashboard" || location.pathname === "/dashboard/";
+      }
+      return location.pathname.startsWith(path);
+    },
+    [location.pathname]
+  );
+
+  const navItems = useMemo(
+    () =>
+      menuItems.map((item) => ({
+        ...item,
+        badge:
+          item.path === "/dashboard/notifications"
+            ? unreadCount || undefined
+            : item.path === "/dashboard/messages"
+              ? unreadMessagesCount || undefined
+              : undefined,
+      })),
+    [unreadCount, unreadMessagesCount]
+  );
 
   const handleProfilePhotoUpload = (file: File | undefined) => {
     if (!file) return;
@@ -291,15 +308,7 @@ function PolicySeekerDashboardInner() {
           </header>
 
           <PortalScrollNav
-            items={menuItems.map((item) => ({
-              ...item,
-              badge:
-                item.path === "/dashboard/notifications"
-                  ? unreadCount || undefined
-                  : item.path === "/dashboard/messages"
-                    ? unreadMessagesCount || undefined
-                    : undefined,
-            }))}
+            items={navItems}
             isActive={isActive}
             theme="seeker"
             layoutId="seeker-top-nav-active"
@@ -312,17 +321,7 @@ function PolicySeekerDashboardInner() {
                 : "overflow-y-auto"
             }`}
           >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
+            <Outlet />
           </main>
         </div>
     </motion.div>

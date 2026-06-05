@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
+import { DashboardStatsCarousel, type DashboardStatItem } from "../ui/dashboard-stats-carousel";
 import { fadeUpItem } from "@/lib/motion-presets";
 import {
   Area,
@@ -120,19 +121,6 @@ function trendColor(trend: InsurerAnalyticsTrend): string {
   if (trend === "up" || trend === "down-positive") return "text-emerald-600";
   if (trend === "down") return "text-amber-600";
   return "text-slate-500";
-}
-
-function MiniSparkline({ data, color }: { data: number[]; color: string }) {
-  const chartData = data.map((value, index) => ({ index, value }));
-  return (
-    <div className="h-9 w-full min-w-0 mt-3">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData}>
-          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} isAnimationActive />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
 }
 
 function ScoreGauge({
@@ -246,6 +234,33 @@ export function ProviderAnalyticsPage() {
     window.setTimeout(() => setExportFlash(false), 600);
   };
 
+  const metricItems = useMemo((): DashboardStatItem[] => {
+    if (!analytics) return [];
+    return analytics.overviewMetrics.map((metric) => {
+      const Icon = METRIC_ICONS[metric.icon] ?? ShieldCheck;
+      return {
+        id: metric.title,
+        icon: (
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${metric.iconColor}18` }}
+          >
+            <Icon className="w-4 h-4" style={{ color: metric.iconColor }} />
+          </div>
+        ),
+        value: <span className="text-slate-900">{metric.value}</span>,
+        label: metric.title,
+        footer: (
+          <span className={`font-medium ${trendColor(metric.trend)}`}>{metric.change}</span>
+        ),
+        sparkColor: metric.iconColor,
+        sparkline: metric.sparkline,
+        cardClassName: "provider-portal-card bg-white border min-w-0",
+        cardStyle: cardStyle,
+      };
+    });
+  }, [analytics, cardStyle]);
+
   if (loading && !analytics) {
     return (
       <div className="flex justify-center py-24">
@@ -287,37 +302,7 @@ export function ProviderAnalyticsPage() {
         </div>
       </header>
 
-      {/* 5 metric cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 min-w-0">
-        {analytics.overviewMetrics.map((metric, index) => {
-          const Icon = METRIC_ICONS[metric.icon] ?? ShieldCheck;
-          return (
-            <motion.div
-              key={metric.title}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.04 }}
-              className="provider-portal-card p-4 border bg-white min-w-0"
-              style={cardStyle}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${metric.iconColor}18` }}
-                >
-                  <Icon className="w-4 h-4" style={{ color: metric.iconColor }} />
-                </div>
-              </div>
-              <p className="text-xl font-bold text-slate-900 mt-2 truncate">{metric.value}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{metric.title}</p>
-              <p className={`text-[11px] font-medium mt-1 ${trendColor(metric.trend)}`}>
-                {metric.change}
-              </p>
-              <MiniSparkline data={metric.sparkline} color={metric.iconColor} />
-            </motion.div>
-          );
-        })}
-      </div>
+      <DashboardStatsCarousel items={metricItems} />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 min-w-0">
         {/* Left column */}
@@ -392,7 +377,7 @@ export function ProviderAnalyticsPage() {
                         dot={<InterestTrendDot dataKey={ds.key} />}
                         activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--popover)" }}
                         connectNulls
-                        isAnimationActive
+                        isAnimationActive={false}
                       />
                     ))}
                   </LineChart>
@@ -453,9 +438,9 @@ export function ProviderAnalyticsPage() {
                       </span>
                     </div>
                     <motion.div
-                      initial={{ width: 0, opacity: 0.6 }}
+                      initial={false}
                       animate={{ width: `${widthPct}%`, opacity: 1 }}
-                      transition={{ delay: index * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                       className="h-9 rounded-lg flex items-center px-3 text-xs font-medium text-white mx-auto"
                       style={{
                         backgroundColor: `hsl(${220 - index * 12}, 75%, ${48 + index * 4}%)`,
@@ -579,7 +564,7 @@ export function ProviderAnalyticsPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: chartColors.axis }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: chartColors.axis }} width={28} axisLine={false} tickLine={false} />
                   <Tooltip formatter={(v: number) => [`Rs ${(v * 1000).toLocaleString()}`, "Revenue"]} />
-                  <Area type="monotone" dataKey="revenue" stroke="#2563EB" fill="url(#revGrad)" isAnimationActive />
+                  <Area type="monotone" dataKey="revenue" stroke="#2563EB" fill="url(#revGrad)" isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

@@ -15,7 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
-import { CountUp } from "../ui/count-up";
+import { DashboardStatsCarousel, type DashboardStatItem } from "../ui/dashboard-stats-carousel";
 import { fadeUpItem } from "@/lib/motion-presets";
 import { useAuth } from "../auth-context";
 import { useSavedPolicies } from "../saved-policies-context";
@@ -180,6 +180,23 @@ export function SeekerDashboardHome() {
     },
   ];
 
+  const statItems: DashboardStatItem[] = stats.map((stat) => {
+    const Icon = stat.icon;
+    return {
+      id: stat.label,
+      icon: (
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.colorClass}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+      ),
+      value: stat.value,
+      label: stat.label,
+      footer: <span className="text-success">{stat.trend}</span>,
+      sparkColor: "#2563EB",
+      href: stat.to,
+    };
+  });
+
   return (
     <AnimatedPage className="max-w-7xl mx-auto space-y-6">
       <div>
@@ -201,35 +218,7 @@ export function SeekerDashboardHome() {
         </motion.p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.08 }}
-              whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(15,23,42,0.08)" }}
-              className="bg-card border border-border rounded-xl p-6 transition-shadow"
-            >
-              <Link to={stat.to} className="block">
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: 4 }}
-                className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${stat.colorClass}`}
-              >
-                <Icon className="w-5 h-5" />
-              </motion.div>
-              <div className="text-3xl font-bold mb-1">
-                {/^\d+$/.test(stat.value) ? <CountUp value={stat.value} /> : stat.value}
-              </div>
-              <div className="text-sm text-muted-foreground mb-2">{stat.label}</div>
-              <div className="text-xs text-success">{stat.trend}</div>
-              </Link>
-            </motion.div>
-          );
-        })}
-      </div>
+      <DashboardStatsCarousel items={statItems} />
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}

@@ -16,7 +16,6 @@ import {
   Users,
 } from "lucide-react";
 import { DarkModeToggle } from "./dark-mode-toggle";
-import { CountUp } from "./ui/count-up";
 import { layoutSpring } from "@/lib/motion-presets";
 import heroVehicle from "@/assets/landing/hero-vehicle.png";
 import heroVehicleBike from "@/assets/landing/hero-vehicle-bike.png";
@@ -513,7 +512,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               className="max-w-[680px]"
             >
               <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#EEF4FF] px-4 py-2 text-sm font-medium text-[#2563EB]">
@@ -525,7 +524,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                 <motion.span
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.5 }}
+                  transition={{ delay: 0.05, duration: 0.3 }}
                   className="block"
                 >
                   Find Insurance
@@ -533,7 +532,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                 <motion.span
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.22, duration: 0.5 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
                   className="block"
                 >
                   That Fits <span className="text-[#2563EB]">Your Life</span>
@@ -577,7 +576,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                       key={item.title}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 + index * 0.08 }}
+                      transition={{ delay: 0.08 + index * 0.04, duration: 0.28 }}
                       className="flex items-start gap-3 rounded-xl border border-border bg-card/80 p-3"
                     >
                       <div
@@ -600,7 +599,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             <motion.div
               initial={{ opacity: 0, y: 32 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.12 }}
+              transition={{ duration: 0.35, delay: 0.06 }}
               className="relative mx-auto w-full max-w-xl lg:max-w-none"
             >
               <div className="relative overflow-visible rounded-[32px] border border-border bg-card p-6 shadow-[0_30px_60px_rgba(15,23,42,0.08)] md:p-10 md:pb-16">
@@ -615,7 +614,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                   </div>
                   <motion.div
                     animate={{ y: [0, -4, 0], opacity: [1, 0.85, 1] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                     className="hidden shrink-0 rounded-2xl border border-border bg-card px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:block"
                   >
                     <div className="flex items-center gap-3">
@@ -636,7 +635,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
 
                 <motion.div
                   animate={{ y: [0, 5, 0], opacity: [1, 0.88, 1] }}
-                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
                   className="absolute -bottom-7 left-1/2 z-20 hidden -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] md:block"
                 >
                   <div className="flex items-center gap-3 whitespace-nowrap">
@@ -682,7 +681,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                     </motion.div>
                     <div>
                       <p className="text-2xl font-extrabold text-foreground md:text-3xl">
-                        <CountUp value={stat.value} />
+                        {stat.value}
                       </p>
                       <p className="text-sm text-muted-foreground md:text-base">{stat.label}</p>
                     </div>

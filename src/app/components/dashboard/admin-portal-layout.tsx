@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { PortalScrollNav } from "../ui/portal-scroll-nav";
 import { useAuth, useLogout } from "../auth-context";
 import { useAdmin } from "./admin-context";
@@ -258,17 +258,7 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
           }`}
         >
           <div className={contentWidthClass}>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
+            <Outlet />
           </div>
         </main>
       </div>
