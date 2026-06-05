@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -38,8 +38,19 @@ export function SignUp() {
     register,
     handleSubmit,
     setError,
+    reset,
     formState: { errors },
   } = useForm<SignUpForm>();
+
+  useEffect(() => {
+    reset({
+      fullName: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    });
+  }, [reset]);
 
   const onSubmit = async (raw: SignUpForm) => {
     const parsed = schema.safeParse(raw);
@@ -121,7 +132,7 @@ export function SignUp() {
           <h1 className="text-3xl font-bold mb-2">{copy.auth.signUpTitle}</h1>
           <p className="text-muted-foreground mb-8">{copy.auth.signUpSubtitle}</p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
             {(["fullName", "email", "phone"] as const).map((field) => {
               const icons = { fullName: User, email: Mail, phone: Phone };
               const Icon = icons[field];

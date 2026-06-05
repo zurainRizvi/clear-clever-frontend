@@ -427,7 +427,7 @@ export function MessagesPanel({
                         <div className="min-w-0 flex-1">
                           <div className="font-medium truncate flex items-center gap-2">
                             <span className="truncate">
-                              {titleForConversation(conversation, user?.id)}
+                              {titleForConversation(conversation, user?.id, user?.role)}
                             </span>
                             {unread ? (
                               <span className="shrink-0 w-2 h-2 rounded-full bg-primary" />
@@ -448,6 +448,7 @@ export function MessagesPanel({
                       <ConversationActionsMenu
                         conversation={conversation}
                         currentUserId={user?.id}
+                        viewerRole={user?.role}
                         onUpdated={() => refreshConversations({ silent: true })}
                         onDeleted={() => handleConversationDeleted(conversation.id)}
                       />
@@ -465,7 +466,7 @@ export function MessagesPanel({
               <div className="p-5 border-b border-border flex items-start justify-between gap-3 shrink-0">
                 <div className="min-w-0">
                   <h2 className="text-xl font-semibold truncate">
-                    {titleForConversation(activeConversation, user?.id)}
+                    {titleForConversation(activeConversation, user?.id, user?.role)}
                   </h2>
                   <p className="text-sm text-muted-foreground truncate">
                     {activeConversation.subject ?? typeLabel(activeConversation.type)}
@@ -474,6 +475,7 @@ export function MessagesPanel({
                 <ConversationActionsMenu
                   conversation={activeConversation}
                   currentUserId={user?.id}
+                  viewerRole={user?.role}
                   onUpdated={() => refreshConversations({ silent: true })}
                   onDeleted={() => handleConversationDeleted(activeConversation.id)}
                 />
@@ -492,12 +494,15 @@ export function MessagesPanel({
                 ) : (
                   messages.map((message) => {
                     const mine = message.senderUserId === user?.id;
+                    const senderParticipant = activeConversation?.participants.find(
+                      (participant) => participant.id === message.senderUserId
+                    );
                     const senderName =
-                      activeConversation?.participants.find((participant) => participant.id === message.senderUserId)
-                        ?.fullName ??
-                      activeConversation?.participants.find((participant) => participant.id === message.senderUserId)
-                        ?.email?.split("@")[0] ??
-                      "User";
+                      senderParticipant?.role === "insurer"
+                        ? (activeConversation?.insurer?.companyName ?? senderParticipant.fullName ?? "Insurer")
+                        : (senderParticipant?.fullName ??
+                          senderParticipant?.email?.split("@")[0] ??
+                          "User");
                     return (
                       <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                         <div

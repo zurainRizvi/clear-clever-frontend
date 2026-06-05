@@ -12,12 +12,12 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
-import { fetchCategoryQuestions } from "@/lib/auth-api";
+import { fetchCategoryQuestions, fetchRecommendations } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { formatPkrYearly } from "@/lib/format";
 import { isValidPkPhone, normalizePkPhone } from "@/lib/phone";
-import { createPurchase, fetchStoredQuestionnaireAnswers } from "@/lib/purchase-api";
+import { createPurchase } from "@/lib/purchase-api";
 import {
   clearPurchaseDraft,
   loadPurchaseDraft,
@@ -84,7 +84,7 @@ function firstUnansweredQuestionIndex(
 export function PurchaseFlow() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userName, userEmail, user } = useAuth();
+  const { user } = useAuth();
 
   const locationState = (location.state ?? {}) as PurchaseLocationState;
   const storedDraft = loadPurchaseDraft();
@@ -106,9 +106,9 @@ export function PurchaseFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [contact, setContact] = useState<ContactForm>({
-    fullName: userName ?? "",
-    email: userEmail ?? "",
-    phone: user?.phone ?? "",
+    fullName: "",
+    email: "",
+    phone: "",
     address: "",
     city: "",
     postalCode: "",
@@ -128,19 +128,15 @@ export function PurchaseFlow() {
 
     let cancelled = false;
     setLoadingQuestions(true);
-    Promise.all([
-      fetchCategoryQuestions(category),
-      fetchStoredQuestionnaireAnswers(category).catch(() => null),
-    ])
-      .then(([data, stored]) => {
+    fetchCategoryQuestions(category)
+      .then((data) => {
         if (cancelled) return;
         const nextQuestions = data.questions ?? [];
-        const storedAnswers = stored?.response?.answers ?? {};
-        const mergedAnswers = { ...storedAnswers, ...answers };
+        const flowAnswers = locationState.answers ?? answers;
         setQuestions(nextQuestions);
-        setAnswers(mergedAnswers);
-        setCurrentQuestion(firstUnansweredQuestionIndex(nextQuestions, mergedAnswers));
-        const complete = requiredQuestionsAnswered(nextQuestions, mergedAnswers);
+        setAnswers(flowAnswers);
+        setCurrentQuestion(firstUnansweredQuestionIndex(nextQuestions, flowAnswers));
+        const complete = requiredQuestionsAnswered(nextQuestions, flowAnswers);
         setStep(complete ? "contact" : "questionnaire");
       })
       .catch(() => {
@@ -203,6 +199,9 @@ export function PurchaseFlow() {
 
     if (requiredQuestionsAnswered(questions, nextAnswers)) {
       setStep("contact");
+      if (category && category !== "others") {
+        void fetchRecommendations({ category, answers: nextAnswers }).catch(() => undefined);
+      }
     }
   };
 
@@ -598,6 +597,14 @@ function QuestionInput({
   value: unknown;
   onAnswer: (value: unknown) => void;
 }) {
+  const [textValue, setTextValue] = useState("");
+  const [numberValue, setNumberValue] = useState("");
+
+  useEffect(() => {
+    setTextValue("");
+    setNumberValue("");
+  }, [question.id]);
+
   if (question.type === "single" && question.options?.length) {
     return (
       <div className="space-y-2">
@@ -637,7 +644,8 @@ function QuestionInput({
         <input
           name="answer"
           type="number"
-          defaultValue={value !== undefined ? String(value) : ""}
+          value={numberValue}
+          onChange={(event) => setNumberValue(event.target.value)}
           className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
           placeholder="Enter amount in PKR"
           required
@@ -664,7 +672,8 @@ function QuestionInput({
       <input
         name="answer"
         type="text"
-        defaultValue={value !== undefined ? String(value) : ""}
+        value={textValue}
+        onChange={(event) => setTextValue(event.target.value)}
         className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
         required
       />

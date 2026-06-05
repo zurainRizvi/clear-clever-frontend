@@ -19,6 +19,7 @@ export interface ConversationSummary {
   type: ConversationType;
   subject?: string;
   displayTitle?: string;
+  displayTitleOverride?: string;
   participantUserIds: string[];
   participants: ConversationParticipant[];
   insurer?: {

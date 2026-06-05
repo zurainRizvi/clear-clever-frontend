@@ -6,6 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import {
   defaultProviderRange,
   formatProviderRangeLabel,
+  providerRangeAllTime,
+  providerRangeLastDays,
   type DateRangeValue,
 } from "@/lib/provider-date-range";
 
@@ -59,7 +61,7 @@ export function ProviderDateRangePicker({
           numberOfMonths={2}
           defaultMonth={value.from}
         />
-        <div className="border-t p-2 flex justify-between gap-2">
+        <div className="border-t p-2 flex flex-wrap justify-between gap-2">
           <button
             type="button"
             className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1"
@@ -69,6 +71,26 @@ export function ProviderDateRangePicker({
             }}
           >
             Last 7 days
+          </button>
+          <button
+            type="button"
+            className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1"
+            onClick={() => {
+              onChange(providerRangeLastDays(30));
+              setOpen(false);
+            }}
+          >
+            Last 30 days
+          </button>
+          <button
+            type="button"
+            className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1"
+            onClick={() => {
+              onChange(providerRangeAllTime());
+              setOpen(false);
+            }}
+          >
+            All time
           </button>
         </div>
       </PopoverContent>

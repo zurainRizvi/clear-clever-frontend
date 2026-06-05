@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -53,10 +53,21 @@ export function SignIn() {
     register,
     handleSubmit,
     setError,
+    reset,
     formState: { errors },
   } = useForm<SignInForm>();
 
   const selectedRole = selectedRoleId ? signInRoleById(selectedRoleId) : undefined;
+
+  useEffect(() => {
+    reset({ email: "", password: "" });
+  }, [reset]);
+
+  useEffect(() => {
+    if (step === "credentials") {
+      reset({ email: "", password: "" });
+    }
+  }, [step, reset]);
 
   const onSubmit = async (raw: SignInForm) => {
     if (!selectedRole) return;
@@ -196,7 +207,7 @@ export function SignIn() {
                 <p className="text-sm text-primary mb-6">Signing in as {selectedRole.title}</p>
               ) : null}
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" autoComplete="off">
                 {errors.root ? (
                   <motion.div
                     initial={{ opacity: 0, y: -4 }}

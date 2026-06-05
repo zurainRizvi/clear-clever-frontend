@@ -6,9 +6,21 @@ export interface DateRangeValue {
 }
 
 export function defaultProviderRange(): DateRangeValue {
+  return providerRangeLastDays(7);
+}
+
+export function providerRangeLastDays(days: number): DateRangeValue {
   const to = new Date();
   const from = new Date(to);
-  from.setDate(from.getDate() - 6);
+  from.setDate(from.getDate() - (days - 1));
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
+  return { from, to };
+}
+
+export function providerRangeAllTime(): DateRangeValue {
+  const to = new Date();
+  const from = new Date(2024, 0, 1);
   from.setHours(0, 0, 0, 0);
   to.setHours(23, 59, 59, 999);
   return { from, to };

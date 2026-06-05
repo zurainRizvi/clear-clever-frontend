@@ -73,11 +73,29 @@ export function createAssistantThread(title = "New chat"): AssistantChatThread {
   };
 }
 
+function stripBoilerplate(text: string): string {
+  return text
+    .replace(/^explain why\s+/i, "")
+    .replace(/^hi\s+clearclever\s*,?\s*/i, "")
+    .trim();
+}
+
 export function deriveThreadTitle(messages: StoredChatMessage[]): string {
   const firstUser = messages.find((m) => m.role === "user");
   if (!firstUser?.content.trim()) return "New chat";
-  const text = firstUser.content.trim().replace(/\s+/g, " ");
-  return text.length > 32 ? `${text.slice(0, 32)}…` : text;
+  const text = stripBoilerplate(firstUser.content.trim().replace(/\s+/g, " "));
+  const words = text.split(" ").filter(Boolean);
+  const title = words.slice(0, 6).join(" ");
+  if (!title) return "New chat";
+  return title.length > 36 ? `${title.slice(0, 36)}…` : title;
+}
+
+export function resolveThreadTitle(
+  currentTitle: string,
+  messages: StoredChatMessage[]
+): string {
+  if (currentTitle !== "New chat") return currentTitle;
+  return deriveThreadTitle(messages);
 }
 
 export function toStoredMessages(

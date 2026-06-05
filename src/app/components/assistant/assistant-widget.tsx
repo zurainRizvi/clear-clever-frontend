@@ -7,7 +7,6 @@ import {
   Paperclip,
   Send,
   Shield,
-  Sparkles,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,8 +14,8 @@ import { useAuth } from "../auth-context";
 import { ApiError } from "@/lib/api";
 import {
   createAssistantThread,
-  deriveThreadTitle,
   fromStoredMessages,
+  resolveThreadTitle,
   loadAssistantChatStore,
   saveAssistantChatStore,
   toStoredMessages,
@@ -99,7 +98,15 @@ export function AssistantWidget() {
     clearPreset,
   } = useAssistantWidget();
 
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  type AssistantAvailability = "loading" | "configured" | "unconfigured" | "status_error";
+  const [availability, setAvailability] = useState<AssistantAvailability>("loading");
+
+  const refreshAssistantStatus = useCallback(() => {
+    setAvailability("loading");
+    getAssistantStatus()
+      .then((status) => setAvailability(status.configured ? "configured" : "unconfigured"))
+      .catch(() => setAvailability("status_error"));
+  }, []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [threads, setThreads] = useState<AssistantChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -110,6 +117,15 @@ export function AssistantWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInFlightRef = useRef(false);
+  const lastUserMessageIdRef = useRef<string | null>(null);
+  const shouldScrollToBottomRef = useRef(false);
+  const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 });
+  const dragStateRef = useRef<{
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
 
   const persistKey = useMemo(() => {
     if (!isAuthenticated || !user?.id || !user.role) return null;
@@ -158,7 +174,7 @@ export function AssistantWidget() {
             ? {
                 ...thread,
                 messages: stored,
-                title: deriveThreadTitle(stored),
+                title: resolveThreadTitle(thread.title, stored),
                 updatedAt: new Date().toISOString(),
               }
             : thread
@@ -222,16 +238,31 @@ export function AssistantWidget() {
   const showSuggestions = messages.length === 0 && !sending && !explaining;
 
   useEffect(() => {
-    getAssistantStatus()
-      .then((status) => setConfigured(status.configured))
-      .catch(() => setConfigured(false));
-  }, []);
+    refreshAssistantStatus();
+  }, [refreshAssistantStatus]);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (!isOpen) return;
+    setPanelOffset({ x: 0, y: 0 });
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!scrollRef.current || !isOpen) return;
+
+    if (shouldScrollToBottomRef.current) {
+      shouldScrollToBottomRef.current = false;
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      return;
     }
-  }, [messages, isOpen, sending, pendingFiles]);
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.role === "assistant" && lastUserMessageIdRef.current) {
+      const userEl = scrollRef.current.querySelector(
+        `[data-message-id="${lastUserMessageIdRef.current}"]`
+      );
+      userEl?.scrollIntoView({ block: "start" });
+    }
+  }, [messages, isOpen, sending]);
 
   const sendMessage = useCallback(
     async (text: string, files: PendingFile[] = pendingFiles) => {
@@ -268,6 +299,8 @@ export function AssistantWidget() {
         createdAt: new Date(),
         attachmentNames: files.map((f) => f.file.name),
       };
+      lastUserMessageIdRef.current = userMsg.id;
+      shouldScrollToBottomRef.current = true;
       const withUser = [...messages, userMsg];
       setMessages(withUser);
       if (threadId) applyThreadMessages(threadId, withUser);
@@ -417,6 +450,24 @@ export function AssistantWidget() {
 
   const startNewChat = useCallback(() => {
     if (persistKey) {
+      const active = threads.find((thread) => thread.id === activeThreadId);
+      if (active && active.messages.length === 0) {
+        setMessages([]);
+        setPendingFiles([]);
+        setInput("");
+        return;
+      }
+
+      const existingEmpty = threads.find((thread) => thread.messages.length === 0);
+      if (existingEmpty) {
+        setActiveThreadId(existingEmpty.id);
+        setMessages([]);
+        setPendingFiles([]);
+        setInput("");
+        persistStore(threads, existingEmpty.id);
+        return;
+      }
+
       const thread = createAssistantThread();
       const nextThreads = [thread, ...threads];
       setThreads(nextThreads);
@@ -425,12 +476,10 @@ export function AssistantWidget() {
       setPendingFiles([]);
       setInput("");
       persistStore(nextThreads, thread.id);
-      toast.message("New chat started");
       return;
     }
     resetGuestChatState();
-    toast.message("Chat cleared");
-  }, [persistKey, threads, persistStore, resetGuestChatState]);
+  }, [persistKey, threads, activeThreadId, persistStore, resetGuestChatState]);
 
   const selectThread = useCallback(
     (threadId: string) => {
@@ -491,7 +540,32 @@ export function AssistantWidget() {
     ? "w-[min(100vw-1.5rem,680px)]"
     : "w-[min(100vw-1.5rem,440px)]";
 
-  if (configured === false) {
+  const handleHeaderPointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.button !== 0) return;
+    dragStateRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: panelOffset.x,
+      originY: panelOffset.y,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleHeaderPointerMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (!dragStateRef.current) return;
+    const dx = event.clientX - dragStateRef.current.startX;
+    const dy = event.clientY - dragStateRef.current.startY;
+    setPanelOffset({
+      x: dragStateRef.current.originX + dx,
+      y: dragStateRef.current.originY + dy,
+    });
+  };
+
+  const handleHeaderPointerUp = () => {
+    dragStateRef.current = null;
+  };
+
+  if (availability === "unconfigured") {
     return null;
   }
 
@@ -501,10 +575,7 @@ export function AssistantWidget() {
         <button
           type="button"
           onClick={toggleAssistant}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-5 py-3 text-white font-semibold text-sm shadow-[0_16px_40px_rgba(37,99,235,0.35)] hover:opacity-95 transition-opacity"
-          style={{
-            background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
-          }}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-semibold text-sm shadow-lg hover:opacity-95 transition-opacity"
           aria-label="Open AI assistant"
         >
           <MessageCircle className="h-5 w-5" />
@@ -521,8 +592,13 @@ export function AssistantWidget() {
             onClick={handleClose}
           />
           <div
-            className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.10)] dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:bottom-6 sm:right-6`}
-            style={{ borderRadius: "24px", maxHeight: "min(90vh, 720px)", height: "min(90vh, 720px)" }}
+            className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-border bg-card shadow-2xl sm:bottom-6 sm:right-6`}
+            style={{
+              borderRadius: "24px",
+              maxHeight: "min(90vh, 720px)",
+              height: "min(90vh, 720px)",
+              transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)`,
+            }}
             role="dialog"
             aria-modal="true"
             aria-label="ClearClever AI Assistant"
@@ -540,25 +616,26 @@ export function AssistantWidget() {
 
               <div className="flex min-w-0 flex-1 flex-col">
                 <header
-                  className="flex shrink-0 items-center justify-between px-5 py-4 text-white"
-                  style={{
-                    background: "linear-gradient(135deg, #0A2EA8 0%, #2563EB 100%)",
-                  }}
+                  className="flex shrink-0 cursor-grab active:cursor-grabbing items-center justify-between border-b border-border bg-card px-5 py-4"
+                  onPointerDown={handleHeaderPointerDown}
+                  onPointerMove={handleHeaderPointerMove}
+                  onPointerUp={handleHeaderPointerUp}
+                  onPointerCancel={handleHeaderPointerUp}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-                      style={{ background: "rgba(255,255,255,0.12)" }}
-                    >
-                      <Shield className="h-6 w-6" />
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-primary">
+                      <MessageCircle className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="flex items-center gap-1.5 font-bold text-lg tracking-tight truncate">
+                      <p className="font-bold text-lg tracking-tight truncate text-foreground">
                         ClearClever Assistant
-                        <Sparkles className="h-4 w-4 shrink-0 opacity-90" />
                       </p>
-                      <p className="text-sm font-medium text-white/75">
-                        {configured === null ? "Connecting…" : "Powered by Gemini"}
+                      <p className="text-sm text-muted-foreground">
+                        {availability === "loading"
+                          ? "Connecting…"
+                          : availability === "status_error"
+                            ? "Temporarily unavailable"
+                            : "Insurance guidance"}
                       </p>
                     </div>
                   </div>
@@ -566,7 +643,7 @@ export function AssistantWidget() {
                     <button
                       type="button"
                       onClick={startNewChat}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
+                      className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                       aria-label="Start new chat"
                       title={persistKey ? "New chat" : "Clear chat"}
                     >
@@ -575,7 +652,7 @@ export function AssistantWidget() {
                     <button
                       type="button"
                       onClick={handleClose}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
+                      className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                       aria-label="Close assistant"
                     >
                       <X className="h-5 w-5" />
@@ -583,14 +660,27 @@ export function AssistantWidget() {
                   </div>
                 </header>
 
+                {availability === "status_error" && (
+                  <div className="shrink-0 flex items-center justify-between gap-3 text-xs bg-amber-500/10 text-amber-900 dark:text-amber-200 px-5 py-2 border-b border-amber-500/20">
+                    <span>Assistant temporarily unavailable — check your connection or try again.</span>
+                    <button
+                      type="button"
+                      onClick={refreshAssistantStatus}
+                      className="font-semibold underline shrink-0"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
                 {!isAuthenticated ? (
-                  <p className="shrink-0 text-xs text-slate-600 bg-slate-50 px-5 py-2 border-b border-slate-100 dark:text-slate-300 dark:bg-slate-800/80 dark:border-slate-700">
+                  <p className="shrink-0 text-xs text-muted-foreground bg-muted/40 px-5 py-2 border-b border-border">
                     Guest mode — general platform guidance. Sign in for personalized answers and saved chats.
                   </p>
                 ) : (
-                  <p className="shrink-0 text-xs text-slate-600 bg-blue-50/80 px-5 py-2 border-b border-slate-100 dark:text-slate-300 dark:bg-blue-950/40 dark:border-slate-700">
+                  <p className="shrink-0 text-xs text-muted-foreground bg-muted/40 px-5 py-2 border-b border-border">
                     Signed in as{" "}
-                    <span className="font-semibold capitalize">
+                    <span className="font-semibold capitalize text-foreground">
                       {user?.role === "user" ? "policy seeker" : user?.role?.replace("_", " ")}
                     </span>
                     — chats are saved on this device.
@@ -598,12 +688,12 @@ export function AssistantWidget() {
                 )}
 
                 {isAuthenticated && user?.role === "user" && category && (
-                  <div className="shrink-0 px-5 py-2 border-b border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-900">
+                  <div className="shrink-0 px-5 py-2 border-b border-border bg-card">
                     <button
                       type="button"
                       disabled={explaining || sending}
                       onClick={() => void handleExplainTop()}
-                      className="text-xs font-semibold text-blue-600 hover:underline disabled:opacity-50 dark:text-blue-400"
+                      className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
                     >
                       {explaining ? "Explaining top match…" : "Explain my top recommendation"}
                     </button>
@@ -612,14 +702,14 @@ export function AssistantWidget() {
 
                 <div
                   ref={scrollRef}
-                  className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5 bg-slate-50 dark:bg-slate-950"
+                  className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5 bg-muted/20"
                 >
                   {messages.length === 0 && (
                     <div className="flex gap-3 max-w-[92%]">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                        <Sparkles className="h-5 w-5" />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-primary">
+                        <MessageCircle className="h-5 w-5" />
                       </div>
-                      <div className="rounded-3xl bg-white px-4 py-3 shadow-[0_10px_40px_rgba(15,23,42,0.06)] dark:bg-slate-800 dark:shadow-[0_10px_40px_rgba(0,0,0,0.25)]">
+                      <div className="rounded-2xl bg-muted px-4 py-3 min-w-0">
                         <AssistantMessageMarkdown content={welcomeMessage} />
                       </div>
                     </div>
@@ -628,21 +718,20 @@ export function AssistantWidget() {
                   {messages.map((msg) =>
                     msg.role === "assistant" ? (
                       <div key={msg.id} className="flex gap-3 max-w-[92%]">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                          <Sparkles className="h-5 w-5" />
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-primary">
+                          <MessageCircle className="h-5 w-5" />
                         </div>
-                        <div className="rounded-3xl bg-white px-4 py-3 shadow-[0_10px_40px_rgba(15,23,42,0.06)] min-w-0 dark:bg-slate-800 dark:shadow-[0_10px_40px_rgba(0,0,0,0.25)]">
+                        <div className="rounded-2xl bg-muted px-4 py-3 min-w-0">
                           <AssistantMessageMarkdown content={msg.content} />
                         </div>
                       </div>
                     ) : (
-                      <div key={msg.id} className="flex flex-col items-end gap-1">
-                        <div
-                          className="max-w-[85%] rounded-full px-5 py-3 text-[15px] font-medium text-white shadow-[0_16px_40px_rgba(37,99,235,0.25)]"
-                          style={{
-                            background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
-                          }}
-                        >
+                      <div
+                        key={msg.id}
+                        data-message-id={msg.id}
+                        className="flex flex-col items-end gap-1"
+                      >
+                        <div className="max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-[15px] font-medium text-primary-foreground">
                           <p className="whitespace-pre-wrap">{msg.content}</p>
                           {msg.attachmentNames && msg.attachmentNames.length > 0 && (
                             <p className="mt-1 text-xs text-white/80">
@@ -650,17 +739,17 @@ export function AssistantWidget() {
                             </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] text-slate-500 pr-1 dark:text-slate-400">
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground pr-1">
                           <span>{formatTime(msg.createdAt)}</span>
-                          <CheckCheck className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+                          <CheckCheck className="h-3.5 w-3.5 text-primary" />
                         </div>
                       </div>
                     )
                   )}
 
                   {(sending || explaining) && (
-                    <div className="flex gap-3 items-center text-slate-500 text-sm dark:text-slate-400">
-                      <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                    <div className="flex gap-3 items-center text-muted-foreground text-sm">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       Thinking…
                     </div>
                   )}
@@ -674,9 +763,9 @@ export function AssistantWidget() {
                             key={chip.id}
                             type="button"
                             onClick={() => void sendMessage(chip.prompt)}
-                            className="inline-flex items-center gap-2 rounded-full border border-blue-600/12 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:border-blue-600/25 hover:bg-blue-50/50 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-accent transition-colors"
                           >
-                            <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <Icon className="h-4 w-4 text-primary" />
                             {chip.text}
                           </button>
                         );
@@ -685,18 +774,18 @@ export function AssistantWidget() {
                   )}
                 </div>
 
-                <div className="shrink-0 border-t border-slate-200 bg-white px-4 pt-3 pb-3 dark:border-slate-700 dark:bg-slate-900">
+                <div className="shrink-0 border-t border-border bg-card px-4 pt-3 pb-3">
                   {pendingFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {pendingFiles.map((pf) => (
                         <span
                           key={pf.id}
-                          className="inline-flex items-center gap-2 rounded-xl border border-blue-600/12 bg-slate-50 px-2 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                          className="inline-flex items-center gap-2 rounded-xl border border-border bg-muted px-2 py-1 text-xs text-foreground"
                         >
                           {pf.previewUrl ? (
                             <img src={pf.previewUrl} alt="" className="h-8 w-8 rounded object-cover" />
                           ) : (
-                            <Paperclip className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <Paperclip className="h-4 w-4 text-primary" />
                           )}
                           <span className="max-w-[120px] truncate">{pf.file.name}</span>
                           <button
@@ -721,14 +810,21 @@ export function AssistantWidget() {
                       void sendMessage(input);
                     }}
                   >
-                    <div className="flex items-center gap-2 rounded-full border-2 border-blue-600/12 bg-slate-50 px-3 py-2 shadow-[0_8px_30px_rgba(15,23,42,0.04)] dark:border-slate-600 dark:bg-slate-800">
-                      <input
+                    <div className="flex items-end gap-2 rounded-2xl border border-border bg-muted/30 px-3 py-2">
+                      <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask ClearClever anything..."
-                        disabled={sending || configured === null}
-                        className="flex-1 min-w-0 bg-transparent border-0 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+                        disabled={sending || availability !== "configured"}
+                        rows={1}
+                        className="flex-1 min-w-0 resize-none bg-transparent border-0 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 py-2"
                         maxLength={2000}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            void sendMessage(input);
+                          }
+                        }}
                       />
                       <input
                         ref={fileInputRef}
@@ -742,7 +838,7 @@ export function AssistantWidget() {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={sending || pendingFiles.length >= MAX_FILES}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-600/12 bg-white text-blue-600 shadow-sm hover:bg-blue-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-slate-800"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-primary hover:bg-accent disabled:opacity-50"
                         aria-label="Attach files"
                         title="Attach images or PDF (max 3, 4MB each)"
                       >
@@ -752,19 +848,16 @@ export function AssistantWidget() {
                         type="submit"
                         disabled={
                           sending ||
-                          configured === null ||
+                          availability !== "configured" ||
                           (!input.trim() && pendingFiles.length === 0)
                         }
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_16px_30px_rgba(37,99,235,0.30)] disabled:opacity-50"
-                        style={{
-                          background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
-                        }}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
                         aria-label="Send message"
                       >
                         <Send className="h-5 w-5" />
                       </button>
                     </div>
-                    <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Shield className="h-3.5 w-3.5 shrink-0" />
                       AI guidance only — not legal or financial advice. Confirm details with your insurer.
                     </p>

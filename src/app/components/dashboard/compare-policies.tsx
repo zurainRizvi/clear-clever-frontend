@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Shield,
@@ -12,7 +12,9 @@ import {
   CheckCircle2,
   Sparkles,
   Heart,
+  Headphones,
   Loader2,
+  MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -28,6 +30,15 @@ import { InsurerLogo } from "./insurer-logo";
 import { useAssistantWidget } from "../assistant/assistant-widget-context";
 import { explainRecommendation } from "@/lib/assistant-api";
 import { useAuth } from "../auth-context";
+import {
+  ConversationDrawer,
+  type ConversationDrawerRequest,
+} from "./conversation-drawer";
+import {
+  clearCompareFlowDraft,
+  loadCompareFlowDraft,
+  saveCompareFlowDraft,
+} from "@/lib/compare-flow-draft";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   home: Home,
@@ -70,6 +81,11 @@ export function ComparePolicies() {
   const [recommendations, setRecommendations] = useState<ScoredRecommendation[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [loadingResults, setLoadingResults] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerRequest, setDrawerRequest] = useState<ConversationDrawerRequest | null>(null);
+  const [drawerTitle, setDrawerTitle] = useState("");
+  const [drawerDescription, setDrawerDescription] = useState("");
+  const restoredDraftRef = useRef(false);
 
   useEffect(() => {
     fetchCategories()
@@ -77,6 +93,53 @@ export function ComparePolicies() {
       .catch(() => toast.error(copy.errors.network))
       .finally(() => setLoadingCategories(false));
   }, []);
+
+  useEffect(() => {
+    if (loadingCategories || restoredDraftRef.current) return;
+    const draft = loadCompareFlowDraft();
+    if (!draft || draft.step !== "results") return;
+
+    restoredDraftRef.current = true;
+    setSelectedCategory({
+      slug: draft.selectedCategorySlug,
+      name: draft.selectedCategoryName,
+      available: draft.selectedCategoryAvailable,
+    } as CategoryItem);
+    setAnswers(draft.answers);
+    setRecommendations(draft.recommendations);
+    setCurrentQuestion(draft.currentQuestion);
+    setStep("results");
+    setAssistantCategory(draft.selectedCategorySlug);
+  }, [loadingCategories, setAssistantCategory]);
+
+  useEffect(() => {
+    if (!selectedCategory || step === "category") return;
+    saveCompareFlowDraft({
+      step,
+      selectedCategorySlug: selectedCategory.slug,
+      selectedCategoryName: selectedCategory.name,
+      selectedCategoryAvailable: selectedCategory.available,
+      answers,
+      recommendations,
+      currentQuestion,
+    });
+  }, [step, selectedCategory, answers, recommendations, currentQuestion]);
+
+  useEffect(() => {
+    return () => {
+      if (step === "results" && selectedCategory) {
+        saveCompareFlowDraft({
+          step,
+          selectedCategorySlug: selectedCategory.slug,
+          selectedCategoryName: selectedCategory.name,
+          selectedCategoryAvailable: selectedCategory.available,
+          answers,
+          recommendations,
+          currentQuestion,
+        });
+      }
+    };
+  }, [step, selectedCategory, answers, recommendations, currentQuestion]);
 
   const badgeMap = useMemo(
     () => assignRecommendationBadges(recommendations),
@@ -120,6 +183,7 @@ export function ComparePolicies() {
       return;
     }
 
+    clearCompareFlowDraft();
     setSelectedCategory(category);
     setLoadingQuestions(true);
     try {
@@ -216,6 +280,36 @@ export function ComparePolicies() {
     setAnswers({});
     setCurrentQuestion(0);
     setRecommendations([]);
+  };
+
+  const openInquiryDrawer = (
+    mode: "insurer" | "support",
+    rec: ScoredRecommendation
+  ) => {
+    if (!isAuthenticated || user?.role !== "user") {
+      toast.message("Sign in as a policy seeker to message providers");
+      return;
+    }
+
+    if (mode === "insurer") {
+      setDrawerRequest({
+        type: "user_insurer",
+        insurerProfileId: rec.policy.insurer.id,
+        subject: `Inquiry: ${rec.policy.name}`,
+        initialMessage: `Hi ${rec.policy.insurer.companyName}, I have a question about ${rec.policy.name} before purchase.`,
+      });
+      setDrawerTitle(rec.policy.insurer.companyName);
+      setDrawerDescription("Ask the insurer about this policy before you buy.");
+    } else {
+      setDrawerRequest({
+        type: "user_support",
+        subject: "Pre-purchase support",
+        initialMessage: "Hi ClearClever support, I need help with a policy inquiry.",
+      });
+      setDrawerTitle("ClearClever Support");
+      setDrawerDescription("Chat with our support team about your comparison.");
+    }
+    setDrawerOpen(true);
   };
 
   const handleSavePolicy = async (rec: ScoredRecommendation) => {
@@ -480,6 +574,36 @@ export function ComparePolicies() {
                           </button>
                           <button
                             type="button"
+                            onClick={() => void handleSavePolicy(rec)}
+                            className={`w-full py-2.5 border rounded-lg transition-all text-sm inline-flex items-center justify-center gap-2 ${
+                              isPolicySaved(rec.policy.id)
+                                ? "border-primary text-primary bg-primary/5"
+                                : "border-border hover:bg-accent"
+                            }`}
+                          >
+                            <Heart
+                              className={`w-4 h-4 ${isPolicySaved(rec.policy.id) ? "fill-primary" : ""}`}
+                            />
+                            {isPolicySaved(rec.policy.id) ? "Saved" : "Save policy"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openInquiryDrawer("insurer", rec)}
+                            className="w-full py-2.5 border border-border rounded-lg hover:bg-accent transition-all text-sm font-medium inline-flex items-center justify-center gap-2"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            Inquire agent
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openInquiryDrawer("support", rec)}
+                            className="w-full py-2.5 border border-border rounded-lg hover:bg-accent transition-all text-sm font-medium inline-flex items-center justify-center gap-2"
+                          >
+                            <Headphones className="w-4 h-4" />
+                            Support inquiry
+                          </button>
+                          <button
+                            type="button"
                             onClick={() =>
                               navigate("/dashboard/purchase", {
                                 state: {
@@ -493,20 +617,6 @@ export function ComparePolicies() {
                           >
                             {copy.purchase.purchaseCta}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleSavePolicy(rec)}
-                            className={`w-full py-2.5 border rounded-lg transition-all text-sm inline-flex items-center justify-center gap-2 ${
-                              isPolicySaved(rec.policy.id)
-                                ? "border-primary text-primary bg-primary/5"
-                                : "border-border hover:bg-accent"
-                            }`}
-                          >
-                            <Heart
-                              className={`w-4 h-4 ${isPolicySaved(rec.policy.id) ? "fill-primary" : ""}`}
-                            />
-                            {isPolicySaved(rec.policy.id) ? "Saved" : "Save policy"}
-                          </button>
                         </div>
                       </div>
                     </motion.article>
@@ -517,6 +627,14 @@ export function ComparePolicies() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConversationDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        title={drawerTitle}
+        description={drawerDescription}
+        request={drawerRequest}
+      />
     </div>
   );
 }
@@ -530,6 +648,14 @@ function QuestionInput({
   value: unknown;
   onAnswer: (value: unknown) => void;
 }) {
+  const [textValue, setTextValue] = useState("");
+  const [numberValue, setNumberValue] = useState("");
+
+  useEffect(() => {
+    setTextValue("");
+    setNumberValue("");
+  }, [question.id]);
+
   if (question.type === "single" && question.options?.length) {
     return (
       <div className="space-y-2">
@@ -570,7 +696,8 @@ function QuestionInput({
         <input
           name="answer"
           type="number"
-          defaultValue={value !== undefined ? String(value) : ""}
+          value={numberValue}
+          onChange={(event) => setNumberValue(event.target.value)}
           className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
           placeholder="Enter amount in PKR"
           required
@@ -597,7 +724,8 @@ function QuestionInput({
       <input
         name="answer"
         type="text"
-        defaultValue={value !== undefined ? String(value) : ""}
+        value={textValue}
+        onChange={(event) => setTextValue(event.target.value)}
         className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
         required
       />

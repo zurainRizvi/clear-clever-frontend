@@ -214,6 +214,15 @@ export function MyPurchases() {
                   : "Sent after purchase completion"
               }
             />
+            {purchase.timeline.email?.body && (
+              <div className="ml-11 mb-4 rounded-xl border border-border bg-card p-4 text-sm whitespace-pre-wrap">
+                <p className="font-semibold mb-2">
+                  From {purchase.timeline.email.fromInsurer ?? purchase.insurer?.companyName ?? "Insurer"}
+                </p>
+                <p className="text-muted-foreground mb-2">{purchase.timeline.email.subject}</p>
+                <p>{purchase.timeline.email.body}</p>
+              </div>
+            )}
             <TimelineItem
               done={Boolean(purchase.timeline.callScheduled)}
               icon={Calendar}

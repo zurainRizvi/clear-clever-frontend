@@ -571,8 +571,8 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                     className="hidden shrink-0 rounded-2xl border border-border bg-card px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:block"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEF4FF]">
-                        <BrainCircuit className="h-5 w-5 text-[#2563EB]" />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
+                        <BrainCircuit className="h-5 w-5 text-primary" />
                       </div>
                       <div className="min-w-[10.5rem]">
                         <p className="text-sm font-bold leading-tight text-foreground">
@@ -592,8 +592,8 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
                   className="absolute -bottom-7 left-1/2 z-20 hidden -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] md:block"
                 >
                   <div className="flex items-center gap-3 whitespace-nowrap">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ECFDF5]">
-                      <CheckCircle2 className="h-5 w-5 text-[#10B981]" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted">
+                      <CheckCircle2 className="h-5 w-5 text-success" />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-foreground">Quick • Simple • Smart</p>
@@ -611,19 +611,19 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="mt-14 rounded-3xl border border-[#E2E8F0] bg-white p-6 md:mt-20 md:p-9"
+            className="mt-14 rounded-3xl border border-border bg-card p-6 md:mt-20 md:p-9"
           >
             <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-6">
               {STATS.map((stat) => {
                 const Icon = stat.icon;
                 return (
                   <div key={stat.label} className="flex flex-col items-center text-center md:flex-row md:items-center md:gap-4 md:text-left">
-                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F8FAFF] md:mb-0">
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted md:mb-0">
                       <Icon className="h-6 w-6" style={{ color: stat.iconColor }} />
                     </div>
                     <div>
-                      <p className="text-2xl font-extrabold text-[#0F172A] md:text-3xl">{stat.value}</p>
-                      <p className="text-sm text-[#64748B] md:text-base">{stat.label}</p>
+                      <p className="text-2xl font-extrabold text-foreground md:text-3xl">{stat.value}</p>
+                      <p className="text-sm text-muted-foreground md:text-base">{stat.label}</p>
                     </div>
                   </div>
                 );
@@ -633,7 +633,7 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
 
           {/* Partners */}
           <div className="mt-14 pb-8 md:mt-20">
-            <p className="mb-8 text-center text-base text-[#94A3B8] md:text-lg">
+            <p className="mb-8 text-center text-base text-muted-foreground md:text-lg">
               We work with trusted insurance partners
             </p>
             <PartnerLogoMarquee />

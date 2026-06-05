@@ -12,7 +12,7 @@ import {
   type ConversationMessage,
   type ConversationSummary,
 } from "@/lib/messaging-api";
-import { titleForConversation } from "@/lib/messaging-display";
+import { subtitleForConversation, titleForConversation } from "@/lib/messaging-display";
 import { isConversationUnread } from "@/lib/messaging-unread";
 import { ChatShell } from "./chat-shell";
 
@@ -29,23 +29,6 @@ function tabForConversation(conversation: ConversationSummary): AdminMessageTab 
   if (hasInsurer && !hasUser) return "insurers";
   if (hasUser) return "seekers";
   return null;
-}
-
-function subtitleForConversation(conversation: ConversationSummary, currentUserId?: string) {
-  if (conversation.type === "user_insurer") {
-    const seeker = conversation.participants.find((p) => p.role === "user");
-    return seeker ? `Policy seeker · ${seeker.email}` : "Policy seeker conversation";
-  }
-  if (conversation.type === "user_support") {
-    const seeker = conversation.participants.find((p) => p.role === "user");
-    return seeker ? seeker.email : "Policy seeker support";
-  }
-  if (conversation.type === "insurer_support") {
-    const insurer = conversation.participants.find((p) => p.role === "insurer");
-    return insurer ? insurer.email : "Insurer support";
-  }
-  const other = conversation.participants.find((p) => p.id !== currentUserId);
-  return other?.email ?? conversation.type.replace(/_/g, " ");
 }
 
 export function AdminMessagesPage() {
@@ -214,7 +197,9 @@ export function AdminMessagesPage() {
                       className="flex-1 min-w-0 text-left p-4"
                     >
                       <div className="font-medium truncate flex items-center gap-2">
-                        <span className="truncate">{titleForConversation(conversation, user?.id)}</span>
+                        <span className="truncate">
+                          {titleForConversation(conversation, user?.id, user?.role)}
+                        </span>
                         {unread ? <span className="w-2 h-2 rounded-full bg-primary shrink-0" /> : null}
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -228,6 +213,7 @@ export function AdminMessagesPage() {
                       <ConversationActionsMenu
                         conversation={conversation}
                         currentUserId={user?.id}
+                        viewerRole={user?.role}
                         onUpdated={() => refreshConversations?.({ silent: true })}
                         onDeleted={() => handleConversationDeleted(conversation.id)}
                       />
@@ -245,7 +231,7 @@ export function AdminMessagesPage() {
               <div className="p-4 border-b border-border flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="text-lg font-semibold truncate">
-                    {titleForConversation(activeConversation, user?.id)}
+                    {titleForConversation(activeConversation, user?.id, user?.role)}
                   </h2>
                   <p className="text-sm text-muted-foreground truncate">
                     {subtitleForConversation(activeConversation, user?.id)}
@@ -254,6 +240,7 @@ export function AdminMessagesPage() {
                 <ConversationActionsMenu
                   conversation={activeConversation}
                   currentUserId={user?.id}
+                  viewerRole={user?.role}
                   onUpdated={() => refreshConversations?.({ silent: true })}
                   onDeleted={() => handleConversationDeleted(activeConversation.id)}
                 />
