@@ -6,11 +6,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 import {
   addFavorite,
   fetchFavorites,
   removeFavorite,
 } from "@/lib/auth-api";
+import { ApiError } from "@/lib/api";
 import type { PublicPolicy } from "@/lib/types";
 import { useAuth } from "./auth-context";
 
@@ -41,8 +43,10 @@ export function SavedPoliciesProvider({ children }: { children: ReactNode }) {
     try {
       const data = await fetchFavorites();
       setSavedPolicies(data.favorites.map((f) => f.policy));
-    } catch {
-      setSavedPolicies([]);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Could not load saved policies"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +61,7 @@ export function SavedPoliciesProvider({ children }: { children: ReactNode }) {
     setSavedPolicies((prev) =>
       prev.some((p) => p.id === policy.id) ? prev : [...prev, policy]
     );
+    await refreshFavorites();
   };
 
   const removeSavedPolicy = async (policyId: string) => {

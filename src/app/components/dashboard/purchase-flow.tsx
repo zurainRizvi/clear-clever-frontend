@@ -30,6 +30,11 @@ import { ClearCleverLogo } from "../auth/clearclever-logo";
 import { InsurerLogo } from "./insurer-logo";
 import { CnicKycPanel } from "./cnic-kyc-panel";
 import { KycStatusBadge } from "./kyc-verification-ui";
+import { QuestionInput, otherDetailKey } from "./questionnaire-inputs";
+import {
+  firstUnansweredQuestionIndex,
+  requiredQuestionsAnswered,
+} from "@/lib/questionnaire-utils";
 
 type Step = "questionnaire" | "contact" | "review";
 
@@ -58,33 +63,6 @@ function isPublicPolicy(value: unknown): value is PublicPolicy {
     "premiumMonthlyPkr" in value &&
     "insurer" in value
   );
-}
-
-function requiredQuestionsAnswered(
-  questions: PolicyQuestion[],
-  answers: Record<string, unknown>
-): boolean {
-  return questions
-    .filter((q) => q.required !== false)
-    .every((q) => {
-      const value = answers[q.id];
-      if (value === undefined || value === null || value === "") return false;
-      if (Array.isArray(value) && value.length === 0) return false;
-      if (typeof value === "number" && !Number.isFinite(value)) return false;
-      return true;
-    });
-}
-
-function firstUnansweredQuestionIndex(
-  questions: PolicyQuestion[],
-  answers: Record<string, unknown>
-): number {
-  const index = questions.findIndex((question) => {
-    if (question.required === false) return false;
-    const value = answers[question.id];
-    return value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
-  });
-  return index === -1 ? 0 : index;
 }
 
 export function PurchaseFlow() {
@@ -228,7 +206,14 @@ export function PurchaseFlow() {
       if (category && category !== "others") {
         void fetchRecommendations({ category, answers: nextAnswers }).catch(() => undefined);
       }
+    } else {
+      toast.error("Please answer all required questions, including details for Other options.");
     }
+  };
+
+  const handleOtherDetailChange = (detail: string) => {
+    if (!currentQ) return;
+    setAnswers((prev) => ({ ...prev, [otherDetailKey(currentQ.id)]: detail }));
   };
 
   const validateContact = (): boolean => {
@@ -383,7 +368,9 @@ export function PurchaseFlow() {
               <QuestionInput
                 question={currentQ}
                 value={answers[currentQ.id]}
+                otherDetail={String(answers[otherDetailKey(currentQ.id)] ?? "")}
                 onAnswer={handleQuestionAnswer}
+                onOtherDetailChange={handleOtherDetailChange}
               />
               {currentQuestion > 0 && (
                 <button
@@ -721,162 +708,6 @@ function Field({
       <label className="block text-sm mb-2">{label}</label>
       {input}
       {error ? <p className="text-xs text-destructive mt-1">{error}</p> : null}
-    </div>
-  );
-}
-
-function QuestionInput({
-  question,
-  value,
-  onAnswer,
-}: {
-  question: PolicyQuestion;
-  value: unknown;
-  onAnswer: (value: unknown) => void;
-}) {
-  const [textValue, setTextValue] = useState("");
-  const [numberValue, setNumberValue] = useState("");
-
-  useEffect(() => {
-    setTextValue("");
-    setNumberValue("");
-  }, [question.id]);
-
-  if (question.type === "single" && question.options?.length) {
-    return (
-      <div className="space-y-2">
-        {question.options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onAnswer(option)}
-            className={`w-full text-left p-4 rounded-lg border transition-all duration-200 ${
-              value === option
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/30 hover:bg-accent/50"
-            }`}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  if (question.type === "multi" && question.options?.length) {
-    return <MultiQuestionInput question={question} value={value} onAnswer={onAnswer} />;
-  }
-
-  if (question.type === "number") {
-    return (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const raw = new FormData(e.currentTarget).get("answer");
-          const num = Number(raw);
-          if (Number.isFinite(num) && num > 0) onAnswer(num);
-        }}
-        className="space-y-4"
-      >
-        <input
-          name="answer"
-          type="number"
-          value={numberValue}
-          onChange={(event) => setNumberValue(event.target.value)}
-          className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
-          placeholder="Enter amount in PKR"
-          required
-        />
-        <button
-          type="submit"
-          className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-        >
-          {copy.compare.questionnaireCta}
-        </button>
-      </form>
-    );
-  }
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const raw = new FormData(e.currentTarget).get("answer");
-        if (typeof raw === "string" && raw.trim()) onAnswer(raw.trim());
-      }}
-      className="space-y-4"
-    >
-      <input
-        name="answer"
-        type="text"
-        value={textValue}
-        onChange={(event) => setTextValue(event.target.value)}
-        className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
-        required
-      />
-      <button
-        type="submit"
-        className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-      >
-        {copy.compare.questionnaireCta}
-      </button>
-    </form>
-  );
-}
-
-function MultiQuestionInput({
-  question,
-  value,
-  onAnswer,
-}: {
-  question: PolicyQuestion;
-  value: unknown;
-  onAnswer: (value: unknown) => void;
-}) {
-  const [selected, setSelected] = useState<string[]>(Array.isArray(value) ? value.map(String) : []);
-  const toggle = (option: string) =>
-    setSelected((current) =>
-      current.includes(option)
-        ? current.filter((item) => item !== option)
-        : [...current, option]
-    );
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        {question.options?.map((option) => {
-          const checked = selected.includes(option);
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => toggle(option)}
-              className={`w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-center gap-3 ${
-                checked
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/30 hover:bg-accent/50"
-              }`}
-            >
-              <span
-                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
-                  checked ? "bg-primary border-primary text-primary-foreground" : "border-border"
-                }`}
-              >
-                {checked ? <CheckCircle2 className="w-3.5 h-3.5" /> : null}
-              </span>
-              {option}
-            </button>
-          );
-        })}
-      </div>
-      <button
-        type="button"
-        onClick={() => onAnswer(selected)}
-        disabled={question.required !== false && selected.length === 0}
-        className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
-      >
-        {copy.compare.questionnaireCta}
-      </button>
     </div>
   );
 }

@@ -37,6 +37,25 @@ export function toRangeQuery(range: DateRangeValue): { from: string; to: string 
   };
 }
 
+const PROVIDER_RANGE_STORAGE_KEY = "clearclever.providerAnalyticsRange";
+
+export function loadStoredProviderRange(): DateRangeValue {
+  if (typeof localStorage === "undefined") return defaultProviderRange();
+  try {
+    const raw = localStorage.getItem(PROVIDER_RANGE_STORAGE_KEY);
+    if (!raw) return defaultProviderRange();
+    const parsed = JSON.parse(raw) as { from?: string; to?: string };
+    return parseRangeFromApi(parsed.from, parsed.to);
+  } catch {
+    return defaultProviderRange();
+  }
+}
+
+export function saveStoredProviderRange(range: DateRangeValue): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(PROVIDER_RANGE_STORAGE_KEY, JSON.stringify(toRangeQuery(range)));
+}
+
 export function parseRangeFromApi(from?: string, to?: string): DateRangeValue {
   if (!from || !to) return defaultProviderRange();
   const fromDate = new Date(from);

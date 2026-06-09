@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
 import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
@@ -75,8 +76,9 @@ export function ClaimsPage() {
   const [selectedPurchaseId, setSelectedPurchaseId] = useState(
     searchParams.get("purchaseId") ?? ""
   );
-  const [claimType, setClaimType] = useState("damage");
-  const [incidentDate, setIncidentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [claimType, setClaimType] = useState("");
+  const [wizardResetKey, setWizardResetKey] = useState(0);
+  const [incidentDate, setIncidentDate] = useState("");
   const [estimatedAmountPkr, setEstimatedAmountPkr] = useState("");
   const [description, setDescription] = useState("");
   const [otherClaimType, setOtherClaimType] = useState("");
@@ -96,10 +98,6 @@ export function ClaimsPage() {
       const [claimsData, purchasesData] = await Promise.all([fetchClaims(), fetchPurchases()]);
       setClaims(claimsData.claims);
       setPurchases(purchasesData.purchases.filter((purchase) => purchase.status === "completed"));
-      if (!selectedPurchaseId) {
-        const first = purchasesData.purchases.find((purchase) => purchase.status === "completed");
-        if (first) setSelectedPurchaseId(first.id);
-      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not load claims");
     } finally {
@@ -174,12 +172,14 @@ export function ClaimsPage() {
 
   const canGenerate =
     Boolean(selectedPurchaseId) &&
+    Boolean(incidentDate) &&
     resolvedDescription.length >= 5 &&
     pendingFiles.length > 0 &&
     (claimType !== "other" || otherClaimType.trim().length >= 2);
 
   const canSubmit =
     Boolean(selectedPurchaseId) &&
+    Boolean(incidentDate) &&
     description.trim().length >= 5 &&
     (claimType !== "other" || otherClaimType.trim().length >= 2) &&
     (!estimatedAmountPkr || Number(estimatedAmountPkr) >= 0);
@@ -201,9 +201,15 @@ export function ClaimsPage() {
       setIntelligenceReport(result.intelligenceReport);
       toast.success("Your AI Claims Intelligence Report is ready");
     } catch (err) {
-      toast.error(
-        err instanceof ApiError ? err.errors[0] ?? err.message : "Could not generate report"
-      );
+      const message =
+        err instanceof ApiError
+          ? /parse|invalid json|incomplete/i.test(err.errors[0] ?? err.message)
+            ? "AI analysis is busy or returned an incomplete result — please try again in a moment."
+            : /high demand|busy|503/i.test(err.errors[0] ?? err.message)
+              ? "AI is experiencing high demand — please wait a moment and try again."
+              : err.errors[0] ?? err.message
+          : "Could not generate report";
+      toast.error(message);
     } finally {
       setAnalyzing(false);
     }
@@ -222,9 +228,12 @@ export function ClaimsPage() {
         intelligenceReport: intelligenceReport ?? undefined,
       });
       setClaims((prev) => [result.claim, ...prev]);
+      setSelectedPurchaseId("");
+      setClaimType("");
       setDescription("");
       setEstimatedAmountPkr("");
       setOtherClaimType("");
+      setWizardResetKey((k) => k + 1);
       setPendingFiles((prev) => {
         prev.forEach((pf) => {
           if (pf.previewUrl) URL.revokeObjectURL(pf.previewUrl);
@@ -260,7 +269,7 @@ export function ClaimsPage() {
 
   if (!user?.hasCnic) {
     return (
-      <AnimatedPage className="max-w-7xl mx-auto space-y-8 py-8">
+      <AnimatedPage className={`${SEEKER_PAGE_CLASS} py-8`}>
         <header className="space-y-2 text-center max-w-xl mx-auto">
           <h1 className="text-3xl font-bold tracking-tight">Claims</h1>
           <p className="text-muted-foreground text-[15px] leading-relaxed">
@@ -274,7 +283,7 @@ export function ClaimsPage() {
   }
 
   return (
-    <AnimatedPage className="max-w-7xl mx-auto space-y-8">
+    <AnimatedPage className={SEEKER_PAGE_CLASS}>
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2 text-primary text-sm font-medium">
           <Sparkles className="w-4 h-4" aria-hidden />
@@ -289,7 +298,9 @@ export function ClaimsPage() {
 
       <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-6 lg:gap-8 items-start">
         <ClaimAssistantPanel
+          key={wizardResetKey}
           purchases={purchases}
+          initialPurchaseId={searchParams.get("purchaseId") ?? ""}
           selectedPurchaseId={selectedPurchaseId}
           onSelectPurchase={(id) => {
             setSelectedPurchaseId(id);

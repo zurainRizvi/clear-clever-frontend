@@ -40,7 +40,9 @@ import {
 import { ApiError } from "@/lib/api";
 import {
   defaultProviderRange,
+  loadStoredProviderRange,
   parseRangeFromApi,
+  saveStoredProviderRange,
   toRangeQuery,
   type DateRangeValue,
 } from "@/lib/provider-date-range";
@@ -170,7 +172,7 @@ function opportunityPill(level: string) {
 
 export function ProviderAnalyticsPage() {
   const chartColors = useChartColors();
-  const [range, setRange] = useState<DateRangeValue>(defaultProviderRange);
+  const [range, setRange] = useState<DateRangeValue>(loadStoredProviderRange);
   const [analytics, setAnalytics] = useState<InsurerAnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportFlash, setExportFlash] = useState(false);
@@ -196,11 +198,12 @@ export function ProviderAnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    void load(range);
+    void load(loadStoredProviderRange());
   }, []);
 
   const handleRangeChange = (next: DateRangeValue) => {
     setRange(next);
+    saveStoredProviderRange(next);
     void load(next);
   };
 
@@ -315,16 +318,21 @@ export function ProviderAnalyticsPage() {
       </header>
 
       <DashboardStatsCarousel items={metricItems} />
+      <p className="text-xs text-muted-foreground -mt-3">
+        KPIs below reflect activity in {analytics.dateRange.label ?? "the selected period"}.
+      </p>
 
       <PakistanUsersByRegion
-        data={{
-          ...analytics.usersByRegion,
-          subtitle: analytics.usersByRegion.coverageNote
-            ? `${analytics.usersByRegion.subtitle} ${analytics.usersByRegion.coverageNote}`
-            : analytics.usersByRegion.subtitle,
-        }}
+        data={analytics.usersByRegionLifetime ?? analytics.usersByRegion}
         cardStyle={cardStyle}
       />
+
+      {analytics.usersByRegionLifetime ? (
+        <PakistanUsersByRegion
+          data={analytics.usersByRegion}
+          cardStyle={cardStyle}
+        />
+      ) : null}
 
       {analytics.customerDemographics && analytics.customerDemographics.totalPurchasers > 0 && (
         <CustomerDemographicsSection

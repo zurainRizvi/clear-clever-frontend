@@ -337,6 +337,8 @@ export function ClaimInputBar({
   submitting,
   attachDisabled,
   maxLength = 4000,
+  showSend = true,
+  showInput = true,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -347,6 +349,8 @@ export function ClaimInputBar({
   submitting?: boolean;
   attachDisabled?: boolean;
   maxLength?: number;
+  showSend?: boolean;
+  showInput?: boolean;
 }) {
   return (
     <form
@@ -358,21 +362,25 @@ export function ClaimInputBar({
     >
       <div className="flex items-end gap-2 rounded-2xl border border-border bg-muted/30 px-3 py-2 shadow-sm">
         <Sparkles className="h-4 w-4 text-primary shrink-0 mb-3 ml-0.5" aria-hidden />
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          disabled={disabled || submitting}
-          rows={1}
-          maxLength={maxLength}
-          className="flex-1 min-w-0 resize-none bg-transparent border-0 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 py-2.5 min-h-[44px] max-h-32"
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              onSubmit();
-            }
-          }}
-        />
+        {showInput ? (
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            disabled={disabled || submitting}
+            rows={1}
+            maxLength={maxLength}
+            className="flex-1 min-w-0 resize-none bg-transparent border-0 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 py-2.5 min-h-[44px] max-h-32"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                onSubmit();
+              }
+            }}
+          />
+        ) : (
+          <p className="flex-1 py-2.5 text-sm text-muted-foreground">{placeholder}</p>
+        )}
         {onAttach ? (
           <button
             type="button"
@@ -384,20 +392,22 @@ export function ClaimInputBar({
             <Paperclip className="h-4 w-4" />
           </button>
         ) : null}
-        <motion.button
-          type="submit"
-          disabled={disabled || submitting || !value.trim()}
-          whileHover={!disabled && value.trim() ? { scale: 1.04 } : undefined}
-          whileTap={!disabled && value.trim() ? { scale: 0.96 } : undefined}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 mb-0.5"
-          aria-label="Send"
-        >
-          {submitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </motion.button>
+        {showSend ? (
+          <motion.button
+            type="submit"
+            disabled={disabled || submitting || !value.trim()}
+            whileHover={!disabled && value.trim() ? { scale: 1.04 } : undefined}
+            whileTap={!disabled && value.trim() ? { scale: 0.96 } : undefined}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 mb-0.5"
+            aria-label="Send"
+          >
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </motion.button>
+        ) : null}
       </div>
     </form>
   );

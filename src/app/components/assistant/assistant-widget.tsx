@@ -26,6 +26,7 @@ import {
   getAssistantStatus,
   sendAssistantChat,
   type AssistantAttachmentPayload,
+  type AssistantStatus,
 } from "@/lib/assistant-api";
 import { useAssistantWidget } from "./assistant-widget-context";
 import { AssistantMessageMarkdown } from "./assistant-message-markdown";
@@ -127,13 +128,25 @@ export function AssistantWidget() {
     clearPreset,
   } = useAssistantWidget();
 
-  type AssistantAvailability = "loading" | "configured" | "unconfigured" | "status_error";
+  type AssistantAvailability = "loading" | "configured" | "unconfigured" | "status_error" | "quota_exhausted";
   const [availability, setAvailability] = useState<AssistantAvailability>("loading");
+  const [quotaInfo, setQuotaInfo] = useState<AssistantStatus["quota"]>();
 
   const refreshAssistantStatus = useCallback(() => {
     setAvailability("loading");
     getAssistantStatus()
-      .then((status) => setAvailability(status.configured ? "configured" : "unconfigured"))
+      .then((status) => {
+        setQuotaInfo(status.quota);
+        if (!status.configured) {
+          setAvailability("unconfigured");
+          return;
+        }
+        if (status.quota?.dailyExhausted) {
+          setAvailability("quota_exhausted");
+          return;
+        }
+        setAvailability("configured");
+      })
       .catch(() => setAvailability("status_error"));
   }, []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -375,7 +388,12 @@ export function AssistantWidget() {
         if (threadId) applyThreadMessages(threadId, withAssistant);
       } catch (err) {
         const message =
-          err instanceof ApiError ? err.message : "Assistant could not reply";
+          err instanceof ApiError
+            ? err.errors[0] ?? err.message
+            : "Assistant could not reply — try again in a moment";
+        if (/daily ai quota|free tier/i.test(message)) {
+          setAvailability("quota_exhausted");
+        }
         toast.error(message);
       } finally {
         chatInFlightRef.current = false;
@@ -743,9 +761,11 @@ export function AssistantWidget() {
                       <p className="text-sm text-muted-foreground">
                         {availability === "loading"
                           ? "Connecting…"
-                          : availability === "status_error"
-                            ? "Temporarily unavailable"
-                            : "Insurance guidance"}
+                          : availability === "quota_exhausted"
+                            ? "Daily AI quota reached"
+                            : availability === "status_error"
+                              ? "Temporarily unavailable"
+                              : "Insurance guidance"}
                       </p>
                     </div>
                   </div>
@@ -772,6 +792,22 @@ export function AssistantWidget() {
                     </button>
                   </div>
                 </header>
+
+                {availability === "quota_exhausted" && (
+                  <div className="shrink-0 text-xs bg-amber-500/10 text-amber-900 dark:text-amber-200 px-5 py-2.5 border-b border-amber-500/20 leading-relaxed">
+                    Daily AI quota reached (Google free tier ~{quotaInfo?.dailyLimit ?? 20} requests/day).
+                    Claims and chat will work again after midnight UTC, or enable billing in{" "}
+                    <a
+                      href="https://aistudio.google.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold underline"
+                    >
+                      Google AI Studio
+                    </a>
+                    .
+                  </div>
+                )}
 
                 {availability === "status_error" && (
                   <div className="shrink-0 flex items-center justify-between gap-3 text-xs bg-amber-500/10 text-amber-900 dark:text-amber-200 px-5 py-2 border-b border-amber-500/20">
@@ -918,7 +954,7 @@ export function AssistantWidget() {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask ClearClever anything..."
-                        disabled={sending || availability !== "configured"}
+                        disabled={sending || availability === "unconfigured" || availability === "quota_exhausted"}
                         rows={1}
                         className="flex-1 min-w-0 resize-none bg-transparent border-0 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 py-2"
                         maxLength={2000}
@@ -951,7 +987,8 @@ export function AssistantWidget() {
                         type="submit"
                         disabled={
                           sending ||
-                          availability !== "configured" ||
+                          availability === "unconfigured" ||
+                          availability === "quota_exhausted" ||
                           (!input.trim() && pendingFiles.length === 0)
                         }
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"

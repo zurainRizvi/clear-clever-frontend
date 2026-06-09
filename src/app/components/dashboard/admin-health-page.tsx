@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import {
   fetchHealth,
+  fetchMlOverview,
+  type AdminMlOverview,
   type AssistantHealthReport,
   type HealthStatus,
   type InfrastructureServiceStatus,
@@ -73,7 +75,7 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
         </span>
       </div>
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
         <MetricTile
           label="API calls (since deploy)"
           value={String(usage.totalApiCalls)}
@@ -90,9 +92,18 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
           sub={`${usage.requestsLastMinute} call(s) in last minute`}
         />
         <MetricTile
-          label="Chat / explain"
-          value={`${usage.chatApiCalls} / ${usage.explainApiCalls}`}
-          sub={`${usage.probeApiCalls} health probe(s)`}
+          label="Chat / explain / probe"
+          value={`${usage.chatApiCalls} / ${usage.explainApiCalls} / ${usage.probeApiCalls}`}
+        />
+        <MetricTile
+          label="Claim intelligence"
+          value={String(usage.claimIntelligenceApiCalls ?? 0)}
+          sub="Gemini structured claim analysis"
+        />
+        <MetricTile
+          label="KYC verification"
+          value={String(usage.kycApiCalls ?? 0)}
+          sub="CNIC document AI checks"
         />
       </div>
 
@@ -162,6 +173,7 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
 
 export function AdminHealthPage() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [mlOverview, setMlOverview] = useState<AdminMlOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -169,8 +181,9 @@ export function AdminHealthPage() {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      const data = await fetchHealth();
+      const [data, ml] = await Promise.all([fetchHealth(), fetchMlOverview()]);
       setHealth(data);
+      setMlOverview(ml);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not load system health");
     } finally {
@@ -310,6 +323,34 @@ export function AdminHealthPage() {
       </div>
 
       {assistant ? <AssistantPanel assistant={assistant} /> : null}
+
+      {mlOverview ? (
+        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+          <h3 className="text-xl font-semibold">ML platform overview</h3>
+          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            <MetricTile
+              label="Claim risk model"
+              value={mlOverview.models.claimRiskLoaded ? "Loaded" : "Missing"}
+              sub={mlOverview.models.claimRiskVersion ?? "No artifact"}
+            />
+            <MetricTile
+              label="Policy ranker"
+              value={mlOverview.models.policyRankerCategories.join(", ") || "None"}
+              sub="Hybrid recommendation categories"
+            />
+            <MetricTile
+              label="Claims (total / AI reports)"
+              value={`${mlOverview.claims.total} / ${mlOverview.claims.withIntelligenceReport}`}
+              sub={`${mlOverview.claims.last24h} in last 24h`}
+            />
+            <MetricTile
+              label="Questionnaires"
+              value={String(mlOverview.questionnaires.totalResponses)}
+              sub={`${mlOverview.questionnaires.uniqueUsers} unique users`}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

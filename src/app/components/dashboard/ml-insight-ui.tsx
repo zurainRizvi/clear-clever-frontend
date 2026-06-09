@@ -11,6 +11,7 @@ import type { ClaimMlRisk } from "@/lib/insurer-api";
 import type { FraudMlSummary, FraudSignal } from "@/lib/admin-api";
 import {
   ML_AI_DISCLAIMER,
+  buildClaimFactorChartData,
   claimRiskInsightCopy,
   claimRiskPriorityLabel,
   fraudMlInsightCopy,
@@ -18,6 +19,15 @@ import {
   humanizeClaimRiskFactor,
   humanizeFraudFactor,
 } from "@/lib/ml-insights";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   fadeUpItem,
   quickTransition,
@@ -369,15 +379,22 @@ export function ClaimRiskInsightCard({
   mlRisk,
   expanded,
   onToggleExpand,
+  claimContext,
 }: {
   mlRisk: ClaimMlRisk;
   expanded: boolean;
   onToggleExpand: () => void;
+  claimContext?: {
+    incidentDate?: string;
+    estimatedAmountPkr?: number;
+    description?: string;
+  };
 }) {
   const copy = claimRiskInsightCopy(mlRisk);
   const tone = CLAIM_TONE_STYLES[mlRisk.level];
   const Icon = tone.icon;
-  const insights = mlRisk.topFactors.map(humanizeClaimRiskFactor);
+  const chartData = buildClaimFactorChartData(mlRisk.topFactors);
+  const signalCount = mlRisk.topFactors.length;
 
   return (
     <motion.section
@@ -401,7 +418,7 @@ export function ClaimRiskInsightCard({
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                ClearClever AI
+                ClearClever review assistant
               </span>
               <motion.span
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -415,32 +432,92 @@ export function ClaimRiskInsightCard({
                 {claimRiskPriorityLabel(mlRisk.level)}
               </motion.span>
             </div>
-            <h3 className="font-semibold text-base leading-snug">{copy.headline}</h3>
+            <h3 className="font-semibold text-base leading-snug">
+              {signalCount > 0
+                ? `${signalCount} signal${signalCount === 1 ? "" : "s"} influenced this review`
+                : copy.headline}
+            </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">{copy.subtitle}</p>
           </div>
         </div>
-        <div className="text-right shrink-0 flex flex-col items-end gap-1">
-          <RiskScoreRing score={mlRisk.score} level={mlRisk.level} size={72} />
-          <p className="text-xs text-muted-foreground">out of 100</p>
-        </div>
       </div>
+
+      {claimContext?.description ? (
+        <p className="text-xs text-muted-foreground border-l-2 border-primary/30 pl-3 line-clamp-2">
+          From the customer: “{claimContext.description.slice(0, 160)}
+          {claimContext.description.length > 160 ? "…" : ""}”
+        </p>
+      ) : null}
 
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ ...quickTransition, delay: 0.14 }}
-        className="text-sm font-medium text-foreground/90 pl-12 sm:pl-12"
+        className="text-sm font-medium text-foreground/90"
       >
         {copy.actionHint}
       </motion.p>
 
-      <InsightExpandable
-        expanded={expanded}
-        onToggle={onToggleExpand}
-        collapsedLabel="Why we flagged this"
-        expandedLabel="Hide why we flagged this"
-        items={insights}
-      />
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="text-xs font-medium text-primary hover:underline"
+      >
+        {expanded ? "Hide influence breakdown" : "What influenced this review"}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden space-y-3"
+          >
+            <div className="h-44 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} layout="vertical" margin={{ left: 4, right: 8 }}>
+                  <XAxis type="number" hide domain={[0, 100]} />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={120}
+                    tick={{ fontSize: 10 }}
+                    interval={0}
+                  />
+                  <Tooltip
+                    formatter={(value) => [`Influence ${value}`, "Relative weight"]}
+                    contentStyle={{ fontSize: 12 }}
+                  />
+                  <Bar dataKey="weight" radius={[0, 6, 6, 0]} isAnimationActive>
+                    {chartData.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={
+                          mlRisk.level === "high"
+                            ? "#ef4444"
+                            : mlRisk.level === "medium"
+                              ? "#f59e0b"
+                              : "#10b981"
+                        }
+                        fillOpacity={0.55 + index * 0.08}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="space-y-1.5 text-xs text-muted-foreground">
+              {mlRisk.topFactors.map((factor) => (
+                <li key={factor} className="flex gap-2">
+                  <span className="text-primary">•</span>
+                  {humanizeClaimRiskFactor(factor)}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </motion.section>
   );
 }

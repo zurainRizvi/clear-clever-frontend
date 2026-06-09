@@ -1,7 +1,7 @@
 import type { RankingMethod, ScoredRecommendation } from "./types";
 
 export const HYBRID_RANKING_DISCLAIMER =
-  "Rankings combine transparent business rules with a machine-learned model trained on Pakistan insurance journeys. Scores assist comparison — they are not underwriting decisions.";
+  "Recommendations are based on your answers and ClearClever's coverage analysis. They help you compare — they are not underwriting decisions.";
 
 export function isHybridRanking(
   rankingMethod?: RankingMethod,
@@ -29,8 +29,7 @@ export function formatMlConfidence(value?: number): string {
 }
 
 export function hybridScoreLabel(rec: ScoredRecommendation): string {
-  if (rec.rankingMethod === "hybrid" && typeof rec.ruleScore === "number") {
-    return `Hybrid score ${Math.round(rec.score)}`;
-  }
-  return `Match score ${Math.round(rec.score)}`;
+  if (rec.score >= 75) return "Excellent match";
+  if (rec.score >= 55) return "Good fit";
+  return "Worth comparing";
 }

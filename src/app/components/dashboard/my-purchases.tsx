@@ -12,6 +12,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
 import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
@@ -126,7 +127,7 @@ export function MyPurchases() {
   }
 
   return (
-    <AnimatedPage className="max-w-5xl mx-auto space-y-6">
+    <AnimatedPage className={SEEKER_PAGE_CLASS}>
       <div>
         <h1 className="text-3xl font-bold mb-1">My purchases</h1>
         <p className="text-muted-foreground">

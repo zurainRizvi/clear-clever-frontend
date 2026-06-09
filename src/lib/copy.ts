@@ -53,28 +53,27 @@ export const copy = {
     emptyRecommendations: "No policies matched your answers yet",
     compareLimit: "You can compare up to four policies at a time.",
     badge: {
-      aiRecommended: "AI-ranked",
+      aiRecommended: "Recommended for you",
       bestValue: "Best Value",
       mostPopular: "Most Popular",
       lowestPremium: "Lowest Premium",
       bestCoverage: "Best Coverage",
     },
-    hybridSummaryTitle: "AI-assisted policy ranking",
-    hybridSummaryBody:
-      "Results blend your questionnaire answers with a trained ranking model and ClearClever's coverage-fit rules.",
-    hybridRuleLabel: "Rule fit",
-    hybridMlLabel: "ML confidence",
-    hybridScoreLabel: "Hybrid score",
+    smartRecommendationsTitle: "Smart recommendations ready",
+    smartRecommendationsBody:
+      "Policies ranked by how well they fit your questionnaire answers — coverage, location, and priorities you shared.",
+    personalizedChip: "Personalized for your answers",
+    matchInsightTitle: "Why this fits you",
   },
   dashboard: {
-    hybridPicksTitle: "Your top AI-ranked matches",
+    hybridPicksTitle: "Your top recommended matches",
     hybridPicksSubtitle:
-      "Based on your saved questionnaire answers — ranked with hybrid rules and ML.",
+      "Based on your questionnaire answers — policies that best match what you told us.",
     hybridPicksEmpty:
-      "Complete a category questionnaire and we will surface your top hybrid-ranked policies here.",
+      "Complete a category questionnaire and we will surface your best-matched policies here.",
     relevantHybridTitle: "More coverage to explore",
     relevantHybridEmpty:
-      "Add questionnaire answers in another category for additional hybrid-ranked suggestions.",
+      "Add questionnaire answers in another category for additional personalized suggestions.",
   },
   saved: {
     emptyTitle: "No saved policies yet",

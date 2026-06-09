@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
+import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
 import { AnimatedPage } from "../ui/animated-page";
 import { DashboardStatsCarousel, type DashboardStatItem } from "../ui/dashboard-stats-carousel";
 import { fadeUpItem, fadeUpStagger, quickTransition, staggerDelay } from "@/lib/motion-presets";
@@ -22,7 +23,7 @@ import { useSavedPolicies } from "../saved-policies-context";
 import { fetchRecommendations } from "@/lib/auth-api";
 import { formatPkr } from "@/lib/format";
 import { copy } from "@/lib/copy";
-import { hybridScoreLabel } from "@/lib/hybrid-recommendation";
+import { matchTierFromScore, matchTierLabel, recommendationSummaryLabel } from "@/lib/policy-match";
 import {
   fetchClaims,
   fetchPurchases,
@@ -258,7 +259,7 @@ export function SeekerDashboardHome() {
   const hasHybridContent = hybridTopPicks.length > 0 || crossSells.length > 0;
 
   return (
-    <AnimatedPage className="max-w-7xl mx-auto space-y-6">
+    <AnimatedPage className={SEEKER_PAGE_CLASS}>
       <div>
         <motion.h1
           initial={{ opacity: 0, y: 12 }}
@@ -327,12 +328,7 @@ export function SeekerDashboardHome() {
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">{item.reason}</p>
                       <p className="text-xs font-semibold text-primary">
-                        {item.hybridScore !== undefined
-                          ? `Hybrid score ${Math.round(item.hybridScore)}`
-                          : `Suggested score ${item.score}`}
-                        {item.mlConfidence !== undefined
-                          ? ` · ML ${item.mlConfidence.toFixed(1)}%`
-                          : null}
+                        {matchTierLabel(matchTierFromScore(item.hybridScore ?? item.score))}
                       </p>
                     </Link>
                   </motion.div>
@@ -422,7 +418,7 @@ export function SeekerDashboardHome() {
                       {pick.rec.rankingMethod === "hybrid" ? <HybridRankingBadge /> : null}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {pick.rec.policy.insurer.companyName} · {hybridScoreLabel(pick.rec)}
+                      {pick.rec.policy.insurer.companyName} · {recommendationSummaryLabel(pick.rec)}
                     </div>
                   </div>
                 </Link>

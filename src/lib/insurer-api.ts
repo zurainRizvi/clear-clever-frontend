@@ -287,6 +287,7 @@ export interface InsurerAnalyticsPayload {
       userCount: number;
     }>;
   };
+  usersByRegionLifetime: InsurerAnalyticsPayload["usersByRegion"];
   customerDemographics: {
     title: string;
     subtitle: string;

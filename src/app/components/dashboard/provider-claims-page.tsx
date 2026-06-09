@@ -202,7 +202,21 @@ export function ProviderClaimsPage() {
                     </span>
                   </div>
 
-                  <p className="text-sm leading-relaxed">{claim.description}</p>
+                  <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Customer claim narrative
+                    </p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{claim.description}</p>
+                    {claim.intelligenceReport?.attachmentSummary ? (
+                      <p className="text-xs text-muted-foreground">
+                        Evidence analyzed: {claim.intelligenceReport.attachmentSummary.count} file
+                        {claim.intelligenceReport.attachmentSummary.count === 1 ? "" : "s"}
+                        {claim.intelligenceReport.attachmentSummary.mimeTypes?.length
+                          ? ` (${claim.intelligenceReport.attachmentSummary.mimeTypes.join(", ")})`
+                          : ""}
+                      </p>
+                    ) : null}
+                  </div>
 
                   {claim.estimatedAmountPkr ? (
                     <p className="text-sm text-muted-foreground">
@@ -230,6 +244,11 @@ export function ProviderClaimsPage() {
                       onToggleExpand={() =>
                         setExpandedMlId((prev) => (prev === claim.id ? null : claim.id))
                       }
+                      claimContext={{
+                        incidentDate: claim.incidentDate,
+                        estimatedAmountPkr: claim.estimatedAmountPkr,
+                        description: claim.description,
+                      }}
                     />
                   ) : null}
 

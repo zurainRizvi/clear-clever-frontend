@@ -1,16 +1,14 @@
 import { ArrowRight, Info, Sparkles } from "lucide-react";
 import { Link } from "react-router";
 import { motion, useReducedMotion } from "motion/react";
-import { AnimatedNumber } from "./ml-insight-ui";
 import { copy } from "@/lib/copy";
 import {
   HYBRID_RANKING_DISCLAIMER,
-  formatMlConfidence,
-  hybridScoreLabel,
   hybridTopPicks,
   isHybridRanking,
 } from "@/lib/hybrid-recommendation";
 import { formatPkr } from "@/lib/format";
+import { recommendationSummaryLabel } from "@/lib/policy-match";
 import type { RankingMethod, ScoredRecommendation } from "@/lib/types";
 import {
   cardLiftHover,
@@ -21,6 +19,7 @@ import {
   staggerDelay,
 } from "@/lib/motion-presets";
 import { cn } from "../ui/utils";
+import { PolicyMatchInsight, PolicyMatchSummaryLine } from "./policy-match-insight";
 
 const CATEGORY_LABELS: Record<string, string> = {
   home: "Home",
@@ -64,12 +63,9 @@ export function HybridRankingSummary({
   compact?: boolean;
 }) {
   const reducedMotion = useReducedMotion();
-  if (!isHybridRanking(rankingMethod, recommendations)) {
+  if (!isHybridRanking(rankingMethod, recommendations) && recommendations.length === 0) {
     return null;
   }
-
-  const top = recommendations.find((rec) => rec.mlRank === 1) ?? recommendations[0];
-  const modelVersion = top?.modelVersion ?? "policy_ranker_v1";
 
   return (
     <motion.section
@@ -81,7 +77,7 @@ export function HybridRankingSummary({
         compact ? "p-4 mb-4" : "p-5 mb-6",
         className
       )}
-      aria-label="Hybrid policy ranking summary"
+      aria-label="Smart recommendations summary"
     >
       <motion.div
         aria-hidden
@@ -104,10 +100,10 @@ export function HybridRankingSummary({
         </motion.div>
         <div className="min-w-0 flex-1">
           <h2 className={cn("font-semibold mb-1", compact ? "text-sm" : "text-base")}>
-            {copy.compare.hybridSummaryTitle}
+            {copy.compare.smartRecommendationsTitle}
           </h2>
           <p className={cn("text-muted-foreground", compact ? "text-xs mb-2" : "text-sm mb-3")}>
-            {copy.compare.hybridSummaryBody}
+            {copy.compare.smartRecommendationsBody}
           </p>
           <motion.div
             initial="hidden"
@@ -119,13 +115,7 @@ export function HybridRankingSummary({
               variants={fadeUpItem}
               className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary"
             >
-              Hybrid ranking active
-            </motion.span>
-            <motion.span
-              variants={fadeUpItem}
-              className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-muted-foreground"
-            >
-              Model {modelVersion}
+              {copy.compare.personalizedChip}
             </motion.span>
           </motion.div>
           {!compact && (
@@ -145,42 +135,7 @@ export function HybridRankingSummary({
   );
 }
 
-function HybridMetricTile({
-  label,
-  value,
-  tone = "default",
-  index = 0,
-}: {
-  label: string;
-  value: string | number;
-  tone?: "default" | "primary";
-  index?: number;
-}) {
-  const reducedMotion = useReducedMotion();
-  const isNumber = typeof value === "number";
-
-  return (
-    <motion.div
-      variants={fadeUpItem}
-      initial="hidden"
-      animate="visible"
-      transition={{ ...quickTransition, delay: staggerDelay(index, !!reducedMotion, 0.07) }}
-      whileHover={reducedMotion ? undefined : { y: -2, transition: quickTransition }}
-      className="rounded-lg border border-border/80 bg-card/70 p-2.5 min-w-0"
-    >
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{label}</p>
-      <p
-        className={cn(
-          "text-sm font-semibold tabular-nums mt-0.5",
-          tone === "primary" ? "text-primary" : "text-foreground"
-        )}
-      >
-        {isNumber ? <AnimatedNumber value={value} /> : value}
-      </p>
-    </motion.div>
-  );
-}
-
+/** @deprecated Use PolicyMatchInsight — kept for import compatibility */
 export function HybridScoreBreakdown({
   rec,
   compact = false,
@@ -188,42 +143,7 @@ export function HybridScoreBreakdown({
   rec: ScoredRecommendation;
   compact?: boolean;
 }) {
-  const reducedMotion = useReducedMotion();
-  if (rec.rankingMethod !== "hybrid" || typeof rec.ruleScore !== "number") {
-    return null;
-  }
-
-  return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
-      }}
-      className={cn(
-        "grid grid-cols-3 gap-2 rounded-lg border border-border/80 bg-muted/20",
-        compact ? "p-2 mb-0" : "p-3 mb-4"
-      )}
-    >
-      <HybridMetricTile
-        label={copy.compare.hybridRuleLabel}
-        value={Math.round(rec.ruleScore)}
-        index={0}
-      />
-      <HybridMetricTile
-        label={copy.compare.hybridMlLabel}
-        value={formatMlConfidence(rec.mlConfidence)}
-        index={1}
-      />
-      <HybridMetricTile
-        label={copy.compare.hybridScoreLabel}
-        value={Math.round(rec.score)}
-        tone="primary"
-        index={2}
-      />
-    </motion.div>
-  );
+  return <PolicyMatchInsight rec={rec} compact={compact} />;
 }
 
 export function HybridRecommendationPickCard({
@@ -238,7 +158,7 @@ export function HybridRecommendationPickCard({
   to?: string;
 }) {
   const reducedMotion = useReducedMotion();
-  const showAiBadge = rec.rankingMethod === "hybrid" && (rec.mlRank ?? 99) <= 3;
+  const showAiBadge = rec.rankingMethod === "hybrid" || rec.score >= 55;
 
   return (
     <motion.div
@@ -259,9 +179,6 @@ export function HybridRecommendationPickCard({
             {CATEGORY_LABELS[category] ?? category}
           </span>
           {showAiBadge ? <HybridRankingBadge /> : null}
-          {typeof rec.mlRank === "number" && (
-            <span className="text-[11px] text-muted-foreground">Rank #{rec.mlRank}</span>
-          )}
         </div>
         <h4 className="relative font-semibold text-foreground leading-snug mb-1">
           {rec.policy.name}
@@ -269,18 +186,7 @@ export function HybridRecommendationPickCard({
         <p className="relative text-xs text-muted-foreground mb-3">
           {rec.policy.insurer.companyName} · {formatPkr(rec.policy.premiumMonthlyPkr)}/mo
         </p>
-        {rec.rankingMethod === "hybrid" ? (
-          <HybridScoreBreakdown rec={rec} compact />
-        ) : (
-          <p className="relative text-xs font-medium text-muted-foreground mb-2">
-            {hybridScoreLabel(rec)}
-          </p>
-        )}
-        {rec.matchReasons[0] && (
-          <p className="relative text-xs text-muted-foreground line-clamp-2 mt-auto pt-2">
-            {rec.matchReasons[0]}
-          </p>
-        )}
+        <PolicyMatchInsight rec={rec} compact className="relative mb-2" />
         <span className="relative mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
           View comparison
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -362,3 +268,5 @@ export function collectHybridTopPicks(
     .sort((a, b) => b.rec.score - a.rec.score)
     .slice(0, limit);
 }
+
+export { recommendationSummaryLabel, PolicyMatchSummaryLine };

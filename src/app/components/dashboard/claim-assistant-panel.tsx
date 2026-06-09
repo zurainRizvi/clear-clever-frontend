@@ -31,6 +31,7 @@ import {
   ClaimInputBar,
   ClaimQuickReplies,
   ClaimRichCardRow,
+  ClaimStepFade,
   ClaimTypingIndicator,
   ClaimUserBubble,
   type ClaimRichCardData,
@@ -116,6 +117,8 @@ const INFO_REPLIES: Record<string, { title: string; body: string }> = {
 
 export interface ClaimAssistantPanelProps {
   purchases: PurchaseSummary[];
+  /** Deep-link hint only — user must still confirm policy in the wizard. */
+  initialPurchaseId?: string;
   selectedPurchaseId: string;
   onSelectPurchase: (id: string) => void;
   claimType: string;
@@ -147,8 +150,15 @@ function titleCase(value: string): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+const STEP_ORDER: FlowStep[] = ["welcome", "policy", "type", "details", "evidence", "report"];
+
+function stepIndex(step: FlowStep): number {
+  return STEP_ORDER.indexOf(step);
+}
+
 export function ClaimAssistantPanel({
   purchases,
+  initialPurchaseId = "",
   selectedPurchaseId,
   onSelectPurchase,
   claimType,
@@ -177,39 +187,56 @@ export function ClaimAssistantPanel({
 }: ClaimAssistantPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [started, setStarted] = useState(false);
+  const [activeStep, setActiveStep] = useState<FlowStep>("welcome");
   const [infoReply, setInfoReply] = useState<string | null>(null);
   const [draftDescription, setDraftDescription] = useState("");
   const [confirmedDescription, setConfirmedDescription] = useState(false);
+  const [confirmedPolicyId, setConfirmedPolicyId] = useState("");
+  const [confirmedClaimType, setConfirmedClaimType] = useState("");
+  const [stepTimestamp, setStepTimestamp] = useState<Date | null>(null);
+  const [reportViewOpen, setReportViewOpen] = useState(false);
 
-  const selectedPurchase = purchases.find((p) => p.id === selectedPurchaseId);
-  const claimTypeMeta = CLAIM_TYPES.find((t) => t.id === claimType);
+  const confirmedPurchase = purchases.find((p) => p.id === confirmedPolicyId);
+  const claimTypeMeta = CLAIM_TYPES.find((t) => t.id === confirmedClaimType);
 
-  const derivedStep = useMemo((): FlowStep => {
-    if (!started) return "welcome";
-    if (intelligenceReport) return "report";
-    if (confirmedDescription && description.trim().length >= 5) return "evidence";
-    if (claimType && selectedPurchaseId) return "details";
-    if (selectedPurchaseId) return "type";
-    return "policy";
-  }, [
-    started,
-    intelligenceReport,
-    confirmedDescription,
-    description,
-    claimType,
-    selectedPurchaseId,
-  ]);
+  const displayStep: FlowStep =
+    intelligenceReport && reportViewOpen ? "report" : activeStep;
+
+  useEffect(() => {
+    if (!intelligenceReport) {
+      setReportViewOpen(false);
+    }
+  }, [intelligenceReport]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [derivedStep, intelligenceReport, analyzing, infoReply, pendingFiles.length, description]);
+  }, [
+    displayStep,
+    intelligenceReport,
+    analyzing,
+    infoReply,
+    pendingFiles.length,
+    description,
+    confirmedPolicyId,
+    confirmedClaimType,
+  ]);
+
+  const advanceStep = useCallback((next: FlowStep) => {
+    setStepTimestamp(new Date());
+    setActiveStep(next);
+  }, []);
 
   const handleStartClaim = () => {
     setInfoReply(null);
-    setStarted(true);
+    setConfirmedPolicyId("");
+    setConfirmedClaimType("");
+    setConfirmedDescription(false);
+    setDraftDescription("");
+    onSelectPurchase(initialPurchaseId && purchases.some((p) => p.id === initialPurchaseId) ? initialPurchaseId : "");
+    onClaimTypeChange("");
+    advanceStep("policy");
   };
 
   const handleQuickReply = (id: string) => {
@@ -223,18 +250,34 @@ export function ClaimAssistantPanel({
   };
 
   const handleSelectPolicy = (id: string) => {
+    if (activeStep !== "policy" || analyzing) return;
     onSelectPurchase(id);
   };
 
+  const handleConfirmPolicy = () => {
+    if (!selectedPurchaseId || analyzing) return;
+    setConfirmedPolicyId(selectedPurchaseId);
+    advanceStep("type");
+  };
+
   const handleSelectClaimType = (id: string) => {
+    if (activeStep !== "type" || analyzing) return;
     onClaimTypeChange(id);
+  };
+
+  const handleConfirmClaimType = () => {
+    if (!claimType || analyzing) return;
+    setConfirmedClaimType(claimType);
+    advanceStep("details");
   };
 
   const handleConfirmDescription = () => {
     const trimmed = draftDescription.trim();
     if (trimmed.length < 5) return;
+    if (claimType === "other" && otherClaimType.trim().length < 2) return;
     onDescriptionChange(trimmed);
     setConfirmedDescription(true);
+    advanceStep("evidence");
   };
 
   const handleAttach = () => fileInputRef.current?.click();
@@ -340,7 +383,7 @@ export function ClaimAssistantPanel({
           </ClaimBotBubble>
         </ClaimBotRow>
 
-        {derivedStep === "welcome" && (
+        {displayStep === "welcome" && (
           <ClaimQuickReplies
             options={[
               { id: "start", label: "File a new claim", icon: FileText },
@@ -362,74 +405,95 @@ export function ClaimAssistantPanel({
           </ClaimBotRow>
         ) : null}
 
-        {started ? (
+        {stepIndex(displayStep) >= stepIndex("policy") ? (
           <>
-            <ClaimUserBubble timestamp={actionTime}>
+            <ClaimUserBubble timestamp={userActionTimestamp ?? stepTimestamp ?? actionTime}>
               I&apos;d like to file a claim
             </ClaimUserBubble>
 
-            <ClaimBotRow delay={0.03}>
-              <ClaimBotBubble>
-                <p>Which policy is this claim for? Select the coverage that applies.</p>
-              </ClaimBotBubble>
-            </ClaimBotRow>
+            <ClaimStepFade show={stepIndex(displayStep) >= stepIndex("policy")}>
+              <ClaimBotRow delay={0.03}>
+                <ClaimBotBubble>
+                  <p>Which policy is this claim for? Select the coverage that applies.</p>
+                </ClaimBotBubble>
+              </ClaimBotRow>
 
-            <ClaimBotRow delay={0.05}>
-              <ClaimInlinePanel title="Your policies">
-                <div className="grid sm:grid-cols-2 gap-2">
-                  {purchases.map((purchase) => {
-                    const active = purchase.id === selectedPurchaseId;
-                    return (
-                      <motion.button
-                        key={purchase.id}
-                        type="button"
-                        onClick={() => handleSelectPolicy(purchase.id)}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className={cn(
-                          "rounded-xl border p-3.5 text-left transition-colors",
-                          active
-                            ? "border-primary bg-primary/[0.06] ring-1 ring-primary/25"
-                            : "border-border bg-background hover:border-primary/30 hover:bg-muted/30"
-                        )}
-                      >
-                        <p className="font-semibold text-sm truncate">
-                          {purchase.policy?.name ?? "Policy"}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                          {purchase.insurer?.companyName}
-                          {purchase.policy?.category
-                            ? ` · ${titleCase(purchase.policy.category)}`
-                            : ""}
-                        </p>
-                        {purchase.policy?.premiumMonthlyPkr ? (
-                          <p className="text-xs text-primary font-medium mt-1.5">
-                            {formatPkr(purchase.policy.premiumMonthlyPkr)}/mo
+              <ClaimBotRow delay={0.05}>
+                <ClaimInlinePanel title="Your policies">
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {purchases.map((purchase) => {
+                      const active =
+                        activeStep === "policy"
+                          ? purchase.id === selectedPurchaseId
+                          : purchase.id === confirmedPolicyId;
+                      const locked = stepIndex(displayStep) > stepIndex("policy");
+                      return (
+                        <motion.button
+                          key={purchase.id}
+                          type="button"
+                          onClick={() => handleSelectPolicy(purchase.id)}
+                          disabled={locked || analyzing}
+                          whileHover={locked ? undefined : { scale: 1.01 }}
+                          whileTap={locked ? undefined : { scale: 0.99 }}
+                          className={cn(
+                            "rounded-xl border p-3.5 text-left transition-colors",
+                            active
+                              ? "border-primary bg-primary/[0.06] ring-1 ring-primary/25"
+                              : "border-border bg-background hover:border-primary/30 hover:bg-muted/30",
+                            locked && !active && "opacity-60"
+                          )}
+                        >
+                          <p className="font-semibold text-sm truncate">
+                            {purchase.policy?.name ?? "Policy"}
                           </p>
-                        ) : null}
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </ClaimInlinePanel>
-            </ClaimBotRow>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                            {purchase.insurer?.companyName}
+                            {purchase.policy?.category
+                              ? ` · ${titleCase(purchase.policy.category)}`
+                              : ""}
+                          </p>
+                          {purchase.policy?.premiumMonthlyPkr ? (
+                            <p className="text-xs text-primary font-medium mt-1.5">
+                              {formatPkr(purchase.policy.premiumMonthlyPkr)}/mo
+                            </p>
+                          ) : null}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                  {activeStep === "policy" && selectedPurchaseId ? (
+                    <button
+                      type="button"
+                      onClick={handleConfirmPolicy}
+                      disabled={analyzing}
+                      className="mt-3 w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+                    >
+                      Continue with selected policy
+                    </button>
+                  ) : null}
+                </ClaimInlinePanel>
+              </ClaimBotRow>
+            </ClaimStepFade>
           </>
         ) : null}
 
-        {selectedPurchase && started ? (
-          <ClaimUserBubble timestamp={actionTime}>
-            {selectedPurchase.policy?.name ?? "Selected policy"}
-            {selectedPurchase.insurer?.companyName
-              ? ` — ${selectedPurchase.insurer.companyName}`
+        {confirmedPurchase && stepIndex(displayStep) >= stepIndex("type") ? (
+          <ClaimUserBubble timestamp={stepTimestamp ?? actionTime}>
+            {confirmedPurchase.policy?.name ?? "Selected policy"}
+            {confirmedPurchase.insurer?.companyName
+              ? ` — ${confirmedPurchase.insurer.companyName}`
               : ""}
           </ClaimUserBubble>
         ) : null}
 
-        {started && selectedPurchaseId ? (
-          <>
+        {(confirmedPolicyId || activeStep === "type") && stepIndex(displayStep) >= stepIndex("type") ? (
+          <ClaimStepFade show={stepIndex(displayStep) >= stepIndex("type")}>
             <ClaimBotRow delay={0.04}>
               <ClaimBotBubble>
-                <p>What type of claim are you filing? Pick the option that best describes your situation.</p>
+                <p>
+                  What type of claim are you filing? Pick the option that best describes your
+                  situation.
+                </p>
               </ClaimBotBubble>
             </ClaimBotRow>
 
@@ -438,19 +502,25 @@ export function ClaimAssistantPanel({
                 <div className="flex gap-2.5 min-w-max sm:min-w-0 sm:grid sm:grid-cols-3 sm:gap-2">
                   {CLAIM_TYPES.map((type) => {
                     const Icon = type.icon;
-                    const active = claimType === type.id;
+                    const active =
+                      activeStep === "type"
+                        ? claimType === type.id
+                        : type.id === confirmedClaimType;
+                    const locked = stepIndex(displayStep) > stepIndex("type");
                     return (
                       <motion.button
                         key={type.id}
                         type="button"
                         onClick={() => handleSelectClaimType(type.id)}
-                        whileHover={{ y: -2 }}
+                        disabled={locked || analyzing}
+                        whileHover={locked ? undefined : { y: -2 }}
                         transition={quickTransition}
                         className={cn(
                           "flex w-[148px] sm:w-auto flex-col rounded-xl border p-3 text-left shrink-0 sm:shrink",
                           active
                             ? "border-primary bg-primary/[0.06] shadow-sm ring-1 ring-primary/20"
-                            : "border-border bg-card hover:border-primary/25 hover:shadow-sm"
+                            : "border-border bg-card hover:border-primary/25 hover:shadow-sm",
+                          locked && !active && "opacity-60"
                         )}
                       >
                         <div
@@ -469,23 +539,32 @@ export function ClaimAssistantPanel({
                     );
                   })}
                 </div>
+                {activeStep === "type" && claimType ? (
+                  <button
+                    type="button"
+                    onClick={handleConfirmClaimType}
+                    disabled={analyzing}
+                    className="mt-3 w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+                  >
+                    Continue with this claim type
+                  </button>
+                ) : null}
               </div>
             </ClaimBotRow>
-          </>
+          </ClaimStepFade>
         ) : null}
 
-        {started && claimTypeMeta && (derivedStep === "details" || derivedStep === "evidence" || derivedStep === "report") ? (
-          <ClaimUserBubble timestamp={actionTime}>
-            {claimType === "other" && otherClaimType.trim()
+        {claimTypeMeta && stepIndex(displayStep) >= stepIndex("details") ? (
+          <ClaimUserBubble timestamp={stepTimestamp ?? actionTime}>
+            {confirmedClaimType === "other" && otherClaimType.trim()
               ? otherClaimType.trim()
               : claimTypeMeta.label}{" "}
             claim
           </ClaimUserBubble>
         ) : null}
 
-        {(derivedStep === "details" || derivedStep === "evidence" || derivedStep === "report") &&
-        selectedPurchaseId ? (
-          <>
+        {confirmedClaimType && stepIndex(displayStep) >= stepIndex("details") ? (
+          <ClaimStepFade show={stepIndex(displayStep) >= stepIndex("details")}>
             <ClaimBotRow delay={0.04}>
               <ClaimBotBubble>
                 <p>
@@ -568,12 +647,12 @@ export function ClaimAssistantPanel({
                 </div>
               </ClaimInlinePanel>
             </ClaimBotRow>
-          </>
+          </ClaimStepFade>
         ) : null}
 
-        {(derivedStep === "evidence" || derivedStep === "report") && description.trim().length >= 5 ? (
-          <>
-            <ClaimUserBubble timestamp={actionTime}>
+        {stepIndex(displayStep) >= stepIndex("evidence") && confirmedDescription && description.trim().length >= 5 ? (
+          <ClaimStepFade show={stepIndex(displayStep) >= stepIndex("evidence")}>
+            <ClaimUserBubble timestamp={stepTimestamp ?? actionTime}>
               <span className="line-clamp-3">{description}</span>
             </ClaimUserBubble>
 
@@ -598,7 +677,10 @@ export function ClaimAssistantPanel({
                   accept={allowedTypes.join(",")}
                   multiple
                   className="hidden"
-                  onChange={(e) => onAddFiles(e.target.files)}
+                  onChange={(e) => {
+                    onAddFiles(e.target.files);
+                    e.target.value = "";
+                  }}
                 />
                 {pendingFiles.length === 0 ? (
                   <motion.button
@@ -661,19 +743,45 @@ export function ClaimAssistantPanel({
                       </>
                     )}
                   </motion.button>
+                  {intelligenceReport && !reportViewOpen ? (
+                    <motion.button
+                      type="button"
+                      onClick={() => setReportViewOpen(true)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-primary bg-primary/10 text-primary font-semibold text-sm"
+                    >
+                      View your report
+                    </motion.button>
+                  ) : null}
+                  <motion.button
+                    type="button"
+                    onClick={onSubmit}
+                    disabled={!canSubmit || submitting || analyzing}
+                    whileHover={canSubmit && !submitting && !analyzing ? { scale: 1.01 } : undefined}
+                    whileTap={canSubmit && !submitting && !analyzing ? { scale: 0.99 } : undefined}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-border bg-background font-semibold text-sm disabled:opacity-50 hover:bg-muted/40 transition-colors"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Submitting…
+                      </>
+                    ) : (
+                      "Submit without AI report"
+                    )}
+                  </motion.button>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
                   {CLAIM_INTELLIGENCE_DISCLAIMER}
                 </p>
               </ClaimInlinePanel>
             </ClaimBotRow>
-          </>
+          </ClaimStepFade>
         ) : null}
 
         {analyzing ? <ClaimTypingIndicator /> : null}
 
         <AnimatePresence initial={false}>
-          {intelligenceReport ? (
+          {intelligenceReport && reportViewOpen ? (
             <motion.div
               key="intelligence-report"
               initial={{ opacity: 0 }}
@@ -710,7 +818,7 @@ export function ClaimAssistantPanel({
           ) : null}
         </AnimatePresence>
 
-        {derivedStep === "evidence" && !intelligenceReport && !analyzing && pendingFiles.length > 0 ? (
+        {displayStep === "evidence" && !intelligenceReport && !analyzing && pendingFiles.length > 0 ? (
           <ClaimQuickReplies
             options={[
               { id: "documents", label: "What else should I add?", icon: HelpCircle },
@@ -721,31 +829,35 @@ export function ClaimAssistantPanel({
         ) : null}
       </div>
 
-      {derivedStep !== "report" && (
+      {displayStep === "details" && !confirmedDescription ? (
         <ClaimInputBar
           value={draftDescription}
-          onChange={(v) => {
-            setDraftDescription(v);
-            if (confirmedDescription) {
-              onDescriptionChange(v);
-            }
-          }}
-          onSubmit={() => {
-            if (draftDescription.trim().length >= 5) {
-              handleConfirmDescription();
-            }
-          }}
-          onAttach={derivedStep === "evidence" || derivedStep === "details" ? handleAttach : undefined}
-          attachDisabled={pendingFiles.length >= maxFiles}
-          disabled={derivedStep === "welcome"}
+          onChange={setDraftDescription}
+          onSubmit={handleConfirmDescription}
+          disabled={false}
+          submitting={false}
+          placeholder="Describe what happened (at least 5 characters)…"
+        />
+      ) : null}
+
+      {displayStep === "evidence" && !intelligenceReport ? (
+        <ClaimInputBar
+          value=""
+          onChange={() => undefined}
+          onSubmit={() => undefined}
+          onAttach={handleAttach}
+          attachDisabled={pendingFiles.length >= maxFiles || analyzing}
+          disabled={analyzing}
           submitting={analyzing}
+          showSend={false}
+          showInput={false}
           placeholder={
-            derivedStep === "welcome"
-              ? "Type a message or use the suggestions above…"
-              : "Add more detail about your incident…"
+            analyzing
+              ? "Generating your intelligence report…"
+              : "Tap the clip to add more files, or use the buttons above to submit"
           }
         />
-      )}
+      ) : null}
     </section>
   );
 }

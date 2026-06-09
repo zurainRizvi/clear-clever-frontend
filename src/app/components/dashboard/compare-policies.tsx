@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
 import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { useSavedPolicies } from "../saved-policies-context";
@@ -25,12 +26,12 @@ import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { formatPkr, formatPkrYearly } from "@/lib/format";
 import { assignRecommendationBadges, badgeLabel } from "@/lib/recommendations";
-import { hybridScoreLabel } from "@/lib/hybrid-recommendation";
 import {
   HybridRankingBadge,
   HybridRankingSummary,
-  HybridScoreBreakdown,
 } from "./hybrid-ranking-ui";
+import { PolicyMatchInsight } from "./policy-match-insight";
+import { matchTierFromScore, matchTierLabel, recommendationSummaryLabel } from "@/lib/policy-match";
 import { cardLiftHover, fadeUpItem, fadeUpStagger, staggerDelay } from "@/lib/motion-presets";
 import type { CategoryItem, PolicyQuestion, RankingMethod, ScoredRecommendation } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
@@ -38,6 +39,8 @@ import { InsurerLogo } from "./insurer-logo";
 import { useAssistantWidget } from "../assistant/assistant-widget-context";
 import { explainRecommendation } from "@/lib/assistant-api";
 import { useAuth } from "../auth-context";
+import { QuestionInput, otherDetailKey } from "./questionnaire-inputs";
+import { requiredQuestionsAnswered } from "@/lib/questionnaire-utils";
 import {
   ConversationDrawer,
   type ConversationDrawerRequest,
@@ -304,8 +307,17 @@ export function ComparePolicies() {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
+      if (!requiredQuestionsAnswered(questions, nextAnswers)) {
+        toast.error("Please answer all required questions before continuing.");
+        return;
+      }
       void submitAnswers(nextAnswers);
     }
+  };
+
+  const handleOtherDetailChange = (detail: string) => {
+    if (!currentQ) return;
+    setAnswers((prev) => ({ ...prev, [otherDetailKey(currentQ.id)]: detail }));
   };
 
   const handleBack = () => {
@@ -361,6 +373,11 @@ export function ComparePolicies() {
   };
 
   const handleSavePolicy = async (rec: ScoredRecommendation) => {
+    if (!isAuthenticated || user?.role !== "user") {
+      toast.error(copy.errors.unauthorized);
+      navigate("/login", { state: { returnTo: "/dashboard/compare" } });
+      return;
+    }
     try {
       if (isPolicySaved(rec.policy.id)) {
         await removeSavedPolicy(rec.policy.id);
@@ -375,7 +392,7 @@ export function ComparePolicies() {
   };
 
   return (
-    <AnimatedPage className="max-w-7xl mx-auto">
+    <AnimatedPage className={SEEKER_PAGE_CLASS}>
       <AnimatePresence mode="wait">
         {step === "category" && (
           <motion.div
@@ -469,7 +486,9 @@ export function ComparePolicies() {
                 <QuestionInput
                   question={currentQ}
                   value={answers[currentQ.id]}
+                  otherDetail={String(answers[otherDetailKey(currentQ.id)] ?? "")}
                   onAnswer={handleAnswer}
+                  onOtherDetailChange={handleOtherDetailChange}
                 />
               )}
 
@@ -570,17 +589,12 @@ export function ComparePolicies() {
                             </span>
                           )
                         )}
-                        <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                          {hybridScoreLabel(rec)}
+                        <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                          {recommendationSummaryLabel(rec)}
                         </span>
-                        {typeof rec.mlRank === "number" && (
-                          <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            Rank #{rec.mlRank}
-                          </span>
-                        )}
                       </div>
 
-                      <HybridScoreBreakdown rec={rec} />
+                      <PolicyMatchInsight rec={rec} className="mb-4" />
 
                       <div className="flex flex-col lg:flex-row gap-6">
                         <div className="flex-1">
@@ -705,163 +719,6 @@ export function ComparePolicies() {
         request={drawerRequest}
       />
     </AnimatedPage>
-  );
-}
-
-function QuestionInput({
-  question,
-  value,
-  onAnswer,
-}: {
-  question: PolicyQuestion;
-  value: unknown;
-  onAnswer: (value: unknown) => void;
-}) {
-  const [textValue, setTextValue] = useState("");
-  const [numberValue, setNumberValue] = useState("");
-
-  useEffect(() => {
-    setTextValue("");
-    setNumberValue("");
-  }, [question.id]);
-
-  if (question.type === "single" && question.options?.length) {
-    return (
-      <div className="space-y-2">
-        {question.options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onAnswer(option)}
-            className={`w-full text-left p-4 rounded-lg border transition-all duration-200 ${
-              value === option
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/30 hover:bg-accent/50"
-            }`}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  if (question.type === "multi" && question.options?.length) {
-    return <MultiQuestionInput question={question} value={value} onAnswer={onAnswer} />;
-  }
-
-  if (question.type === "number") {
-    return (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const form = e.currentTarget;
-          const raw = new FormData(form).get("answer");
-          const num = Number(raw);
-          if (Number.isFinite(num) && num > 0) onAnswer(num);
-        }}
-        className="space-y-4"
-      >
-        <input
-          name="answer"
-          type="number"
-          value={numberValue}
-          onChange={(event) => setNumberValue(event.target.value)}
-          className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
-          placeholder="Enter amount in PKR"
-          required
-        />
-        <button
-          type="submit"
-          className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-        >
-          {copy.compare.questionnaireCta}
-        </button>
-      </form>
-    );
-  }
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const raw = new FormData(e.currentTarget).get("answer");
-        if (typeof raw === "string" && raw.trim()) onAnswer(raw.trim());
-      }}
-      className="space-y-4"
-    >
-      <input
-        name="answer"
-        type="text"
-        value={textValue}
-        onChange={(event) => setTextValue(event.target.value)}
-        className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
-        required
-      />
-      <button
-        type="submit"
-        className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-      >
-        {copy.compare.questionnaireCta}
-      </button>
-    </form>
-  );
-}
-
-function MultiQuestionInput({
-  question,
-  value,
-  onAnswer,
-}: {
-  question: PolicyQuestion;
-  value: unknown;
-  onAnswer: (value: unknown) => void;
-}) {
-  const [selected, setSelected] = useState<string[]>(Array.isArray(value) ? value.map(String) : []);
-  const toggle = (option: string) =>
-    setSelected((current) =>
-      current.includes(option)
-        ? current.filter((item) => item !== option)
-        : [...current, option]
-    );
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        {question.options?.map((option) => {
-          const checked = selected.includes(option);
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => toggle(option)}
-              className={`w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-center gap-3 ${
-                checked
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/30 hover:bg-accent/50"
-              }`}
-            >
-              <span
-                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
-                  checked ? "bg-primary border-primary text-primary-foreground" : "border-border"
-                }`}
-              >
-                {checked ? <CheckCircle2 className="w-3.5 h-3.5" /> : null}
-              </span>
-              {option}
-            </button>
-          );
-        })}
-      </div>
-      <button
-        type="button"
-        onClick={() => onAnswer(selected)}
-        disabled={question.required !== false && selected.length === 0}
-        className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
-      >
-        {copy.compare.questionnaireCta}
-      </button>
-    </div>
   );
 }
 

@@ -87,10 +87,17 @@ export interface PublicPolicy {
 
 export type RankingMethod = "rules" | "hybrid";
 
+export interface AnswerHighlight {
+  questionText: string;
+  userAnswer: string;
+  policyAlignment: string;
+}
+
 export interface ScoredRecommendation {
   policy: PublicPolicy;
   score: number;
   matchReasons: string[];
+  answerHighlights?: AnswerHighlight[];
   ruleScore?: number;
   mlConfidence?: number;
   mlRank?: number;

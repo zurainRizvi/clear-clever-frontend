@@ -14,6 +14,13 @@ export type AssistantAttachmentPayload = {
 export type AssistantStatus = {
   configured: boolean;
   model: string;
+  quota?: {
+    dailyLimit: number;
+    dailyUsed: number;
+    dailyExhausted: boolean;
+    rpmLimit: number;
+    rpmUsed: number;
+  };
   attachments?: {
     maxFiles: number;
     maxBytesPerFile: number;

@@ -31,10 +31,9 @@ const CLAIM_LEVEL_COPY: Record<MlRiskLevel, MlInsightCopy> = {
 
 export function claimRiskInsightCopy(mlRisk: ClaimMlRisk): MlInsightCopy {
   const base = CLAIM_LEVEL_COPY[mlRisk.level];
-  const approvalPct = Math.round(mlRisk.approvalProbability * 100);
   return {
     ...base,
-    subtitle: `${base.subtitle} Estimated approval likelihood: ${approvalPct}%.`,
+    subtitle: base.subtitle,
   };
 }
 
@@ -109,6 +108,14 @@ const NUMERIC_FACTOR_COPY: Record<string, string> = {
   "account age days": "Account age is a factor in this assessment",
   "related entity count": "The number of linked records raised the score",
 };
+
+export function buildClaimFactorChartData(factors: string[]): Array<{ label: string; weight: number }> {
+  const items = factors.slice(0, 5).map((factor, index) => ({
+    label: humanizeClaimRiskFactor(factor).slice(0, 48),
+    weight: Math.max(20, 100 - index * 15),
+  }));
+  return items.length > 0 ? items : [{ label: "Standard review signals", weight: 40 }];
+}
 
 export function humanizeClaimRiskFactor(factor: string): string {
   const normalized = factor.trim().toLowerCase();

@@ -150,6 +150,8 @@ export interface AssistantUsageSummary {
   chatApiCalls: number;
   explainApiCalls: number;
   probeApiCalls: number;
+  claimIntelligenceApiCalls: number;
+  kycApiCalls: number;
   totalPromptTokens: number;
   totalCompletionTokens: number;
   totalTokens: number;
@@ -252,6 +254,28 @@ export async function fetchFraudSignals(category: FraudCategory): Promise<{
 
 export async function fetchHealth(): Promise<HealthStatus> {
   return apiRequest("/api/admin/health", { auth: true });
+}
+
+export interface AdminMlOverview {
+  geminiUsage: AssistantUsageSummary;
+  models: {
+    claimRiskLoaded: boolean;
+    claimRiskVersion: string | null;
+    policyRankerCategories: string[];
+  };
+  claims: {
+    total: number;
+    withIntelligenceReport: number;
+    last24h: number;
+  };
+  questionnaires: {
+    totalResponses: number;
+    uniqueUsers: number;
+  };
+}
+
+export async function fetchMlOverview(): Promise<AdminMlOverview> {
+  return apiRequest("/api/admin/ml-overview", { auth: true });
 }
 
 export async function fetchAdminInsurers(): Promise<{

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { Heart, Trash2, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
+import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
 import { AnimatedPage } from "../ui/animated-page";
 import { useSavedPolicies } from "../saved-policies-context";
 import { toast } from "sonner";
@@ -49,7 +50,7 @@ export function SavedPolicies() {
   }
 
   return (
-    <AnimatedPage className="max-w-7xl mx-auto">
+    <AnimatedPage className={SEEKER_PAGE_CLASS}>
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Saved policies</h1>
         <p className="text-muted-foreground">
