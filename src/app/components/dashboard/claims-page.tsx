@@ -25,6 +25,10 @@ import {
 } from "@/lib/purchase-api";
 import { cn } from "../ui/utils";
 import { useAuth } from "../auth-context";
+import {
+  ClaimAssistantPanel,
+  type PendingClaimFile,
+} from "./claim-assistant-panel";
 import { UserCnicGate } from "./user-cnic-gate";
 import { ClaimIntelligenceHistoryBadge } from "./claim-intelligence-ui";
 
