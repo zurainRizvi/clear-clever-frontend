@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   ClipboardList,
+  CreditCard,
   ExternalLink,
   Loader2,
   Shield,
@@ -12,11 +13,12 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
-import { fetchCategoryQuestions, fetchRecommendations } from "@/lib/auth-api";
+import { fetchCategoryQuestions, fetchRecommendations, updateMeProfile } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
+import { formatCnicWhileTyping, isValidCnicInput, normalizeCnicInput } from "@/lib/cnic";
 import { formatPkr, formatPkrYearly } from "@/lib/format";
-import { isValidPkPhone, normalizePkPhone } from "@/lib/phone";
+import { isValidPkPhone, normalizePkPhone, toLocalPkPhoneDisplay } from "@/lib/phone";
 import { createPurchase } from "@/lib/purchase-api";
 import {
   clearPurchaseDraft,
@@ -26,6 +28,8 @@ import {
 import type { PolicyQuestion, PublicPolicy } from "@/lib/types";
 import { ClearCleverLogo } from "../auth/clearclever-logo";
 import { InsurerLogo } from "./insurer-logo";
+import { CnicKycPanel } from "./cnic-kyc-panel";
+import { KycStatusBadge } from "./kyc-verification-ui";
 
 type Step = "questionnaire" | "contact" | "review";
 
@@ -40,6 +44,7 @@ interface ContactForm {
   fullName: string;
   email: string;
   phone: string;
+  cnic: string;
   address: string;
   city: string;
   postalCode: string;
@@ -85,7 +90,7 @@ function firstUnansweredQuestionIndex(
 export function PurchaseFlow() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const locationState = (location.state ?? {}) as PurchaseLocationState;
   const storedDraft = loadPurchaseDraft();
@@ -119,10 +124,21 @@ export function PurchaseFlow() {
     fullName: "",
     email: "",
     phone: "",
+    cnic: "",
     address: "",
     city: "",
     postalCode: "",
   });
+
+  useEffect(() => {
+    if (!user) return;
+    setContact((prev) => ({
+      ...prev,
+      fullName: prev.fullName || user.fullName || "",
+      email: prev.email || user.email || "",
+      phone: prev.phone || (user.phone ? toLocalPkPhoneDisplay(user.phone) : ""),
+    }));
+  }, [user?.id, user?.fullName, user?.email, user?.phone]);
 
   useEffect(() => {
     if (!policy) return;
@@ -224,7 +240,12 @@ export function PurchaseFlow() {
       errors.email = "Enter a valid email address.";
     }
     if (!isValidPkPhone(contact.phone)) {
-      errors.phone = "Enter a valid Pakistan mobile number (e.g. 03XX XXXXXXX or +923XX XXXXXXX).";
+      errors.phone = "Enter a valid Pakistan mobile number (e.g. 03001234567).";
+    }
+    if (!user?.hasCnic) {
+      if (!isValidCnicInput(contact.cnic)) {
+        errors.cnic = "CNIC is required (13 digits, e.g. 42101-1234567-1).";
+      }
     }
     if (!contact.address.trim()) {
       errors.address = "Street address is required.";
@@ -241,6 +262,9 @@ export function PurchaseFlow() {
     contact_full_name: contact.fullName.trim(),
     contact_email: contact.email.trim(),
     contact_phone: normalizePkPhone(contact.phone),
+    ...(user?.hasCnic
+      ? {}
+      : { contact_cnic: normalizeCnicInput(contact.cnic) }),
     contact_address: contact.address.trim(),
     contact_city: contact.city.trim(),
     contact_postal_code: contact.postalCode.trim() || undefined,
@@ -260,6 +284,11 @@ export function PurchaseFlow() {
 
     setSubmitting(true);
     try {
+      if (!user?.hasCnic) {
+        await updateMeProfile({ cnic: normalizeCnicInput(contact.cnic) });
+        await refreshUser();
+      }
+
       const result = await createPurchase({
         policyId: policy.id,
         answers: buildPurchaseAnswers(),
@@ -409,18 +438,54 @@ export function PurchaseFlow() {
                   }
                 />
                 <Field
-                  label="Mobile number (Pakistan)"
+                  label="Mobile number"
                   error={fieldErrors.phone}
                   input={
                     <input
                       type="tel"
                       value={contact.phone}
                       onChange={(e) => setContact({ ...contact, phone: e.target.value })}
-                      placeholder="03XX XXXXXXX or +923XX XXXXXXX"
+                      placeholder="03001234567"
                       className={inputClass(!!fieldErrors.phone)}
                     />
                   }
                 />
+                {user?.hasCnic ? (
+                  <Field
+                    label="CNIC"
+                    input={
+                      <input
+                        type="text"
+                        readOnly
+                        value={user.cnicMasked ?? "On file"}
+                        className={`${inputClass(false)} bg-muted/40 font-mono tracking-wide`}
+                      />
+                    }
+                  />
+                ) : (
+                  <Field
+                    label="CNIC"
+                    error={fieldErrors.cnic}
+                    input={
+                      <div className="relative">
+                        <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={contact.cnic}
+                          onChange={(e) =>
+                            setContact({
+                              ...contact,
+                              cnic: formatCnicWhileTyping(e.target.value),
+                            })
+                          }
+                          placeholder="42101-1234567-1"
+                          className={`${inputClass(!!fieldErrors.cnic)} pl-10 font-mono tracking-wide`}
+                        />
+                      </div>
+                    }
+                  />
+                )}
                 <Field
                   label="City"
                   error={fieldErrors.city}
@@ -457,6 +522,24 @@ export function PurchaseFlow() {
                       className={inputClass(false)}
                     />
                   }
+                />
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card/50 p-4 sm:p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-semibold text-sm">Identity verification</h3>
+                  {user?.kycStatus && user.kycStatus !== "none" ? (
+                    <KycStatusBadge status={user.kycStatus} />
+                  ) : null}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Optional AI KYC unlocks identity match scoring. Manual CNIC still works for checkout.
+                </p>
+                <CnicKycPanel
+                  initialCnic={contact.cnic}
+                  cnicOnFile={Boolean(user?.hasCnic)}
+                  onCnicSaved={() => void refreshUser()}
+                  onKycUpdated={() => void refreshUser()}
                 />
               </div>
 
@@ -544,6 +627,10 @@ export function PurchaseFlow() {
                 <p>
                   <span className="text-muted-foreground">Phone:</span>{" "}
                   {normalizePkPhone(contact.phone)}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">CNIC:</span>{" "}
+                  {user?.hasCnic ? user.cnicMasked : contact.cnic}
                 </p>
                 <p>
                   <span className="text-muted-foreground">Email:</span> {contact.email}

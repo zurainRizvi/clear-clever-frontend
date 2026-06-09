@@ -28,6 +28,7 @@ import {
 } from "@/lib/insurer-api";
 import { ApiError } from "@/lib/api";
 import { ActionConfirmDialog } from "./action-confirm-dialog";
+import { CustomerDemographicsChips } from "./customer-demographics-charts";
 
 function customerMatchesFilter(customer: InsurerCustomerGroup, filter: string): boolean {
   if (filter === "all") return true;
@@ -268,6 +269,7 @@ export function ProviderLeadsPage() {
                           ? ` · ${purchaseCount} purchased polic${purchaseCount === 1 ? "y" : "ies"}`
                           : ""}
                       </p>
+                      <CustomerDemographicsChips demographics={customer.demographics} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {leadCount > 0 ? (

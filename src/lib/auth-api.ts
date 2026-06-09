@@ -30,6 +30,7 @@ export async function signup(body: {
   email: string;
   phone: string;
   password: string;
+  cnic?: string;
 }): Promise<{ email: string; emailSent?: boolean | null; debugCode?: string }> {
   return apiRequest("/api/auth/signup", {
     method: "POST",
@@ -97,6 +98,7 @@ export async function getMe(): Promise<{ user: AuthUser }> {
 
 export async function updateMeProfile(body: {
   profilePhotoDataUrl?: string | null;
+  cnic?: string;
   notificationPreferences?: Partial<NonNullable<AuthUser["profile"]>["notificationPreferences"]>;
 }): Promise<{ user: AuthUser }> {
   return apiRequest("/api/auth/me", {
@@ -133,6 +135,7 @@ export async function fetchRecommendations(body: {
 }): Promise<{
   category: string;
   available: boolean;
+  rankingMethod?: "rules" | "hybrid";
   recommendations: ScoredRecommendation[];
 }> {
   return apiRequest("/api/recommend", {

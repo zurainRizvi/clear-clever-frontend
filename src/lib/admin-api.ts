@@ -230,12 +230,22 @@ export interface FraudSignal {
   detail: string;
   detectedAt: string;
   link?: string;
+  mlScore?: number;
+  mlFactors?: string[];
+  mlModelVersion?: string;
+}
+
+export interface FraudMlSummary {
+  averageScore: number;
+  highConfidenceCount: number;
+  modelVersion: string;
 }
 
 export async function fetchFraudSignals(category: FraudCategory): Promise<{
   category: FraudCategory;
   count: number;
   signals: FraudSignal[];
+  mlSummary?: FraudMlSummary;
 }> {
   return apiRequest(`/api/admin/fraud-signals?category=${category}`, { auth: true });
 }

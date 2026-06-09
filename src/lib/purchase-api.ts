@@ -1,5 +1,11 @@
 import { apiRequest } from "./api";
+import type {
+  ClaimAttachmentPayload,
+  ClaimIntelligenceReport,
+} from "./claim-intelligence-types";
 import type { PublicPolicy } from "./types";
+
+export type { ClaimAttachmentPayload, ClaimIntelligenceReport } from "./claim-intelligence-types";
 
 export interface PurchaseSummary {
   id: string;
@@ -83,6 +89,7 @@ export interface ClaimSummary {
     companyName: string;
     contactPhone?: string;
   };
+  intelligenceReport?: ClaimIntelligenceReport;
 }
 
 export interface AppNotification {
@@ -165,8 +172,24 @@ export async function createClaim(body: {
   incidentDate: string;
   estimatedAmountPkr?: number;
   description: string;
+  intelligenceReport?: ClaimIntelligenceReport;
 }): Promise<{ claim: ClaimSummary }> {
   return apiRequest("/api/claims", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
+export async function analyzeClaimIntelligence(body: {
+  purchaseId: string;
+  claimType: string;
+  description: string;
+  estimatedAmountPkr?: number;
+  incidentDate?: string;
+  attachments: ClaimAttachmentPayload[];
+}): Promise<{ intelligenceReport: ClaimIntelligenceReport }> {
+  return apiRequest("/api/claims/analyze-intelligence", {
     method: "POST",
     auth: true,
     body: JSON.stringify(body),

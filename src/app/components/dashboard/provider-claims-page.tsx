@@ -4,6 +4,7 @@ import { Loader2, Mail, Phone, Shield, User } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import { formatPkr } from "@/lib/format";
+import { summarizeClaimRiskQueue } from "@/lib/ml-insights";
 import {
   fetchInsurerClaims,
   updateInsurerClaimStatus,
@@ -15,6 +16,12 @@ import { motion } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
 import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
 import { fadeUpItem } from "@/lib/motion-presets";
+import { ClaimIntelligenceInsurerSummary } from "./claim-intelligence-ui";
+import {
+  ClaimRiskInsightCard,
+  ClaimRiskQueueSummary,
+  MlDisclaimerBanner,
+} from "./ml-insight-ui";
 
 const FILTERS: Array<"all" | InsurerClaimStatus> = [
   "all",
@@ -23,6 +30,8 @@ const FILTERS: Array<"all" | InsurerClaimStatus> = [
   "approved",
   "rejected",
 ];
+
+const RISK_ORDER = { high: 0, medium: 1, low: 2 } as const;
 
 function claimStatusLabel(status: InsurerClaimStatus) {
   if (status === "submitted") return "Awaiting review";
@@ -34,7 +43,10 @@ export function ProviderClaimsPage() {
   const [claims, setClaims] = useState<InsurerClaimSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | InsurerClaimStatus>("all");
+  const [priorityFirst, setPriorityFirst] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [expandedMlId, setExpandedMlId] = useState<string | null>(null);
+  const [expandedEvidenceId, setExpandedEvidenceId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,10 +64,27 @@ export function ProviderClaimsPage() {
     void load();
   }, [load]);
 
+  const queueSummary = useMemo(() => summarizeClaimRiskQueue(claims), [claims]);
+
   const filtered = useMemo(() => {
-    if (filter === "all") return claims;
-    return claims.filter((claim) => claim.status === filter);
-  }, [claims, filter]);
+    let list = filter === "all" ? claims : claims.filter((claim) => claim.status === filter);
+
+    if (priorityFirst) {
+      list = [...list].sort((a, b) => {
+        const aLevel = a.mlRisk?.level;
+        const bLevel = b.mlRisk?.level;
+        if (aLevel && bLevel && aLevel !== bLevel) {
+          return RISK_ORDER[aLevel] - RISK_ORDER[bLevel];
+        }
+        if (aLevel && !bLevel) return -1;
+        if (!aLevel && bLevel) return 1;
+        if (a.mlRisk && b.mlRisk) return b.mlRisk.score - a.mlRisk.score;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
+
+    return list;
+  }, [claims, filter, priorityFirst]);
 
   const pendingCount = claims.filter(
     (claim) => claim.status === "submitted" || claim.status === "in_review"
@@ -96,28 +125,54 @@ export function ProviderClaimsPage() {
     <AnimatedPage className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-1">Claims review</h1>
-        <p className="text-muted-foreground">
-          Policy seekers submit claims on completed policies. Review each request and approve or
-          reject it — they are notified automatically.
+        <p className="text-muted-foreground max-w-2xl leading-relaxed">
+          Review policyholder claims with AI Claims Intelligence Reports and risk scoring. You
+          always make the final approval decision.
         </p>
         {pendingCount > 0 ? (
           <p className="text-sm text-warning mt-2">
-            {pendingCount} claim{pendingCount === 1 ? "" : "s"} awaiting your review
+            {pendingCount} claim{pendingCount === 1 ? "" : "s"} waiting for your review
           </p>
         ) : null}
       </div>
 
-      <AnimatedPillTabs
-        tabs={filterTabs}
-        activeId={filter}
-        onChange={(id) => setFilter(id as typeof filter)}
-        layoutId="provider-claims-filter"
-      />
+      {queueSummary.withInsights > 0 ? (
+        <ClaimRiskQueueSummary
+          highPriority={queueSummary.highPriority}
+          mediumPriority={queueSummary.mediumPriority}
+          lowPriority={queueSummary.lowPriority}
+          total={queueSummary.withInsights}
+        />
+      ) : null}
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <AnimatedPillTabs
+          tabs={filterTabs}
+          activeId={filter}
+          onChange={(id) => setFilter(id as typeof filter)}
+          layoutId="provider-claims-filter"
+          className="flex-1 min-w-0"
+        />
+        {queueSummary.withInsights > 0 ? (
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground shrink-0 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={priorityFirst}
+              onChange={(e) => setPriorityFirst(e.target.checked)}
+              className="rounded border-border text-primary focus:ring-primary"
+            />
+            Show high priority first
+          </label>
+        ) : null}
+      </div>
+
+      <MlDisclaimerBanner />
 
       <div className="space-y-4">
         {filtered.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-10 text-center text-muted-foreground">
-            No claims in this view yet. New seeker claims will appear here for your approval.
+            <p className="font-medium text-foreground mb-1">No claims in this view</p>
+            <p className="text-sm">New submissions from policyholders will appear here for review.</p>
           </div>
         ) : (
           filtered.map((claim, idx) => (
@@ -133,12 +188,12 @@ export function ProviderClaimsPage() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <Shield className="w-6 h-6 text-primary" />
                 </div>
-                <div className="flex-1 min-w-0 space-y-3">
+                <div className="flex-1 min-w-0 space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h2 className="font-semibold text-lg">{claim.policy?.name ?? "Policy claim"}</h2>
                       <p className="text-sm text-muted-foreground">
-                        {titleCase(claim.claimType)} ·{" "}
+                        {titleCase(claim.claimType)} · Incident{" "}
                         {new Date(claim.incidentDate).toLocaleDateString()}
                       </p>
                     </div>
@@ -147,18 +202,41 @@ export function ProviderClaimsPage() {
                     </span>
                   </div>
 
-                  <p className="text-sm">{claim.description}</p>
+                  <p className="text-sm leading-relaxed">{claim.description}</p>
 
                   {claim.estimatedAmountPkr ? (
                     <p className="text-sm text-muted-foreground">
-                      Estimated amount: {formatPkr(claim.estimatedAmountPkr)}
+                      Estimated amount: <span className="font-medium text-foreground">{formatPkr(claim.estimatedAmountPkr)}</span>
                     </p>
+                  ) : null}
+
+                  {claim.intelligenceReport ? (
+                    <ClaimIntelligenceInsurerSummary
+                      report={claim.intelligenceReport}
+                      mlRisk={claim.mlRisk}
+                      expandedMl={expandedMlId === claim.id}
+                      onToggleMlExpand={() =>
+                        setExpandedMlId((prev) => (prev === claim.id ? null : claim.id))
+                      }
+                      expandedEvidence={expandedEvidenceId === claim.id}
+                      onToggleEvidence={() =>
+                        setExpandedEvidenceId((prev) => (prev === claim.id ? null : claim.id))
+                      }
+                    />
+                  ) : claim.mlRisk ? (
+                    <ClaimRiskInsightCard
+                      mlRisk={claim.mlRisk}
+                      expanded={expandedMlId === claim.id}
+                      onToggleExpand={() =>
+                        setExpandedMlId((prev) => (prev === claim.id ? null : claim.id))
+                      }
+                    />
                   ) : null}
 
                   <div className="rounded-lg bg-muted/30 p-4 text-sm">
                     <div className="font-medium mb-2 flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      {claim.seeker?.fullName ?? "Policy seeker"}
+                      {claim.seeker?.fullName ?? "Policyholder"}
                     </div>
                     <div className="flex flex-wrap gap-4 text-muted-foreground">
                       {claim.seeker?.email ? (

@@ -45,6 +45,7 @@ import {
   type DateRangeValue,
 } from "@/lib/provider-date-range";
 import { ProviderDateRangePicker } from "./provider-date-range-picker";
+import { CustomerDemographicsSection } from "./customer-demographics-charts";
 import { PakistanUsersByRegion } from "./pakistan-users-by-region";
 import { PROVIDER_PAGE_CLASS, PROVIDER_THEME } from "./provider-portal-theme";
 import { toast } from "sonner";
@@ -324,6 +325,13 @@ export function ProviderAnalyticsPage() {
         }}
         cardStyle={cardStyle}
       />
+
+      {analytics.customerDemographics && analytics.customerDemographics.totalPurchasers > 0 && (
+        <CustomerDemographicsSection
+          data={analytics.customerDemographics}
+          cardStyle={cardStyle}
+        />
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 min-w-0">
         <div className="xl:col-span-8 space-y-5 min-w-0">

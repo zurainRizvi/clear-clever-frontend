@@ -1,4 +1,5 @@
 import { apiRequest } from "./api";
+import type { ClaimIntelligenceReport } from "./claim-intelligence-types";
 import type { CategorySlug, PolicyQuestion } from "./types";
 
 export type InsurerPolicyStatus = "pending" | "approved" | "rejected";
@@ -75,6 +76,15 @@ export interface InsurerCustomerPurchaseSummary {
   };
 }
 
+export interface InsurerCustomerDemographics {
+  gender?: string;
+  ageBand?: string;
+  province?: string;
+  district?: string;
+  kycStatus: string;
+  kycScore?: number;
+}
+
 export interface InsurerCustomerGroup {
   seeker: {
     id: string;
@@ -82,6 +92,7 @@ export interface InsurerCustomerGroup {
     email: string;
     phone: string;
   };
+  demographics?: InsurerCustomerDemographics;
   leads: InsurerLeadSummary[];
   purchases: InsurerCustomerPurchaseSummary[];
   isNew: boolean;
@@ -276,6 +287,34 @@ export interface InsurerAnalyticsPayload {
       userCount: number;
     }>;
   };
+  customerDemographics: {
+    title: string;
+    subtitle: string;
+    totalPurchasers: number;
+    kycVerifiedCount: number;
+    kycVerifiedRate: string;
+    kycVerifiedRatePct: number;
+    gender: { male: number; female: number; unknown: number };
+    ageBuckets: {
+      under18: number;
+      age18to25: number;
+      age26to35: number;
+      age36to50: number;
+      age50plus: number;
+      unknown: number;
+    };
+    adultRate: string;
+    adultRatePct: number;
+    expiredCnicCount: number;
+    topDistricts: Array<{ district: string; province: string; count: number }>;
+    topProvinces: Array<{ province: string; count: number }>;
+    verificationQuality: {
+      avgKycScore: number;
+      avgKycScoreFormatted: string;
+      documentReadableRate: string;
+      documentReadableRatePct: number;
+    };
+  };
 }
 
 export async function fetchInsurerAnalytics(params?: {
@@ -398,6 +437,16 @@ export async function deleteInsurerPolicy(policyId: string): Promise<{ policyId:
 
 export type InsurerClaimStatus = "submitted" | "in_review" | "approved" | "rejected";
 
+export type MlRiskLevel = "low" | "medium" | "high";
+
+export interface ClaimMlRisk {
+  score: number;
+  level: MlRiskLevel;
+  approvalProbability: number;
+  topFactors: string[];
+  modelVersion: string;
+}
+
 export interface InsurerClaimSummary {
   id: string;
   purchaseId: string;
@@ -424,6 +473,8 @@ export interface InsurerClaimSummary {
     email: string;
     phone: string;
   };
+  mlRisk?: ClaimMlRisk;
+  intelligenceReport?: ClaimIntelligenceReport;
 }
 
 export async function fetchInsurerClaims(): Promise<{

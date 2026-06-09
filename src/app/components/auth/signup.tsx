@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, CreditCard } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { BackToHomeLink } from "./back-to-home";
 import { ClearCleverLogo } from "./clearclever-logo";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { signup } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
+import { isValidCnicInput, normalizeCnicInput, formatCnicWhileTyping } from "@/lib/cnic";
 import { setPendingEmail } from "@/lib/auth-storage";
 
 const schema = z
@@ -18,6 +19,12 @@ const schema = z
     fullName: z.string().min(2, "Enter your full name"),
     email: z.string().email("Enter a valid email address"),
     phone: z.string().min(10, "Enter a valid Pakistan phone number"),
+    cnic: z
+      .string()
+      .optional()
+      .refine((v) => !v?.trim() || isValidCnicInput(v), {
+        message: "CNIC must be 13 digits (e.g. 42101-1234567-1)",
+      }),
     password: z.string().min(8, "Use at least 8 characters"),
     confirmPassword: z.string(),
   })
@@ -38,6 +45,7 @@ export function SignUp() {
     register,
     handleSubmit,
     setError,
+    setValue,
     reset,
     formState: { errors },
   } = useForm<SignUpForm>();
@@ -69,6 +77,7 @@ export function SignUp() {
         email: data.email,
         phone: data.phone,
         password: data.password,
+        ...(data.cnic?.trim() ? { cnic: normalizeCnicInput(data.cnic) } : {}),
       });
       const verifiedEmail = result.email ?? data.email;
       setPendingEmail(verifiedEmail);
@@ -85,7 +94,7 @@ export function SignUp() {
       if (err instanceof ApiError) {
         Object.entries(err.fieldErrors).forEach(([field, message]) => {
           const key = field as keyof SignUpForm;
-          if (["fullName", "email", "phone", "password", "confirmPassword"].includes(field)) {
+          if (["fullName", "email", "phone", "password", "confirmPassword", "cnic"].includes(field)) {
             setError(key, { message });
           }
         });
@@ -144,7 +153,7 @@ export function SignUp() {
               const placeholders = {
                 fullName: "Your full name",
                 email: "you@example.com",
-                phone: "+92 300 1234567",
+                phone: "03001234567",
               };
               return (
                 <motion.div
@@ -169,6 +178,36 @@ export function SignUp() {
                 </motion.div>
               );
             })}
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18 }}
+            >
+              <label className="block text-sm mb-2">
+                CNIC <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  {...register("cnic", {
+                    onChange: (e) => {
+                      setValue("cnic", formatCnicWhileTyping(e.target.value));
+                    },
+                  })}
+                  placeholder="42101-1234567-1"
+                  className="w-full pl-12 pr-4 py-3 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-mono tracking-wide"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                You can add this later, but it is required before filing a claim.
+              </p>
+              {errors.cnic && (
+                <p className="text-sm text-destructive mt-1">{errors.cnic.message}</p>
+              )}
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}

@@ -8,11 +8,27 @@ export interface InsurerOnboardingHint {
   slug?: string;
 }
 
+export type KycStatus = "none" | "partial" | "verified" | "failed";
+
+export interface KycSummary {
+  gender?: "male" | "female";
+  province?: string;
+  district?: string;
+  isAdult?: boolean;
+  cnicExpired?: boolean;
+  identityVerified?: boolean;
+}
+
 export interface AuthUser {
   id: string;
   fullName: string;
   email: string;
   phone: string;
+  cnicMasked?: string;
+  hasCnic?: boolean;
+  kycStatus?: KycStatus;
+  kycScore?: number;
+  kycSummary?: KycSummary;
   role: UserRole;
   status: UserStatus;
   insurerOnboarding?: InsurerOnboardingHint;
@@ -69,8 +85,15 @@ export interface PublicPolicy {
   insurer: PublicInsurerSummary;
 }
 
+export type RankingMethod = "rules" | "hybrid";
+
 export interface ScoredRecommendation {
   policy: PublicPolicy;
   score: number;
   matchReasons: string[];
+  ruleScore?: number;
+  mlConfidence?: number;
+  mlRank?: number;
+  rankingMethod?: RankingMethod;
+  modelVersion?: string;
 }

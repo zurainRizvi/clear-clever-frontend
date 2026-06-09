@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import {
   Activity,
@@ -19,6 +18,8 @@ import {
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { PortalScrollNav } from "../ui/portal-scroll-nav";
+import { PortalSidebarBackdrop } from "../ui/portal-sidebar-backdrop";
+import { usePortalSidebar } from "../ui/use-portal-sidebar";
 import { useAuth, useLogout } from "../auth-context";
 import { useAdmin } from "./admin-context";
 import { PortalProfileAvatar } from "./portal-profile-avatar";
@@ -60,7 +61,8 @@ interface AdminPortalLayoutProps {
 }
 
 export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { isNarrow, sidebarOpen, closeSidebar, openSidebar, sidebarMotionWidth } =
+    usePortalSidebar(280);
   const location = useLocation();
   const handleLogout = useLogout();
   const { userName, userEmail } = useAuth();
@@ -105,12 +107,15 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
       : "max-w-7xl mx-auto";
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background overflow-x-hidden">
+      <PortalSidebarBackdrop open={isNarrow && sidebarOpen} onClose={closeSidebar} />
       <motion.aside
         initial={false}
-        animate={{ width: sidebarOpen ? 280 : 0 }}
+        animate={{ width: sidebarMotionWidth }}
         transition={{ duration: 0.3 }}
-        className="sticky top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0"
+        className={`bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0 ${
+          isNarrow ? "fixed inset-y-0 left-0 z-50 h-screen shadow-2xl" : "sticky top-0 h-screen"
+        }`}
       >
         <div className="w-[280px] flex flex-col h-full">
           <div className="p-6 border-b border-sidebar-border flex items-center justify-between gap-2">
@@ -123,7 +128,7 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
             {sidebarOpen ? (
               <button
                 type="button"
-                onClick={() => setSidebarOpen(false)}
+                onClick={closeSidebar}
                 className="p-2 hover:bg-sidebar-accent rounded-xl shrink-0"
                 aria-label="Close navigation"
               >
@@ -143,6 +148,7 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
                 <Link
                   key={item.path}
                   to={item.path}
+                  onClick={() => isNarrow && closeSidebar()}
                   className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     active
                       ? "text-sidebar-accent-foreground"
@@ -194,28 +200,28 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               {!sidebarOpen ? (
                 <button
                   type="button"
-                  onClick={() => setSidebarOpen(true)}
-                  className="p-2 hover:bg-accent rounded-xl"
+                  onClick={openSidebar}
+                  className="p-2 hover:bg-accent rounded-xl shrink-0"
                   aria-label="Open navigation"
                 >
                   <Menu className="w-5 h-5" />
                 </button>
               ) : null}
               {headerTitle ? (
-                <h1 className="text-lg font-semibold font-[Poppins]">{headerTitle}</h1>
+                <h1 className="text-base sm:text-lg font-semibold font-[Poppins] truncate">{headerTitle}</h1>
               ) : !isHome ? (
-                <Link to={basePath} className="text-sm text-primary hover:underline">
-                  ← Back to dashboard
+                <Link to={basePath} className="text-sm text-primary hover:underline truncate">
+                  ← Back
                 </Link>
               ) : null}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {variant === "superadmin" && pendingProviders > 0 ? (
                 <Link
                   to={`${basePath}/approvals`}
@@ -253,8 +259,8 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
         />
 
         <main
-          className={`flex-1 p-6 ${
-            isChatRoute ? "flex flex-col min-h-0 overflow-hidden" : "overflow-y-auto"
+          className={`flex-1 min-w-0 p-4 sm:p-6 ${
+            isChatRoute ? "flex flex-col min-h-0 overflow-hidden" : "overflow-y-auto overflow-x-hidden"
           }`}
         >
           <div className={contentWidthClass}>

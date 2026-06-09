@@ -1,0 +1,1013 @@
+import {
+  AlertTriangle,
+  Car,
+  CheckCircle2,
+  ChevronDown,
+  FileBadge,
+  HeartPulse,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  UserCheck,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import type { ClaimIntelligenceReport } from "@/lib/claim-intelligence-types";
+import type { ClaimMlRisk } from "@/lib/insurer-api";
+import { formatPkr } from "@/lib/format";
+import {
+  fadeUpItem,
+  quickTransition,
+  sectionGradientShift,
+  staggerDelay,
+} from "@/lib/motion-presets";
+import {
+  CLAIM_INTELLIGENCE_DISCLAIMER,
+  claimReadinessSeekerCopy,
+  consistencyCheckLabel,
+  damageSeverityLabel,
+  documentVerificationLabel,
+  humanizeClaimRiskFactor,
+  insurerRecommendationLabel,
+  insurerRecommendationSeekerHint,
+} from "@/lib/ml-insights";
+import { cn } from "../ui/utils";
+import { ClaimRichCardRow, type ClaimRichCardData } from "./claim-chat-ui";
+import { AnimatedNumber, ClaimRiskInsightCard } from "./ml-insight-ui";
+
+function ReadinessRing({ score, size = 72 }: { score: number; size?: number }) {
+  const reducedMotion = useReducedMotion();
+  const stroke = 6;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+  const tone =
+    score >= 85 ? "text-success" : score >= 60 ? "text-primary" : "text-warning";
+  const strokeTone =
+    score >= 85
+      ? "stroke-success"
+      : score >= 60
+        ? "stroke-primary"
+        : "stroke-warning";
+
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          className="stroke-muted/50"
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          className={strokeTone}
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: reducedMotion ? offset : circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: reducedMotion ? 0 : 0.9, ease: [0.22, 1, 0.36, 1] }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <AnimatedNumber
+          value={score}
+          className={cn(
+            size >= 72 ? "text-xl" : "text-base",
+            "font-bold tabular-nums leading-none",
+            tone
+          )}
+        />
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          Ready
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ReadinessCheck({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <motion.li
+      variants={fadeUpItem}
+      className="flex items-center gap-2.5 text-sm rounded-lg px-2 py-1.5"
+    >
+      {ok ? (
+        <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden />
+      ) : (
+        <XCircle className="w-4 h-4 text-warning shrink-0" aria-hidden />
+      )}
+      <span className={ok ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+    </motion.li>
+  );
+}
+
+function MetricTile({
+  label,
+  value,
+  sub,
+  tone = "default",
+  icon: Icon,
+  index = 0,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "default" | "success" | "warning";
+  icon?: LucideIcon;
+  index?: number;
+}) {
+  const reducedMotion = useReducedMotion();
+  const valueClass =
+    tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-foreground";
+
+  const numericMatch = value.match(/^(\d+)(.*)$/);
+  const numericValue = numericMatch ? Number(numericMatch[1]) : null;
+  const valueSuffix = numericMatch ? numericMatch[2] : null;
+
+  return (
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="visible"
+      transition={{ ...quickTransition, delay: staggerDelay(index, !!reducedMotion, 0.05) }}
+      whileHover={reducedMotion ? undefined : { y: -2, transition: quickTransition }}
+      className="rounded-xl border border-border/80 bg-card/90 p-3.5 min-w-0 sm:min-w-[130px] flex-1 shadow-sm"
+    >
+      <div className="flex items-center gap-1.5">
+        {Icon ? <Icon className="w-3.5 h-3.5 text-primary/70" aria-hidden /> : null}
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
+      </div>
+      <p className={cn("text-lg font-semibold mt-1.5 tabular-nums tracking-tight", valueClass)}>
+        {numericValue !== null && !Number.isNaN(numericValue) ? (
+          <>
+            <AnimatedNumber value={numericValue} />
+            {valueSuffix}
+          </>
+        ) : (
+          value
+        )}
+      </p>
+      {sub ? <p className="text-xs text-muted-foreground mt-1 leading-snug">{sub}</p> : null}
+    </motion.div>
+  );
+}
+
+function SectionCard({
+  icon: Icon,
+  title,
+  gradient,
+  children,
+  delay = 0,
+}: {
+  icon: LucideIcon;
+  title: string;
+  gradient: string;
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  const reducedMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...quickTransition, delay: reducedMotion ? 0 : delay }}
+      className="rounded-xl border border-border/70 bg-background/70 overflow-hidden shadow-sm"
+    >
+      <div className={cn("flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border/50", gradient)}>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/90 ring-1 ring-border/40">
+          <Icon className="w-4 h-4 text-primary" aria-hidden />
+        </div>
+        <p className="text-sm font-semibold">{title}</p>
+      </div>
+      <div className="p-3.5 space-y-1.5">{children}</div>
+    </motion.div>
+  );
+}
+
+function VehicleSection({ vehicle }: { vehicle: NonNullable<ClaimIntelligenceReport["vehicle"]> }) {
+  return (
+    <SectionCard
+      icon={Car}
+      title="Vehicle damage analysis"
+      gradient="bg-gradient-to-r from-amber-500/[0.08] to-transparent"
+    >
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <span>
+          Severity:{" "}
+          <strong className="text-foreground">{damageSeverityLabel(vehicle.severity)}</strong>
+          <span className="text-xs ml-1">({vehicle.severityConfidence}% confidence)</span>
+        </span>
+        <span className="hidden sm:inline text-border">·</span>
+        <span>
+          Complexity:{" "}
+          <strong className="text-foreground capitalize">{vehicle.repairComplexity}</strong>
+        </span>
+      </div>
+      {vehicle.damagedParts.length > 0 ? (
+        <p className="text-sm text-muted-foreground pt-1">
+          Affected parts:{" "}
+          <span className="text-foreground font-medium">{vehicle.damagedParts.join(", ")}</span>
+        </p>
+      ) : null}
+      <p className="text-sm pt-1">
+        <span className="text-muted-foreground">Estimated repair: </span>
+        <span className="text-foreground font-semibold">
+          {formatPkr(vehicle.estimatedCostMinPkr)} – {formatPkr(vehicle.estimatedCostMaxPkr)}
+        </span>
+      </p>
+    </SectionCard>
+  );
+}
+
+function IdentitySection({
+  identity,
+}: {
+  identity: NonNullable<ClaimIntelligenceReport["identity"]>;
+}) {
+  return (
+    <SectionCard
+      icon={UserCheck}
+      title="Identity verification"
+      gradient="bg-gradient-to-r from-emerald-500/[0.08] to-transparent"
+    >
+      <p className="text-sm text-muted-foreground">
+        {identity.documentType}
+        {identity.extractedName ? ` · ${identity.extractedName}` : ""}
+      </p>
+      {identity.extractedCnic ? (
+        <p className="text-sm text-muted-foreground">CNIC: {identity.extractedCnic}</p>
+      ) : null}
+      <div className="flex flex-wrap gap-2 pt-1 text-xs">
+        <span
+          className={cn(
+            "px-2 py-0.5 rounded-full border",
+            identity.matchesName
+              ? "border-success/30 text-success bg-success/10"
+              : "border-warning/30 text-warning bg-warning/10"
+          )}
+        >
+          Name {identity.matchesName ? "match" : "mismatch"}
+        </span>
+        <span
+          className={cn(
+            "px-2 py-0.5 rounded-full border",
+            identity.matchesCnic
+              ? "border-success/30 text-success bg-success/10"
+              : "border-warning/30 text-warning bg-warning/10"
+          )}
+        >
+          CNIC {identity.matchesCnic ? "match" : "mismatch"}
+        </span>
+      </div>
+      <p
+        className={cn(
+          "text-sm font-medium pt-1",
+          identity.matchesUserProfile ? "text-success" : "text-warning"
+        )}
+      >
+        {identity.matchesUserProfile
+          ? "Account holder verified"
+          : "Account holder not verified"}{" "}
+        — {identity.profileMatchReason}
+      </p>
+    </SectionCard>
+  );
+}
+
+function PolicyDocSection({
+  policyDoc,
+}: {
+  policyDoc: NonNullable<ClaimIntelligenceReport["policyDoc"]>;
+}) {
+  return (
+    <SectionCard
+      icon={FileBadge}
+      title="Policy document"
+      gradient="bg-gradient-to-r from-blue-500/[0.08] to-transparent"
+    >
+      {policyDoc.policyNumber ? (
+        <p className="text-sm text-muted-foreground">Policy #: {policyDoc.policyNumber}</p>
+      ) : null}
+      {policyDoc.insurer ? (
+        <p className="text-sm text-muted-foreground">Insurer: {policyDoc.insurer}</p>
+      ) : null}
+      <p
+        className={cn(
+          "text-sm font-medium",
+          policyDoc.matchesLinkedPolicy ? "text-success" : "text-warning"
+        )}
+      >
+        {policyDoc.matchesLinkedPolicy
+          ? "Matches your linked policy"
+          : "Does not match linked policy"}
+      </p>
+      {policyDoc.validationNotes.length > 0 ? (
+        <ul className="text-xs text-muted-foreground list-disc pl-4 pt-1 space-y-0.5">
+          {policyDoc.validationNotes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+      ) : null}
+    </SectionCard>
+  );
+}
+
+function MedicalSection({ medical }: { medical: NonNullable<ClaimIntelligenceReport["medical"]> }) {
+  return (
+    <SectionCard
+      icon={Stethoscope}
+      title="Medical claim analysis"
+      gradient="bg-gradient-to-r from-rose-500/[0.08] to-transparent"
+    >
+      {medical.diagnosis ? (
+        <p className="text-sm text-muted-foreground">Diagnosis: {medical.diagnosis}</p>
+      ) : null}
+      {medical.hospital ? (
+        <p className="text-sm text-muted-foreground">Hospital: {medical.hospital}</p>
+      ) : null}
+      {medical.treatmentType ? (
+        <p className="text-sm text-muted-foreground">Treatment: {medical.treatmentType}</p>
+      ) : null}
+      <p className="text-sm">
+        Complexity: <span className="font-medium capitalize">{medical.complexity}</span>
+      </p>
+    </SectionCard>
+  );
+}
+
+function buildIntelligenceRichCards(report: ClaimIntelligenceReport): ClaimRichCardData[] {
+  const cards: ClaimRichCardData[] = [];
+
+  if (report.vehicle) {
+    cards.push({
+      id: "vehicle",
+      title: "Vehicle damage",
+      description: `Severity assessed as ${damageSeverityLabel(report.vehicle.severity).toLowerCase()} with ${report.vehicle.severityConfidence}% confidence.`,
+      icon: Car,
+      gradient: "bg-gradient-to-br from-amber-500/35 via-orange-400/20 to-amber-300/10",
+      accent: "warning",
+      detail:
+        report.vehicle.damagedParts.length > 0
+          ? `Parts: ${report.vehicle.damagedParts.slice(0, 3).join(", ")}`
+          : `Repair est. ${formatPkr(report.vehicle.estimatedCostMinPkr)} – ${formatPkr(report.vehicle.estimatedCostMaxPkr)}`,
+      status:
+        report.vehicle.severity === "severe"
+          ? "warning"
+          : report.vehicle.severity === "minor"
+            ? "success"
+            : "default",
+    });
+  }
+
+  if (report.identity) {
+    cards.push({
+      id: "identity",
+      title: "Identity check",
+      description: report.identity.profileMatchReason,
+      icon: UserCheck,
+      gradient: "bg-gradient-to-br from-emerald-500/35 via-teal-400/20 to-green-300/10",
+      accent: "success",
+      detail: report.identity.extractedName ?? report.identity.documentType,
+      status: report.identity.matchesUserProfile ? "success" : "warning",
+    });
+  }
+
+  if (report.policyDoc) {
+    cards.push({
+      id: "policy",
+      title: "Policy document",
+      description: report.policyDoc.matchesLinkedPolicy
+        ? "Document aligns with your linked policy on file."
+        : "Policy details need a closer look before submission.",
+      icon: FileBadge,
+      gradient: "bg-gradient-to-br from-blue-500/35 via-indigo-400/20 to-violet-300/10",
+      accent: "primary",
+      detail: report.policyDoc.policyNumber ?? report.policyDoc.insurer,
+      status: report.policyDoc.matchesLinkedPolicy ? "success" : "warning",
+    });
+  }
+
+  if (report.medical) {
+    cards.push({
+      id: "medical",
+      title: "Medical review",
+      description:
+        report.medical.diagnosis ??
+        report.medical.treatmentType ??
+        "Medical documentation analyzed for complexity and consistency.",
+      icon: Stethoscope,
+      gradient: "bg-gradient-to-br from-rose-500/35 via-pink-400/20 to-rose-300/10",
+      accent: "primary",
+      detail: report.medical.hospital,
+      status: report.medical.complexity === "high" ? "warning" : "default",
+    });
+  }
+
+  cards.push({
+    id: "readiness",
+    title: "Submission readiness",
+    description: claimReadinessSeekerCopy(report.claimReadiness.score).subtitle,
+    icon: ShieldCheck,
+    gradient: "bg-gradient-to-br from-primary/30 via-blue-400/20 to-cyan-300/10",
+    accent: "primary",
+    detail: `${report.claimReadiness.score}% ready`,
+    status:
+      report.claimReadiness.score >= 85
+        ? "success"
+        : report.claimReadiness.score >= 60
+          ? "default"
+          : "warning",
+  });
+
+  cards.push({
+    id: "consistency",
+    title: "Consistency check",
+    description: report.consistency.reason,
+    icon: ShieldCheck,
+    gradient: "bg-gradient-to-br from-slate-500/25 via-gray-400/15 to-slate-300/10",
+    accent: "primary",
+    detail: consistencyCheckLabel(report.consistency.level),
+    status:
+      report.consistency.level === "high"
+        ? "success"
+        : report.consistency.level === "low"
+          ? "warning"
+          : "default",
+  });
+
+  return cards;
+}
+
+function ChatAssistantRow({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const reducedMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...quickTransition, delay: reducedMotion ? 0 : delay }}
+      className="flex gap-3 max-w-full"
+    >
+      <motion.div
+        animate={reducedMotion ? undefined : { scale: [1, 1.04, 1] }}
+        transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 5, ease: "easeInOut" }}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20 text-primary mt-1"
+      >
+        <Sparkles className="h-4 w-4" aria-hidden />
+      </motion.div>
+      <div className="min-w-0 flex-1 space-y-1">{children}</div>
+    </motion.div>
+  );
+}
+
+export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntelligenceReport }) {
+  const readinessCopy = claimReadinessSeekerCopy(report.claimReadiness.score);
+  const recommendationHint = insurerRecommendationSeekerHint(report.insurerRecommendation);
+  const richCards = buildIntelligenceRichCards(report);
+
+  return (
+    <div className="space-y-4" aria-label="AI Claims Intelligence Report">
+      <ChatAssistantRow delay={0}>
+        <div className="relative overflow-hidden rounded-2xl rounded-tl-md border border-primary/20 bg-gradient-to-br from-primary/[0.07] via-card to-card shadow-md">
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[length:200%_200%] bg-gradient-to-r from-primary/[0.05] via-transparent to-primary/[0.08] opacity-70"
+            {...sectionGradientShift}
+          />
+          <div className="relative px-4 py-4 flex flex-wrap items-center gap-4">
+            <ReadinessRing score={report.claimReadiness.score} />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                AI Claims Intelligence Report
+              </p>
+              <h3 className="font-bold text-lg tracking-tight mt-0.5">{readinessCopy.headline}</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                {readinessCopy.subtitle}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Generated {new Date(report.analyzedAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.12 } },
+            }}
+            className="relative px-4 pb-4 flex flex-wrap gap-2"
+          >
+            {report.vehicle ? (
+              <MetricTile
+                label="Damage"
+                value={damageSeverityLabel(report.vehicle.severity)}
+                icon={Car}
+                tone={
+                  report.vehicle.severity === "severe"
+                    ? "warning"
+                    : report.vehicle.severity === "minor"
+                      ? "success"
+                      : "default"
+                }
+                index={0}
+              />
+            ) : null}
+            <MetricTile
+              label="Consistency"
+              value={consistencyCheckLabel(report.consistency.level)}
+              icon={ShieldCheck}
+              tone={
+                report.consistency.level === "low"
+                  ? "warning"
+                  : report.consistency.level === "high"
+                    ? "success"
+                    : "default"
+              }
+              index={report.vehicle ? 1 : 0}
+            />
+            <MetricTile
+              label="Documents"
+              value={documentVerificationLabel(report)}
+              icon={FileBadge}
+              index={report.vehicle ? 2 : 1}
+            />
+          </motion.div>
+        </div>
+      </ChatAssistantRow>
+
+      <ChatAssistantRow delay={0.04}>
+        <ClaimRichCardRow cards={richCards} label="Report overview" />
+      </ChatAssistantRow>
+
+      <ChatAssistantRow delay={0.06}>
+        <div className="rounded-2xl rounded-tl-md border border-border/70 bg-card shadow-sm p-4">
+          <p className="text-sm font-semibold mb-3">Submission readiness</p>
+          <motion.ul
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
+            }}
+            className="grid sm:grid-cols-2 gap-1"
+          >
+            <ReadinessCheck ok={report.claimReadiness.documentsComplete} label="Documents complete" />
+            <ReadinessCheck ok={report.claimReadiness.photosClear} label="Photos clear" />
+            <ReadinessCheck
+              ok={report.claimReadiness.informationConsistent}
+              label="Information consistent"
+            />
+            <ReadinessCheck ok={report.claimReadiness.noMajorIssues} label="No major issues" />
+          </motion.ul>
+        </div>
+      </ChatAssistantRow>
+
+      {(report.vehicle || report.identity || report.policyDoc || report.medical) && (
+        <ChatAssistantRow delay={0.1}>
+          <div className="rounded-2xl rounded-tl-md border border-border/70 bg-card shadow-sm p-4 space-y-3 w-full">
+            <p className="text-sm font-semibold">Evidence analysis</p>
+            {report.vehicle ? <VehicleSection vehicle={report.vehicle} /> : null}
+            {report.identity ? <IdentitySection identity={report.identity} /> : null}
+            {report.policyDoc ? <PolicyDocSection policyDoc={report.policyDoc} /> : null}
+            {report.medical ? <MedicalSection medical={report.medical} /> : null}
+          </div>
+        </ChatAssistantRow>
+      )}
+
+      {report.consistency.level !== "high" || report.suspiciousFlags.length > 0 ? (
+        <ChatAssistantRow delay={0.14}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={quickTransition}
+            className="rounded-2xl rounded-tl-md border border-warning/30 bg-warning/[0.06] shadow-sm p-4 space-y-2 w-full"
+          >
+            <div className="flex items-center gap-2 text-warning">
+              <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden />
+              <p className="text-sm font-semibold">Items to review</p>
+            </div>
+            {report.consistency.level !== "high" ? (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                <strong className="text-foreground">Consistency:</strong> {report.consistency.reason}
+              </p>
+            ) : null}
+            {report.suspiciousFlags.length > 0 ? (
+              <motion.ul
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
+                }}
+                className="text-sm text-muted-foreground space-y-1"
+              >
+                {report.suspiciousFlags.map((flag) => (
+                  <motion.li key={flag} variants={fadeUpItem} className="flex gap-2">
+                    <span className="text-warning mt-1.5 w-1 h-1 rounded-full bg-warning shrink-0" />
+                    {flag}
+                  </motion.li>
+                ))}
+              </motion.ul>
+            ) : null}
+          </motion.div>
+        </ChatAssistantRow>
+      ) : null}
+
+      <ChatAssistantRow delay={0.18}>
+        <div className="rounded-2xl rounded-tl-md border border-border/70 bg-card shadow-sm overflow-hidden w-full">
+          <div className="px-4 py-3.5 border-b border-border/50 bg-gradient-to-r from-primary/[0.05] to-transparent">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Executive summary
+            </p>
+            <p className="text-sm font-semibold text-primary mt-1">
+              {insurerRecommendationLabel(report.insurerRecommendation)}
+            </p>
+          </div>
+          <div className="px-4 py-3.5 space-y-2">
+            <p className="text-sm leading-relaxed text-foreground/90">{report.executiveSummary}</p>
+            <p className="text-sm text-muted-foreground">{recommendationHint}</p>
+          </div>
+        </div>
+      </ChatAssistantRow>
+    </div>
+  );
+}
+
+export function ClaimIntelligenceSubmitCard({
+  report,
+  submitting,
+  canSubmit,
+  onSubmit,
+}: {
+  report: ClaimIntelligenceReport;
+  submitting: boolean;
+  canSubmit: boolean;
+  onSubmit: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...quickTransition, delay: 0.06 }}
+      className="p-4 space-y-3"
+    >
+      <div className="flex items-start gap-3 rounded-xl bg-muted/30 px-3.5 py-3">
+        <HeartPulse className="w-5 h-5 text-primary shrink-0 mt-0.5" aria-hidden />
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Your intelligence report (
+          <AnimatedNumber value={report.claimReadiness.score} className="tabular-nums font-medium" />
+          % ready) will be attached when you submit. You can still file without it, but including
+          it helps your insurer review faster.
+        </p>
+      </div>
+      <motion.button
+        type="button"
+        onClick={onSubmit}
+        disabled={!canSubmit || submitting}
+        whileHover={canSubmit && !submitting ? { scale: 1.01 } : undefined}
+        whileTap={canSubmit && !submitting ? { scale: 0.99 } : undefined}
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-foreground text-background font-semibold text-[15px] disabled:opacity-50"
+      >
+        {submitting ? "Sending to your insurer…" : "Submit claim for review"}
+      </motion.button>
+    </motion.div>
+  );
+}
+
+export function ClaimIntelligenceReportCard({
+  report,
+  compact = false,
+}: {
+  report: ClaimIntelligenceReport;
+  compact?: boolean;
+}) {
+  const readinessCopy = claimReadinessSeekerCopy(report.claimReadiness.score);
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={quickTransition}
+      className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-card p-5 space-y-4 shadow-lg shadow-primary/[0.04]"
+      aria-label="AI Claims Intelligence Report"
+    >
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[length:200%_200%] bg-gradient-to-r from-primary/[0.04] via-transparent to-primary/[0.06] opacity-60"
+        {...sectionGradientShift}
+      />
+      <div className="relative flex flex-wrap items-start gap-4">
+        <ReadinessRing score={report.claimReadiness.score} size={80} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+              AI Claims Intelligence
+            </span>
+          </div>
+          <h3 className="font-bold text-lg tracking-tight mt-1">{readinessCopy.headline}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{readinessCopy.subtitle}</p>
+        </div>
+      </div>
+
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+        }}
+        className="relative flex flex-wrap gap-2"
+      >
+        {report.vehicle ? (
+          <MetricTile
+            label="Damage severity"
+            value={damageSeverityLabel(report.vehicle.severity)}
+            icon={Car}
+            index={0}
+          />
+        ) : null}
+        <MetricTile
+          label="Consistency"
+          value={consistencyCheckLabel(report.consistency.level)}
+          icon={ShieldCheck}
+          index={report.vehicle ? 1 : 0}
+        />
+        <MetricTile
+          label="Documents"
+          value={documentVerificationLabel(report)}
+          icon={FileBadge}
+          index={report.vehicle ? 2 : 1}
+        />
+      </motion.div>
+
+      <motion.ul
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
+        }}
+        className="relative grid sm:grid-cols-2 gap-1"
+      >
+        <ReadinessCheck ok={report.claimReadiness.documentsComplete} label="Documents complete" />
+        <ReadinessCheck ok={report.claimReadiness.photosClear} label="Photos clear" />
+        <ReadinessCheck
+          ok={report.claimReadiness.informationConsistent}
+          label="Information consistent"
+        />
+        <ReadinessCheck ok={report.claimReadiness.noMajorIssues} label="No major issues" />
+      </motion.ul>
+
+      {!compact ? (
+        <div className="relative space-y-3">
+          {report.vehicle ? <VehicleSection vehicle={report.vehicle} /> : null}
+          {report.identity ? <IdentitySection identity={report.identity} /> : null}
+          {report.policyDoc ? <PolicyDocSection policyDoc={report.policyDoc} /> : null}
+          {report.medical ? <MedicalSection medical={report.medical} /> : null}
+        </div>
+      ) : null}
+
+      <div className="relative rounded-xl border border-border/70 bg-background/60 p-4">
+        <p className="text-sm leading-relaxed">{report.executiveSummary}</p>
+        <p className="text-sm font-semibold text-primary mt-2">
+          {insurerRecommendationLabel(report.insurerRecommendation)}
+        </p>
+      </div>
+
+      <p className="relative text-xs text-muted-foreground">{CLAIM_INTELLIGENCE_DISCLAIMER}</p>
+    </motion.section>
+  );
+}
+
+export function ClaimIntelligenceInsurerSummary({
+  report,
+  mlRisk,
+  expandedMl,
+  onToggleMlExpand,
+  expandedEvidence = false,
+  onToggleEvidence,
+}: {
+  report: ClaimIntelligenceReport;
+  mlRisk?: ClaimMlRisk;
+  expandedMl?: boolean;
+  onToggleMlExpand?: () => void;
+  expandedEvidence?: boolean;
+  onToggleEvidence?: () => void;
+}) {
+  const costRange = report.vehicle
+    ? `${formatPkr(report.vehicle.estimatedCostMinPkr)} – ${formatPkr(report.vehicle.estimatedCostMaxPkr)}`
+    : null;
+
+  const docVerification = documentVerificationLabel(report);
+  const consistencyLabel = consistencyCheckLabel(report.consistency.level);
+  const hasEvidenceSections = Boolean(
+    report.vehicle || report.identity || report.policyDoc || report.medical
+  );
+  const showEvidenceToggle = hasEvidenceSections && mlRisk && expandedMl !== undefined;
+
+  let metricIndex = 0;
+
+  return (
+    <div className="space-y-3">
+      <motion.section
+        layout
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={quickTransition}
+        className="relative overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-br from-primary/8 via-card to-card p-4 space-y-4 shadow-sm"
+        aria-label="AI Claims Intelligence Report"
+      >
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[length:200%_200%] bg-gradient-to-r from-primary/[0.05] via-transparent to-primary/[0.07] opacity-60"
+          {...sectionGradientShift}
+        />
+
+        <div className="relative flex flex-wrap items-start gap-4">
+          <ReadinessRing score={report.claimReadiness.score} size={64} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <motion.span
+                animate={{ rotate: [0, 8, -8, 0] }}
+                transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 4, ease: "easeInOut" }}
+              >
+                <Sparkles className="w-5 h-5 text-primary" aria-hidden />
+              </motion.span>
+              <h3 className="font-semibold text-lg">AI Claims Intelligence Report</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              {insurerRecommendationLabel(report.insurerRecommendation)}
+            </p>
+          </div>
+        </div>
+
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.08 } },
+          }}
+          className="relative grid grid-cols-2 lg:grid-cols-3 gap-2"
+        >
+          {mlRisk ? (
+            <MetricTile
+              label="Risk score"
+              value={`${mlRisk.score}/100`}
+              index={metricIndex++}
+            />
+          ) : null}
+          {report.vehicle ? (
+            <MetricTile
+              label="Damage severity"
+              value={damageSeverityLabel(report.vehicle.severity)}
+              index={metricIndex++}
+            />
+          ) : null}
+          {costRange ? (
+            <MetricTile label="Estimated cost" value={costRange} index={metricIndex++} />
+          ) : null}
+          <MetricTile
+            label="Claim readiness"
+            value={`${report.claimReadiness.score}%`}
+            tone={report.claimReadiness.score >= 85 ? "success" : "default"}
+            index={metricIndex++}
+          />
+          <MetricTile label="Consistency check" value={consistencyLabel} index={metricIndex++} />
+          <MetricTile label="Document verification" value={docVerification} index={metricIndex++} />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...quickTransition, delay: 0.16 }}
+          className="relative rounded-lg border border-border bg-muted/20 p-3"
+        >
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Recommendation</p>
+          <p className="text-sm font-semibold text-primary">
+            {insurerRecommendationLabel(report.insurerRecommendation)}
+          </p>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+            {report.executiveSummary}
+          </p>
+        </motion.div>
+
+        {showEvidenceToggle && onToggleEvidence ? (
+          <>
+            <motion.button
+              type="button"
+              onClick={onToggleEvidence}
+              whileHover={{ x: 2 }}
+              transition={quickTransition}
+              className="relative inline-flex items-center gap-1 text-sm text-primary hover:underline font-medium"
+              aria-expanded={expandedEvidence}
+            >
+              {expandedEvidence ? "Hide evidence analysis" : "Evidence analysis details"}
+              <motion.span
+                animate={{ rotate: expandedEvidence ? 180 : 0 }}
+                transition={quickTransition}
+                className="inline-flex"
+              >
+                <ChevronDown className="w-4 h-4" aria-hidden />
+              </motion.span>
+            </motion.button>
+            <AnimatePresence initial={false}>
+              {expandedEvidence ? (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={quickTransition}
+                  className="relative overflow-hidden space-y-3"
+                >
+                  {report.vehicle ? <VehicleSection vehicle={report.vehicle} /> : null}
+                  {report.identity ? <IdentitySection identity={report.identity} /> : null}
+                  {report.policyDoc ? <PolicyDocSection policyDoc={report.policyDoc} /> : null}
+                  {report.medical ? <MedicalSection medical={report.medical} /> : null}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </>
+        ) : null}
+      </motion.section>
+
+      {mlRisk && onToggleMlExpand !== undefined ? (
+        <ClaimRiskInsightCard
+          mlRisk={mlRisk}
+          expanded={expandedMl ?? false}
+          onToggleExpand={onToggleMlExpand}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+export function ClaimIntelligenceHistoryBadge({
+  report,
+  expanded,
+  onToggle,
+}: {
+  report: ClaimIntelligenceReport;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const readinessCopy = claimReadinessSeekerCopy(report.claimReadiness.score);
+
+  return (
+    <div className="mt-4 border-t border-border pt-4">
+      <motion.button
+        type="button"
+        onClick={onToggle}
+        whileHover={{ x: 2 }}
+        transition={quickTransition}
+        className="w-full flex items-center justify-between gap-3 rounded-xl border border-primary/15 bg-primary/[0.04] px-3.5 py-3 text-left hover:bg-primary/[0.07] transition-colors"
+        aria-expanded={expanded}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <ReadinessRing score={report.claimReadiness.score} size={44} />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">AI Intelligence Report</p>
+            <p className="text-xs text-muted-foreground truncate">{readinessCopy.headline}</p>
+          </div>
+        </div>
+        <motion.span
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={quickTransition}
+          className="inline-flex shrink-0"
+        >
+          <ChevronDown className="w-4 h-4 text-primary" aria-hidden />
+        </motion.span>
+      </motion.button>
+      <AnimatePresence initial={false}>
+        {expanded ? (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={quickTransition}
+            className="overflow-hidden"
+          >
+            <div className="mt-3">
+              <ClaimIntelligenceReportCard report={report} compact />
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export { humanizeClaimRiskFactor };

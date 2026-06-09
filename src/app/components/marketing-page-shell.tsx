@@ -12,13 +12,13 @@ export function MarketingPageShell({
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-background text-foreground px-6 py-10">
+    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8 sm:py-10 overflow-x-hidden">
       <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-3 min-w-0">
           <ClearCleverLogo />
-          <DarkModeToggle className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-none transition-colors hover:border-primary/30 hover:bg-accent" />
+          <DarkModeToggle className="relative flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-none transition-colors hover:border-primary/30 hover:bg-accent" />
         </div>
-        <h1 className="text-4xl font-bold">{title}</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold break-words">{title}</h1>
         {children}
         <Link
           to="/"

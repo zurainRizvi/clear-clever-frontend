@@ -7,6 +7,7 @@ import {
   BrainCircuit,
   CheckCircle2,
   Lock,
+  Menu,
   Play,
   Shield,
   ShieldCheck,
@@ -14,6 +15,7 @@ import {
   Star,
   Target,
   Users,
+  X,
 } from "lucide-react";
 import { DarkModeToggle } from "./dark-mode-toggle";
 import {
@@ -423,6 +425,7 @@ function PartnerLogoMarquee() {
 
 export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void }) {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navLinks = useMemo(
     () =>
       NAV_LINKS.map((item) => ({
@@ -450,23 +453,24 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
     if (!el) return;
     const y = el.getBoundingClientRect().top + window.scrollY - NAVBAR_HEIGHT_PX - 8;
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+    setMobileNavOpen(false);
   };
 
   return (
-    <div className="font-[Inter,sans-serif] bg-background text-foreground pt-[88px]">
+    <div className="font-[Inter,sans-serif] bg-background text-foreground pt-[72px] sm:pt-[88px]">
       {/* Navbar */}
       <header
-        className={`fixed inset-x-0 top-0 z-50 h-[88px] border-b backdrop-blur transition-all ${
+        className={`fixed inset-x-0 top-0 z-50 min-h-[72px] sm:h-[88px] border-b backdrop-blur transition-all ${
           scrolled
             ? "border-border bg-background/90 shadow-md"
             : "border-border bg-background/95 shadow-none"
         }`}
       >
-        <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between px-5 md:px-10 xl:px-20">
-          <motion.div {...buttonPress} className="shrink-0">
-          <Link to="/" className="flex items-center gap-2.5">
-            <ShieldCheck className="h-8 w-8 text-[#2563EB]" strokeWidth={2.25} />
-            <span className="text-xl font-bold text-[#2563EB]">ClearClever</span>
+        <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-5 md:px-10 xl:px-20 py-3 sm:py-0">
+          <motion.div {...buttonPress} className="shrink-0 min-w-0">
+          <Link to="/" className="flex items-center gap-2 sm:gap-2.5">
+            <ShieldCheck className="h-7 w-7 sm:h-8 sm:w-8 text-[#2563EB]" strokeWidth={2.25} />
+            <span className="text-lg sm:text-xl font-bold text-[#2563EB] truncate">ClearClever</span>
           </Link>
           </motion.div>
 
@@ -489,8 +493,8 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             })}
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <DarkModeToggle className="relative flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-none transition-colors hover:border-primary/30 hover:bg-accent" />
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <DarkModeToggle className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-none transition-colors hover:border-primary/30 hover:bg-accent" />
             <Link
               to="/signin"
               className="hidden px-4 py-2 text-[15px] font-medium text-foreground transition-colors hover:text-[#2563EB] sm:inline-block"
@@ -499,12 +503,55 @@ export function LandingHeroSection({ onWatchDemo }: { onWatchDemo: () => void })
             </Link>
             <Link
               to="/signup"
-              className="rounded-[14px] bg-[#2563EB] px-5 py-2.5 text-[15px] font-semibold text-white transition-transform hover:scale-[1.02] hover:shadow-lg hover:shadow-[#2563EB]/25"
+              className="rounded-[14px] bg-[#2563EB] px-3.5 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-[15px] font-semibold text-white transition-transform hover:scale-[1.02] hover:shadow-lg hover:shadow-[#2563EB]/25 whitespace-nowrap"
             >
               Get Started
             </Link>
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((open) => !open)}
+              className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card"
+              aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+            >
+              {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        <AnimatePresence>
+          {mobileNavOpen ? (
+            <motion.nav
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={quickTransition}
+              className="overflow-hidden border-t border-border bg-background/95 lg:hidden"
+            >
+              <div className="flex flex-col gap-1 px-4 py-3">
+                {navLinks.map(({ item, href }) => (
+                  <a
+                    key={item}
+                    href={href}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      scrollToHash(href);
+                    }}
+                    className="rounded-xl px-4 py-3 text-[15px] font-medium text-muted-foreground hover:bg-accent hover:text-primary"
+                  >
+                    {item}
+                  </a>
+                ))}
+                <Link
+                  to="/signin"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="rounded-xl px-4 py-3 text-[15px] font-medium text-foreground hover:bg-accent sm:hidden"
+                >
+                  Sign In
+                </Link>
+              </div>
+            </motion.nav>
+          ) : null}
+        </AnimatePresence>
       </header>
 
       {/* Hero */}

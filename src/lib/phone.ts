@@ -13,6 +13,14 @@ export function isValidPkPhone(raw: string): boolean {
   return PK_PHONE_REGEX.test(normalizePkPhone(raw));
 }
 
+/** Display stored +92 numbers as local 03… format for forms. */
+export function toLocalPkPhoneDisplay(normalized: string): string {
+  if (normalized.startsWith("+92") && normalized.length === 13) {
+    return `0${normalized.slice(3)}`;
+  }
+  return normalized;
+}
+
 export function formatPkPhoneInput(raw: string): string {
   return normalizePkPhone(raw);
 }

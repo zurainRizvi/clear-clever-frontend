@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Building2, Loader2, MessageSquare, Send, User } from "lucide-react";
+import { ArrowLeft, Building2, Loader2, MessageSquare, Send, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { useMessagesOptional } from "./messages-context";
@@ -15,6 +15,7 @@ import {
 import { subtitleForConversation, titleForConversation } from "@/lib/messaging-display";
 import { isConversationUnread } from "@/lib/messaging-unread";
 import { ChatShell } from "./chat-shell";
+import { useIsMobile } from "../ui/use-mobile";
 
 type AdminMessageTab = "seekers" | "insurers";
 
@@ -134,18 +135,23 @@ export function AdminMessagesPage() {
     return participant?.fullName ?? (senderUserId === user?.id ? "You" : "User");
   };
 
+  const isMobile = useIsMobile();
+  const mobileShowThread = isMobile && Boolean(activeConversationId);
+  const showListPanel = !isMobile || !mobileShowThread;
+  const showThreadPanel = !isMobile || mobileShowThread;
+
   return (
-    <div className="flex flex-col flex-1 min-h-0 -m-6 p-6 space-y-4">
+    <div className="flex flex-col flex-1 min-h-0 -m-4 sm:-m-6 p-4 sm:p-6 space-y-4">
       <div className="shrink-0">
-        <h1 className="text-3xl font-bold mb-1">Messages</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-1">Messages</h1>
         <p className="text-muted-foreground">Platform conversations with policy seekers and insurers</p>
       </div>
 
-      <div className="flex gap-2 shrink-0">
+      <div className="flex flex-wrap gap-2 shrink-0">
         <button
           type="button"
           onClick={() => setTab("seekers")}
-          className={`px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 ${
+          className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 ${
             tab === "seekers" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           }`}
         >
@@ -155,7 +161,7 @@ export function AdminMessagesPage() {
         <button
           type="button"
           onClick={() => setTab("insurers")}
-          className={`px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 ${
+          className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 ${
             tab === "insurers" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           }`}
         >
@@ -165,8 +171,16 @@ export function AdminMessagesPage() {
       </div>
 
       <ChatShell>
-      <div className="grid lg:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0">
-        <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col min-h-0">
+      <div
+        className={`flex-1 min-h-0 gap-4 ${
+          isMobile ? "flex flex-col" : "grid lg:grid-cols-[320px_1fr]"
+        }`}
+      >
+        <div
+          className={`bg-card border border-border rounded-xl overflow-hidden flex flex-col min-h-0 ${
+            showListPanel ? "flex" : "hidden"
+          } ${isMobile && showListPanel ? "flex-1" : ""}`}
+        >
           <div className="p-4 border-b border-border font-medium">
             {tab === "seekers" ? "Policy seekers" : "Insurers"}
           </div>
@@ -225,17 +239,33 @@ export function AdminMessagesPage() {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl flex flex-col min-h-0 overflow-hidden">
+        <div
+          className={`bg-card border border-border rounded-xl flex flex-col min-h-0 overflow-hidden ${
+            showThreadPanel ? "flex" : "hidden"
+          } ${isMobile && showThreadPanel ? "flex-1" : ""}`}
+        >
           {activeConversation ? (
             <>
               <div className="p-4 border-b border-border flex items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="flex items-start gap-2 min-w-0 flex-1">
+                  {isMobile ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveConversationId(null)}
+                      className="p-2 -ml-1 rounded-xl hover:bg-accent shrink-0"
+                      aria-label="Back to conversations"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                  ) : null}
+                <div className="min-w-0 flex-1">
                   <h2 className="text-lg font-semibold truncate">
                     {titleForConversation(activeConversation, user?.id, user?.role)}
                   </h2>
                   <p className="text-sm text-muted-foreground truncate">
                     {subtitleForConversation(activeConversation, user?.id)}
                   </p>
+                </div>
                 </div>
                 <ConversationActionsMenu
                   conversation={activeConversation}

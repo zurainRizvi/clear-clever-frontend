@@ -25,7 +25,14 @@ import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { formatPkr, formatPkrYearly } from "@/lib/format";
 import { assignRecommendationBadges, badgeLabel } from "@/lib/recommendations";
-import type { CategoryItem, PolicyQuestion, ScoredRecommendation } from "@/lib/types";
+import { hybridScoreLabel } from "@/lib/hybrid-recommendation";
+import {
+  HybridRankingBadge,
+  HybridRankingSummary,
+  HybridScoreBreakdown,
+} from "./hybrid-ranking-ui";
+import { cardLiftHover, fadeUpItem, fadeUpStagger, staggerDelay } from "@/lib/motion-presets";
+import type { CategoryItem, PolicyQuestion, RankingMethod, ScoredRecommendation } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
 import { InsurerLogo } from "./insurer-logo";
 import { useAssistantWidget } from "../assistant/assistant-widget-context";
@@ -84,6 +91,7 @@ export function ComparePolicies() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [recommendations, setRecommendations] = useState<ScoredRecommendation[]>([]);
+  const [rankingMethod, setRankingMethod] = useState<RankingMethod | undefined>();
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [loadingResults, setLoadingResults] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -147,8 +155,8 @@ export function ComparePolicies() {
   }, [step, selectedCategory, answers, recommendations, currentQuestion]);
 
   const badgeMap = useMemo(
-    () => assignRecommendationBadges(recommendations),
-    [recommendations]
+    () => assignRecommendationBadges(recommendations, rankingMethod),
+    [recommendations, rankingMethod]
   );
   const crossCategorySuggestions = useMemo(
     () => buildCrossCategorySuggestions(answers, selectedCategory?.slug),
@@ -204,6 +212,7 @@ export function ComparePolicies() {
       setAnswers(presetAnswers ?? {});
       setCurrentQuestion(0);
       setRecommendations([]);
+      setRankingMethod(undefined);
       setStep("questionnaire");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
@@ -272,6 +281,7 @@ export function ComparePolicies() {
       });
       const recs = data.recommendations ?? [];
       setRecommendations(recs);
+      setRankingMethod(data.rankingMethod ?? recs[0]?.rankingMethod);
       if (isAuthenticated && recs.length > 0) {
         void trackComparePolicies(recs.map((rec) => rec.policy.id)).catch(() => {
           /* compare tracking is best-effort */
@@ -317,6 +327,7 @@ export function ComparePolicies() {
     setAnswers({});
     setCurrentQuestion(0);
     setRecommendations([]);
+    setRankingMethod(undefined);
   };
 
   const openInquiryDrawer = (
@@ -517,39 +528,59 @@ export function ComparePolicies() {
               </div>
             )}
 
+            <HybridRankingSummary
+              rankingMethod={rankingMethod}
+              recommendations={recommendations}
+            />
+
             {recommendations.length === 0 ? (
               <div className="text-center py-16 bg-card border border-border rounded-xl">
                 <p className="text-muted-foreground">{copy.compare.emptyRecommendations}</p>
               </div>
             ) : (
-              <div className="space-y-5">
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={fadeUpStagger}
+                className="space-y-5"
+              >
                 {recommendations.map((rec, index) => {
                   const badges = badgeMap.get(rec.policy.id) ?? [];
                   const isTop = index === 0;
                   return (
                     <motion.article
                       key={rec.policy.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.06 }}
+                      variants={fadeUpItem}
+                      transition={{ delay: staggerDelay(index, false, 0.06) }}
+                      {...cardLiftHover}
                       className={`relative bg-card border rounded-xl p-6 transition-shadow hover:shadow-md ${
-                        isTop ? "border-primary/50" : "border-border"
+                        isTop ? "border-primary/50 shadow-sm" : "border-border"
                       }`}
                     >
                       <div className="flex flex-wrap gap-2 mb-4">
-                        {badges.map((b) => (
-                          <span
-                            key={b}
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary"
-                          >
-                            {b === "aiRecommended" && <Sparkles className="w-3 h-3" />}
-                            {badgeLabel(b)}
-                          </span>
-                        ))}
+                        {badges.map((b) =>
+                          b === "aiRecommended" ? (
+                            <HybridRankingBadge key={b} />
+                          ) : (
+                            <span
+                              key={b}
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary"
+                            >
+                              {badgeLabel(b)}
+                            </span>
+                          )
+                        )}
                         <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                          Recommended score: {Math.round(rec.score)}
+                          {hybridScoreLabel(rec)}
                         </span>
+                        {typeof rec.mlRank === "number" && (
+                          <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            Rank #{rec.mlRank}
+                          </span>
+                        )}
                       </div>
+
+                      <HybridScoreBreakdown rec={rec} />
 
                       <div className="flex flex-col lg:flex-row gap-6">
                         <div className="flex-1">
@@ -660,7 +691,7 @@ export function ComparePolicies() {
                     </motion.article>
                   );
                 })}
-              </div>
+              </motion.div>
             )}
           </motion.div>
         )}

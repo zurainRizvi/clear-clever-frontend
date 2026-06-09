@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { Building2, MessageSquare, Paperclip, Send, Shield, User } from "lucide-react";
+import { ArrowLeft, Building2, MessageSquare, Paperclip, Send, Shield, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { useProviderOptional } from "./provider-context";
@@ -22,6 +22,7 @@ import { titleForConversation } from "@/lib/messaging-display";
 import { ConversationActionsMenu } from "./conversation-actions-menu";
 import { SupportChatCta } from "./support-chat-cta";
 import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
+import { useIsMobile } from "../ui/use-mobile";
 
 const SUPPORT_WELCOME_MESSAGE = "Hi ClearClever support, I need help with a query.";
 
@@ -322,6 +323,13 @@ export function MessagesPanel({
     (tabMode === "provider" && providerTab === "support") ||
     (tabMode === "seeker" && seekerTab === "support");
 
+  const isMobile = useIsMobile();
+  const mobileShowThread =
+    isMobile &&
+    (Boolean(activeConversationId) || (onSupportTab && !existingSupportConversation));
+  const showListPanel = !isMobile || !mobileShowThread;
+  const showThreadPanel = !isMobile || mobileShowThread;
+
   const panel = (
     <ChatShell>
       {tabMode === "provider" ? (
@@ -349,11 +357,19 @@ export function MessagesPanel({
         />
       ) : null}
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0">
-        <div className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col min-h-0">
-          <div className="p-5 border-b border-border flex items-center justify-between shrink-0">
-            <div>
-              <h2 className="text-xl font-semibold">Messages</h2>
+      <div
+        className={`flex-1 min-h-0 gap-4 ${
+          isMobile ? "flex flex-col" : "grid lg:grid-cols-[320px_1fr]"
+        }`}
+      >
+        <div
+          className={`bg-card border border-border rounded-2xl overflow-hidden flex flex-col min-h-0 ${
+            showListPanel ? "flex" : "hidden"
+          } ${isMobile && showListPanel ? "flex-1" : ""}`}
+        >
+          <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between shrink-0">
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-semibold">Messages</h2>
               <p className="text-sm text-muted-foreground">
                 {tabMode === "provider"
                   ? providerTab === "seekers"
@@ -440,17 +456,33 @@ export function MessagesPanel({
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl flex flex-col min-h-0 overflow-hidden">
+        <div
+          className={`bg-card border border-border rounded-2xl flex flex-col min-h-0 overflow-hidden ${
+            showThreadPanel ? "flex" : "hidden"
+          } ${isMobile && showThreadPanel ? "flex-1" : ""}`}
+        >
           {activeConversation ? (
             <>
-              <div className="p-5 border-b border-border flex items-start justify-between gap-3 shrink-0">
-                <div className="min-w-0">
-                  <h2 className="text-xl font-semibold truncate">
+              <div className="p-4 sm:p-5 border-b border-border flex items-start justify-between gap-3 shrink-0">
+                <div className="flex items-start gap-2 min-w-0 flex-1">
+                  {isMobile ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveConversationId(null)}
+                      className="p-2 -ml-1 rounded-xl hover:bg-accent shrink-0"
+                      aria-label="Back to conversations"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                  ) : null}
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg sm:text-xl font-semibold truncate">
                     {titleForConversation(activeConversation, user?.id, user?.role)}
                   </h2>
                   <p className="text-sm text-muted-foreground truncate">
                     {activeConversation.subject ?? typeLabel(activeConversation.type)}
                   </p>
+                </div>
                 </div>
                 <ConversationActionsMenu
                   conversation={activeConversation}
@@ -463,7 +495,7 @@ export function MessagesPanel({
 
               <div
                 ref={messagesScrollRef}
-                className="flex-1 min-h-0 p-5 space-y-3 overflow-y-auto bg-muted/20"
+                className="flex-1 min-h-0 p-4 sm:p-5 space-y-3 overflow-y-auto bg-muted/20"
               >
                 {loadingMessages ? (
                   <div className="text-center text-muted-foreground py-10">Loading messages...</div>
@@ -486,7 +518,7 @@ export function MessagesPanel({
                     return (
                       <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                         <div
-                          className={`max-w-[75%] rounded-2xl px-4 py-3 ${
+                          className={`max-w-[min(75%,100%)] sm:max-w-[75%] rounded-2xl px-4 py-3 ${
                             mine
                               ? "bg-primary text-primary-foreground"
                               : "bg-card border border-border"
@@ -625,7 +657,7 @@ export function MessagesPage() {
   const state = location.state as MessagesLocationState | null;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 -m-6 p-6">
+    <div className="flex flex-col flex-1 min-h-0 -m-4 sm:-m-6 p-4 sm:p-6">
       <MessagesPanel
         tabMode="seeker"
         defaultConversation={state?.defaultConversation}
@@ -641,7 +673,7 @@ export function ProviderMessagesPage() {
   const location = useLocation();
   const state = location.state as MessagesLocationState | null;
   return (
-    <div className="flex flex-col flex-1 min-h-0 -m-6 p-6">
+    <div className="flex flex-col flex-1 min-h-0 -m-4 sm:-m-6 p-4 sm:p-6">
       <MessagesPanel
         tabMode="provider"
         focusConversationId={state?.focusConversationId}

@@ -1,3 +1,4 @@
+import { hybridTopPicks, isHybridRanking } from "./hybrid-recommendation";
 import type { ScoredRecommendation } from "./types";
 import { copy } from "./copy";
 
@@ -8,7 +9,8 @@ export type RecommendationBadge =
   | "bestCoverage";
 
 export function assignRecommendationBadges(
-  recommendations: ScoredRecommendation[]
+  recommendations: ScoredRecommendation[],
+  rankingMethod?: "rules" | "hybrid"
 ): Map<string, RecommendationBadge[]> {
   const badges = new Map<string, RecommendationBadge[]>();
 
@@ -20,8 +22,11 @@ export function assignRecommendationBadges(
     badges.set(policyId, list);
   };
 
-  const sortedByScore = [...recommendations].sort((a, b) => b.score - a.score);
-  add(sortedByScore[0].policy.id, "aiRecommended");
+  const hybrid = isHybridRanking(rankingMethod, recommendations);
+  const aiPicks = hybrid ? hybridTopPicks(recommendations, 3) : [...recommendations].sort((a, b) => b.score - a.score).slice(0, 1);
+  for (const pick of aiPicks) {
+    add(pick.policy.id, "aiRecommended");
+  }
 
   const lowest = [...recommendations].sort(
     (a, b) => a.policy.premiumMonthlyPkr - b.policy.premiumMonthlyPkr

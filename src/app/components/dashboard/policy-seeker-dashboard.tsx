@@ -21,6 +21,8 @@ import {
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { motion } from "motion/react";
 import { PortalScrollNav } from "../ui/portal-scroll-nav";
+import { PortalSidebarBackdrop } from "../ui/portal-sidebar-backdrop";
+import { usePortalSidebar } from "../ui/use-portal-sidebar";
 import { useAuth, useLogout } from "../auth-context";
 import { toast } from "sonner";
 import { MessagesProvider, useMessages } from "./messages-context";
@@ -60,7 +62,8 @@ export function PolicySeekerDashboard() {
 }
 
 function PolicySeekerDashboardInner() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { isNarrow, sidebarOpen, closeSidebar, openSidebar, sidebarMotionWidth } =
+    usePortalSidebar(280);
   const location = useLocation();
   const handleLogout = useLogout();
   const { user, userName, userEmail, refreshUser } = useAuth();
@@ -131,12 +134,15 @@ function PolicySeekerDashboardInner() {
   };
 
   return (
-    <motion.div className="min-h-screen flex bg-background">
+    <motion.div className="min-h-screen flex bg-background overflow-x-hidden">
+        <PortalSidebarBackdrop open={isNarrow && sidebarOpen} onClose={closeSidebar} />
         <motion.aside
           initial={false}
-          animate={{ width: sidebarOpen ? 280 : 0 }}
+          animate={{ width: sidebarMotionWidth }}
           transition={{ duration: 0.3 }}
-          className="sticky top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0"
+          className={`bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden shrink-0 ${
+            isNarrow ? "fixed inset-y-0 left-0 z-50 h-screen shadow-2xl" : "sticky top-0 h-screen"
+          }`}
         >
           <div className="w-[280px] flex flex-col h-full">
             <div className="p-6 border-b border-sidebar-border flex items-center justify-between gap-2">
@@ -149,7 +155,7 @@ function PolicySeekerDashboardInner() {
               {sidebarOpen ? (
                 <button
                   type="button"
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={closeSidebar}
                   className="p-2 hover:bg-sidebar-accent rounded-xl transition-colors shrink-0"
                   aria-label="Close navigation"
                 >
@@ -164,7 +170,12 @@ function PolicySeekerDashboardInner() {
                   const Icon = item.icon;
                   const active = isActive(item.path);
                   return (
-                    <Link key={item.path} to={item.path} className="block">
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className="block"
+                      onClick={() => isNarrow && closeSidebar()}
+                    >
                       <div
                         className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
                           active
@@ -252,13 +263,13 @@ function PolicySeekerDashboardInner() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4 min-w-0">
+              <div className="flex items-center gap-2 sm:gap-4 min-w-0">
                 {!sidebarOpen ? (
                   <button
                     type="button"
-                    onClick={() => setSidebarOpen(true)}
-                    className="p-2 hover:bg-accent rounded-xl transition-colors"
+                    onClick={openSidebar}
+                    className="p-2 hover:bg-accent rounded-xl transition-colors shrink-0"
                     aria-label="Open navigation"
                   >
                     <Menu className="w-5 h-5" />
@@ -267,10 +278,11 @@ function PolicySeekerDashboardInner() {
                 {!isDashboardHome && (
                   <Link
                     to="/dashboard"
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-sm hover:bg-accent transition-colors"
+                    className="inline-flex items-center gap-2 px-2.5 py-2 sm:px-3 rounded-xl border border-border text-sm hover:bg-accent transition-colors min-w-0"
                   >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to dashboard
+                    <ArrowLeft className="w-4 h-4 shrink-0" />
+                    <span className="hidden sm:inline">Back to dashboard</span>
+                    <span className="sm:hidden truncate">Back</span>
                   </Link>
                 )}
               </div>
@@ -315,10 +327,10 @@ function PolicySeekerDashboardInner() {
           />
 
           <main
-            className={`flex-1 p-6 ${
+            className={`flex-1 min-w-0 p-4 sm:p-6 ${
               location.pathname.includes("/messages") || location.pathname.includes("/support")
                 ? "flex flex-col min-h-0 overflow-hidden"
-                : "overflow-y-auto"
+                : "overflow-y-auto overflow-x-hidden"
             }`}
           >
             <Outlet />

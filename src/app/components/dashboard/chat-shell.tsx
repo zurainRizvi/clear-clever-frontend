@@ -10,7 +10,7 @@ export function ChatShell({
 }) {
   return (
     <div
-      className={`flex flex-col flex-1 min-h-0 max-h-[calc(100vh-8rem)] ${className}`}
+      className={`flex flex-col flex-1 min-h-0 max-h-[calc(100dvh-11rem)] sm:max-h-[calc(100vh-8rem)] ${className}`}
     >
       {children}
     </div>

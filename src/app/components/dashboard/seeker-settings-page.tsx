@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useAuth, useLogout } from "../auth-context";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { updateMeProfile } from "@/lib/auth-api";
+import { CnicKycPanel } from "./cnic-kyc-panel";
+import { KycStatusBadge } from "./kyc-verification-ui";
 
 const NOTIFICATIONS_KEY = "clearclever.notificationPrefs";
 
@@ -147,6 +149,26 @@ export function SeekerSettingsPage() {
             <span>{user?.phone ?? "—"}</span>
           </div>
         </div>
+      </section>
+
+      <section className="bg-card border border-border rounded-xl p-6 space-y-4 xl:col-span-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            Identity verification
+          </h2>
+          {user?.kycStatus && user.kycStatus !== "none" ? (
+            <KycStatusBadge status={user.kycStatus} />
+          ) : null}
+        </div>
+        {user?.cnicMasked ? (
+          <p className="text-sm text-muted-foreground font-mono">{user.cnicMasked}</p>
+        ) : null}
+        <CnicKycPanel
+          cnicOnFile={Boolean(user?.hasCnic)}
+          onCnicSaved={() => void refreshUser()}
+          onKycUpdated={() => void refreshUser()}
+        />
       </section>
 
       <section className="bg-card border border-border rounded-xl p-6 space-y-4">

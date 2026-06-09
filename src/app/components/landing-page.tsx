@@ -73,7 +73,7 @@ export function LandingPage() {
       <LandingHeroSection onWatchDemo={scrollToHowItWorks} />
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-6">
+      <section id="features" className="py-14 sm:py-20 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -82,10 +82,10 @@ export function LandingPage() {
             transition={mediumTransition}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               Why Choose ClearClever?
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto">
               We've revolutionized insurance comparison with cutting-edge AI and a seamless user experience
             </p>
           </motion.div>
@@ -116,7 +116,7 @@ export function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-6 bg-card/30">
+      <section id="how-it-works" className="py-14 sm:py-20 px-4 sm:px-6 bg-card/30">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -169,7 +169,7 @@ export function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="py-20 px-6 bg-card/30">
+      <section id="testimonials" className="py-14 sm:py-20 px-4 sm:px-6 bg-card/30">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -221,7 +221,7 @@ export function LandingPage() {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="py-20 px-6">
+      <section id="faq" className="py-14 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -298,7 +298,7 @@ export function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="py-20 px-6 relative overflow-hidden">
+      <section id="contact" className="py-14 sm:py-20 px-4 sm:px-6 relative overflow-hidden">
         <motion.div
           {...sectionGradientShift}
           className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/10 to-primary/10"
@@ -329,9 +329,9 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-border bg-card/30">
+      <footer className="py-10 sm:py-12 px-4 sm:px-6 border-t border-border bg-card/30">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">

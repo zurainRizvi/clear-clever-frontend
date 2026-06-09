@@ -29,6 +29,7 @@ import {
 } from "@/lib/assistant-api";
 import { useAssistantWidget } from "./assistant-widget-context";
 import { AssistantMessageMarkdown } from "./assistant-message-markdown";
+import { AssistantMessageShell } from "./assistant-message-shell";
 import { AssistantThreadSidebar } from "./assistant-thread-sidebar";
 import { getAssistantSuggestions } from "./assistant-suggestions";
 import { getAssistantSessionKey, getAssistantWelcomeMessage } from "./assistant-welcome";
@@ -817,26 +818,16 @@ export function AssistantWidget() {
                   className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5 bg-muted/20"
                 >
                   {messages.length === 0 && (
-                    <div className="flex gap-3 max-w-[92%]">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-primary">
-                        <MessageCircle className="h-5 w-5" />
-                      </div>
-                      <div className="rounded-2xl bg-muted px-4 py-3 min-w-0">
-                        <AssistantMessageMarkdown content={welcomeMessage} />
-                      </div>
-                    </div>
+                    <AssistantMessageShell>
+                      <AssistantMessageMarkdown content={welcomeMessage} />
+                    </AssistantMessageShell>
                   )}
 
                   {messages.map((msg) =>
                     msg.role === "assistant" ? (
-                      <div key={msg.id} className="flex gap-3 max-w-[92%]">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-primary">
-                          <MessageCircle className="h-5 w-5" />
-                        </div>
-                        <div className="rounded-2xl bg-muted px-4 py-3 min-w-0">
-                          <AssistantMessageMarkdown content={msg.content} />
-                        </div>
-                      </div>
+                      <AssistantMessageShell key={msg.id}>
+                        <AssistantMessageMarkdown content={msg.content} />
+                      </AssistantMessageShell>
                     ) : (
                       <div
                         key={msg.id}

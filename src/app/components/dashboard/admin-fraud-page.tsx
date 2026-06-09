@@ -1,43 +1,46 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, ShieldCheck } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import {
   fetchFraudSignals,
   type FraudCategory,
+  type FraudMlSummary,
   type FraudSignal,
 } from "@/lib/admin-api";
+import { motion, useReducedMotion } from "motion/react";
+import { fadeUpItem, quickTransition, staggerDelay } from "@/lib/motion-presets";
+import { AnimatedPage } from "../ui/animated-page";
+import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
+import {
+  FraudCategorySummary,
+  FraudSignalInsightCard,
+  MlDisclaimerBanner,
+} from "./ml-insight-ui";
 
 const TABS: { id: FraudCategory; label: string; description: string }[] = [
   {
     id: "account",
     label: "Account risk",
-    description: "Duplicate emails, unverified providers, deactivation spikes",
+    description: "Sign-ins, duplicate identities, and provider verification",
   },
   {
     id: "claims",
     label: "Claims",
-    description: "Unusual claim frequency and rejection patterns",
+    description: "Unusual filing patterns and rejection trends",
   },
   {
     id: "commerce",
     label: "Commerce",
-    description: "Pending purchases and abnormal lead volume",
+    description: "Checkout activity and lead volume anomalies",
   },
   {
     id: "catalog",
     label: "Provider catalog",
-    description: "Stale policy reviews and high rejection rates",
+    description: "Policy review delays and rejection rates",
   },
 ];
-
-function severityClass(severity: FraudSignal["severity"]) {
-  if (severity === "critical") return "bg-destructive text-destructive-foreground";
-  if (severity === "high") return "bg-warning text-warning-foreground";
-  if (severity === "medium") return "bg-primary/15 text-primary";
-  return "bg-muted text-muted-foreground";
-}
 
 function isFraudCategory(value: string | null): value is FraudCategory {
   return value === "account" || value === "claims" || value === "commerce" || value === "catalog";
@@ -68,11 +71,14 @@ export function AdminFraudPage() {
   const tab: FraudCategory = isFraudCategory(categoryParam) ? categoryParam : "account";
 
   const [signals, setSignals] = useState<FraudSignal[]>([]);
+  const [mlSummary, setMlSummary] = useState<FraudMlSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedMlId, setExpandedMlId] = useState<string | null>(null);
   const scrolledFocusRef = useRef<string | null>(null);
 
   const setTab = (next: FraudCategory) => {
     scrolledFocusRef.current = null;
+    setExpandedMlId(null);
     setSearchParams(
       (prev) => {
         const nextParams = new URLSearchParams(prev);
@@ -102,9 +108,11 @@ export function AdminFraudPage() {
     try {
       const data = await fetchFraudSignals(category);
       setSignals(data.signals);
+      setMlSummary(data.mlSummary ?? null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not load fraud signals");
       setSignals([]);
+      setMlSummary(null);
     } finally {
       setLoading(false);
     }
@@ -142,7 +150,7 @@ export function AdminFraudPage() {
           onClick={() => focusSignal(linkedFocus)}
           className="text-sm text-primary hover:underline shrink-0 font-medium"
         >
-          Highlight →
+          View in list
         </button>
       );
     }
@@ -152,38 +160,43 @@ export function AdminFraudPage() {
         to={alert.link}
         className="text-sm text-primary hover:underline shrink-0 font-medium"
       >
-        Review →
+        Open details
       </Link>
     );
   };
 
+  const pillTabs = TABS.map((item) => ({ id: item.id, label: item.label }));
+  const reducedMotion = useReducedMotion();
+
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-1">Fraud detection</h1>
-        <p className="text-muted-foreground">
-          Live heuristics from your ClearClever database — suspicious patterns by category
+        <h1 className="text-3xl font-bold mb-1">Risk monitoring</h1>
+        <p className="text-muted-foreground max-w-2xl leading-relaxed">
+          ClearClever watches for unusual activity across your platform. Rule-based alerts tell you
+          what changed; AI estimates how likely each pattern is fraudulent so you can prioritize
+          investigations.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setTab(item.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium ${
-              tab === item.id
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-accent"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <AnimatedPillTabs
+        tabs={pillTabs}
+        activeId={tab}
+        onChange={(id) => setTab(id as FraudCategory)}
+        layoutId="admin-fraud-category"
+      />
 
       <p className="text-sm text-muted-foreground">{activeMeta?.description}</p>
+
+      {!loading && mlSummary && signals.length > 0 ? (
+        <FraudCategorySummary
+          summary={mlSummary}
+          signalCount={signals.length}
+          categoryLabel={activeMeta?.label ?? "This category"}
+        />
+      ) : null}
+
+      <MlDisclaimerBanner />
 
       <div className="bg-card border border-border rounded-xl p-6 space-y-4">
         {loading ? (
@@ -191,42 +204,70 @@ export function AdminFraudPage() {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : signals.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-40" />
-            <p>No signals in this category right now.</p>
+          <div className="text-center py-16 text-muted-foreground space-y-3">
+            <ShieldCheck className="w-12 h-12 mx-auto text-success/70" />
+            <div>
+              <p className="font-medium text-foreground">Nothing to review right now</p>
+              <p className="text-sm mt-1 max-w-md mx-auto">
+                No alerts in {activeMeta?.label?.toLowerCase() ?? "this category"}. We will surface
+                new signals here when activity looks unusual.
+              </p>
+            </div>
           </div>
         ) : (
-          signals.map((alert) => {
+          signals.map((alert, idx) => {
             const isFocused = focusId === alert.id;
             return (
-              <div
+              <motion.article
                 key={alert.id}
                 id={`fraud-signal-${alert.id}`}
-                className={`flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-accent/30 rounded-xl border-l-4 border-warning transition-shadow ${
-                  isFocused ? "ring-2 ring-primary shadow-md" : ""
+                variants={fadeUpItem}
+                initial="hidden"
+                animate="visible"
+                transition={{ ...quickTransition, delay: staggerDelay(idx, !!reducedMotion, 0.05) }}
+                layout
+                className={`rounded-xl border border-border bg-accent/20 p-5 space-y-4 ${
+                  isFocused ? "ring-2 ring-primary shadow-md border-primary/30" : ""
                 }`}
               >
-                <div className="flex-1">
-                  <div className="font-semibold mb-1 flex flex-wrap items-center gap-2">
-                    {alert.type}
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs capitalize ${severityClass(alert.severity)}`}
-                    >
-                      {alert.severity}
-                    </span>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <h2 className="font-semibold text-base leading-snug">{alert.type}</h2>
+                    <p className="text-sm font-medium">{alert.subject}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{alert.detail}</p>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Detected {new Date(alert.detectedAt).toLocaleString()}
+                    </p>
                   </div>
-                  <div className="text-sm font-medium">{alert.subject}</div>
-                  <div className="text-sm text-muted-foreground mt-1">{alert.detail}</div>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    {new Date(alert.detectedAt).toLocaleString()}
-                  </div>
+                  {renderReviewAction(alert)}
                 </div>
-                {renderReviewAction(alert)}
-              </div>
+
+                <div className="border-t border-border/60 pt-4">
+                  <FraudSignalInsightCard
+                    signal={alert}
+                    expanded={expandedMlId === alert.id}
+                    onToggleExpand={() =>
+                      setExpandedMlId((prev) => (prev === alert.id ? null : alert.id))
+                    }
+                  />
+                </div>
+              </motion.article>
             );
           })
         )}
       </div>
-    </div>
+
+      {!loading && signals.length > 0 ? (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ ...quickTransition, delay: 0.2 }}
+          className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1.5"
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden />
+          Rule alerts and AI scores work together — investigate before taking action on any account.
+        </motion.p>
+      ) : null}
+    </AnimatedPage>
   );
 }
