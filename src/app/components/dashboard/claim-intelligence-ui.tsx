@@ -27,17 +27,87 @@ import {
 } from "@/lib/motion-presets";
 import {
   CLAIM_INTELLIGENCE_DISCLAIMER,
+  claimReadinessCheckItems,
   claimReadinessSeekerCopy,
+  consistencyCardStatus,
   consistencyCheckLabel,
   damageSeverityLabel,
   documentVerificationLabel,
   humanizeClaimRiskFactor,
   insurerRecommendationLabel,
   insurerRecommendationSeekerHint,
+  isMeaningfulReportValue,
+  medicalComplexityLabel,
 } from "@/lib/ml-insights";
 import { cn } from "../ui/utils";
 import { ClaimRichCardRow, type ClaimRichCardData } from "./claim-chat-ui";
 import { AnimatedNumber, ClaimRiskInsightCard } from "./ml-insight-ui";
+
+function approvalImprovementsFor(report: ClaimIntelligenceReport): string[] {
+  if (report.approvalImprovements?.length) {
+    return report.approvalImprovements;
+  }
+  return report.submissionChecklist?.missingItems ?? [];
+}
+
+function applicationLooksComplete(report: ClaimIntelligenceReport): boolean {
+  return report.submissionChecklist?.readyToSubmit !== false;
+}
+
+function ClaimIncompleteApplicationNotice({
+  report,
+  audience,
+}: {
+  report: ClaimIntelligenceReport;
+  audience: "seeker" | "insurer";
+}) {
+  const improvements = approvalImprovementsFor(report);
+  if (applicationLooksComplete(report) || improvements.length === 0) {
+    return null;
+  }
+
+  const seekerTitle = "Incomplete application — you can still submit";
+  const insurerTitle = "Incomplete application — personal review recommended";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={quickTransition}
+      className="rounded-2xl border border-warning/30 bg-warning/[0.06] p-4 w-full space-y-3"
+    >
+      <div className="flex items-start gap-2 text-warning">
+        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-semibold">
+            {audience === "seeker" ? seekerTitle : insurerTitle}
+          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {audience === "seeker"
+              ? "Your claim may be rejected or sent back for more information. Follow these steps to raise approval confidence toward 100%."
+              : "The policyholder submitted with gaps in identity or documentation. Review these items personally before approving."}
+          </p>
+        </div>
+      </div>
+      <ul className="text-sm text-muted-foreground space-y-1.5 list-disc pl-5">
+        {improvements.map((item) => (
+          <li key={item} className="leading-relaxed">
+            {item}
+          </li>
+        ))}
+      </ul>
+      {report.submissionChecklist?.missingItems.length ? (
+        <p className="text-xs text-muted-foreground border-t border-warning/20 pt-2">
+          {audience === "insurer"
+            ? `Readiness score: ${report.claimReadiness.score}% · ${report.submissionChecklist.missingItems.length} gap${
+                report.submissionChecklist.missingItems.length === 1 ? "" : "s"
+              } flagged`
+            : `Current readiness: ${report.claimReadiness.score}% — completing the steps above is the fastest path to 100%.`}
+        </p>
+      ) : null}
+    </motion.div>
+  );
+}
 
 function ReadinessRing({ score, size = 72 }: { score: number; size?: number }) {
   const reducedMotion = useReducedMotion();
@@ -96,19 +166,58 @@ function ReadinessRing({ score, size = 72 }: { score: number; size?: number }) {
   );
 }
 
-function ReadinessCheck({ ok, label }: { ok: boolean; label: string }) {
+function ReadinessCheck({
+  ok,
+  passLabel,
+  failLabel,
+}: {
+  ok: boolean;
+  passLabel: string;
+  failLabel: string;
+}) {
+  const label = ok ? passLabel : failLabel;
+
   return (
     <motion.li
       variants={fadeUpItem}
-      className="flex items-center gap-2.5 text-sm rounded-lg px-2 py-1.5"
+      className="flex items-start gap-2.5 text-sm rounded-lg px-2 py-1.5"
     >
       {ok ? (
-        <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden />
+        <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" aria-hidden />
       ) : (
-        <XCircle className="w-4 h-4 text-warning shrink-0" aria-hidden />
+        <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" aria-hidden />
       )}
-      <span className={ok ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+      <span className={ok ? "text-foreground" : "text-destructive/90"}>{label}</span>
     </motion.li>
+  );
+}
+
+function ReadinessCheckList({
+  report,
+}: {
+  report: ClaimIntelligenceReport;
+}) {
+  const items = claimReadinessCheckItems(report.claimReadiness);
+
+  return (
+    <motion.ul
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
+      }}
+      className="grid sm:grid-cols-2 gap-1"
+    >
+      {items.map((item) => (
+        <ReadinessCheck
+          key={item.failLabel}
+          ok={item.ok}
+          passLabel={item.passLabel}
+          failLabel={item.failLabel}
+        />
+      ))}
+    </motion.ul>
   );
 }
 
@@ -327,23 +436,37 @@ function PolicyDocSection({
 }
 
 function MedicalSection({ medical }: { medical: NonNullable<ClaimIntelligenceReport["medical"]> }) {
+  const hasVetContext =
+    isMeaningfulReportValue(medical.diagnosis) &&
+    /\b(dog|cat|pet|paw|muzzle|veterinar|animal)\b/i.test(medical.diagnosis ?? "");
+
   return (
     <SectionCard
       icon={Stethoscope}
-      title="Medical claim analysis"
+      title={hasVetContext ? "Pet injury assessment" : "Injury & treatment assessment"}
       gradient="bg-gradient-to-r from-rose-500/[0.08] to-transparent"
     >
-      {medical.diagnosis ? (
-        <p className="text-sm text-muted-foreground">Diagnosis: {medical.diagnosis}</p>
+      {isMeaningfulReportValue(medical.diagnosis) ? (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">What we see: </span>
+          {medical.diagnosis}
+        </p>
       ) : null}
-      {medical.hospital ? (
-        <p className="text-sm text-muted-foreground">Hospital: {medical.hospital}</p>
+      {isMeaningfulReportValue(medical.treatmentType) ? (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Treatment: </span>
+          {medical.treatmentType}
+        </p>
       ) : null}
-      {medical.treatmentType ? (
-        <p className="text-sm text-muted-foreground">Treatment: {medical.treatmentType}</p>
+      {isMeaningfulReportValue(medical.hospital) ? (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Clinic / hospital: </span>
+          {medical.hospital}
+        </p>
       ) : null}
-      <p className="text-sm">
-        Complexity: <span className="font-medium capitalize">{medical.complexity}</span>
+      <p className="text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">Severity: </span>
+        {medicalComplexityLabel(medical.complexity)}
       </p>
     </SectionCard>
   );
@@ -381,7 +504,12 @@ function buildIntelligenceRichCards(report: ClaimIntelligenceReport): ClaimRichC
       icon: UserCheck,
       gradient: "bg-gradient-to-br from-emerald-500/35 via-teal-400/20 to-green-300/10",
       accent: "success",
-      detail: report.identity.extractedName ?? report.identity.documentType,
+      detail:
+        isMeaningfulReportValue(report.identity.extractedName)
+          ? report.identity.extractedName
+          : report.identity.matchesUserProfile
+            ? "Identity verified"
+            : "Verification needed",
       status: report.identity.matchesUserProfile ? "success" : "warning",
     });
   }
@@ -402,17 +530,21 @@ function buildIntelligenceRichCards(report: ClaimIntelligenceReport): ClaimRichC
   }
 
   if (report.medical) {
+    const diagnosis = report.medical.diagnosis ?? "";
+    const isPetInjury = /\b(dog|cat|pet|paw|muzzle|veterinar|animal)\b/i.test(diagnosis);
     cards.push({
       id: "medical",
-      title: "Medical review",
+      title: isPetInjury ? "Pet injury assessment" : "Injury assessment",
       description:
-        report.medical.diagnosis ??
-        report.medical.treatmentType ??
-        "Medical documentation analyzed for complexity and consistency.",
+        isMeaningfulReportValue(diagnosis)
+          ? diagnosis
+          : isMeaningfulReportValue(report.medical.treatmentType)
+            ? report.medical.treatmentType!
+            : "AI reviewed injury visible in your photo against your claim description.",
       icon: Stethoscope,
       gradient: "bg-gradient-to-br from-rose-500/35 via-pink-400/20 to-rose-300/10",
       accent: "primary",
-      detail: report.medical.hospital,
+      detail: medicalComplexityLabel(report.medical.complexity),
       status: report.medical.complexity === "high" ? "warning" : "default",
     });
   }
@@ -440,7 +572,7 @@ function buildIntelligenceRichCards(report: ClaimIntelligenceReport): ClaimRichC
     icon: ShieldCheck,
     gradient: "bg-gradient-to-br from-slate-500/25 via-gray-400/15 to-slate-300/10",
     accent: "primary",
-    detail: consistencyCheckLabel(report.consistency.level),
+    detail: consistencyCardStatus(report.consistency.level),
     status:
       report.consistency.level === "high"
         ? "success"
@@ -557,23 +689,7 @@ export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntellige
       <ChatAssistantRow delay={0.06}>
         <div className="rounded-2xl rounded-tl-md border border-border/70 bg-card shadow-sm p-4">
           <p className="text-sm font-semibold mb-3">Submission readiness</p>
-          <motion.ul
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: { opacity: 0 },
-              visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
-            }}
-            className="grid sm:grid-cols-2 gap-1"
-          >
-            <ReadinessCheck ok={report.claimReadiness.documentsComplete} label="Documents complete" />
-            <ReadinessCheck ok={report.claimReadiness.photosClear} label="Photos clear" />
-            <ReadinessCheck
-              ok={report.claimReadiness.informationConsistent}
-              label="Information consistent"
-            />
-            <ReadinessCheck ok={report.claimReadiness.noMajorIssues} label="No major issues" />
-          </motion.ul>
+          <ReadinessCheckList report={report} />
         </div>
       </ChatAssistantRow>
 
@@ -600,16 +716,9 @@ export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntellige
         </ChatAssistantRow>
       ) : null}
 
-      {report.submissionChecklist && !report.submissionChecklist.readyToSubmit ? (
+      {!applicationLooksComplete(report) ? (
         <ChatAssistantRow delay={0.13}>
-          <motion.div className="rounded-2xl rounded-tl-md border border-warning/30 bg-warning/[0.06] p-4 w-full space-y-2">
-            <p className="text-sm font-semibold text-warning">Before you submit</p>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-4">
-              {report.submissionChecklist.missingItems.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </motion.div>
+          <ClaimIncompleteApplicationNotice report={report} audience="seeker" />
         </ChatAssistantRow>
       ) : null}
 
@@ -729,7 +838,7 @@ export function ClaimIntelligenceSubmitCard({
   canSubmit: boolean;
   onSubmit: () => void;
 }) {
-  const ready = report.submissionChecklist?.readyToSubmit !== false;
+  const complete = applicationLooksComplete(report);
 
   return (
     <motion.div
@@ -744,20 +853,24 @@ export function ClaimIntelligenceSubmitCard({
           Your intelligence report (
           <AnimatedNumber value={report.claimReadiness.score} className="tabular-nums font-medium" />
           % ready) will be attached when you submit.
-          {!ready
-            ? " Complete the checklist above — especially your CNIC upload — before submitting with this report."
+          {!complete
+            ? " Your insurer may reject or request more information because of the gaps above — you can still submit now and fix items later."
             : " Your insurer will receive the full snapshot including evidence analysis."}
         </p>
       </div>
       <motion.button
         type="button"
         onClick={onSubmit}
-        disabled={!canSubmit || submitting || !ready}
+        disabled={!canSubmit || submitting}
         whileHover={canSubmit && !submitting ? { scale: 1.01 } : undefined}
         whileTap={canSubmit && !submitting ? { scale: 0.99 } : undefined}
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-foreground text-background font-semibold text-[15px] disabled:opacity-50"
       >
-        {submitting ? "Sending to your insurer…" : "Submit claim for review"}
+        {submitting
+          ? "Sending to your insurer…"
+          : complete
+            ? "Submit claim for review"
+            : "Submit anyway — application incomplete"}
       </motion.button>
     </motion.div>
   );
@@ -830,23 +943,7 @@ export function ClaimIntelligenceReportCard({
         />
       </motion.div>
 
-      <motion.ul
-        initial="hidden"
-        animate="visible"
-        variants={{
-          hidden: { opacity: 0 },
-          visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
-        }}
-        className="relative grid sm:grid-cols-2 gap-1"
-      >
-        <ReadinessCheck ok={report.claimReadiness.documentsComplete} label="Documents complete" />
-        <ReadinessCheck ok={report.claimReadiness.photosClear} label="Photos clear" />
-        <ReadinessCheck
-          ok={report.claimReadiness.informationConsistent}
-          label="Information consistent"
-        />
-        <ReadinessCheck ok={report.claimReadiness.noMajorIssues} label="No major issues" />
-      </motion.ul>
+      <ReadinessCheckList report={report} />
 
       {!compact ? (
         <div className="relative space-y-3">
@@ -930,6 +1027,10 @@ export function ClaimIntelligenceInsurerSummary({
             </p>
           </div>
         </div>
+
+        {!applicationLooksComplete(report) ? (
+          <ClaimIncompleteApplicationNotice report={report} audience="insurer" />
+        ) : null}
 
         <motion.div
           initial="hidden"

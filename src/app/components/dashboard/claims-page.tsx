@@ -276,21 +276,6 @@ export function ClaimsPage() {
     );
   }
 
-  if (!user?.hasCnic) {
-    return (
-      <AnimatedPage className={`${SEEKER_PAGE_CLASS} py-8`}>
-        <header className="space-y-2 text-center max-w-xl mx-auto">
-          <h1 className="text-3xl font-bold tracking-tight">Claims</h1>
-          <p className="text-muted-foreground text-[15px] leading-relaxed">
-            Verify your identity with your CNIC before filing a claim. This keeps claims tied to the
-            correct account holder.
-          </p>
-        </header>
-        <UserCnicGate onSaved={() => void refreshUser()} />
-      </AnimatedPage>
-    );
-  }
-
   return (
     <AnimatedPage className={SEEKER_PAGE_CLASS}>
       <header className="space-y-2">
@@ -304,6 +289,19 @@ export function ClaimsPage() {
           intelligence report, and send everything to your insurer in one step.
         </p>
       </header>
+
+      {!user?.hasCnic ? (
+        <div className="rounded-2xl border border-warning/30 bg-warning/[0.06] p-4 sm:p-5">
+          <p className="text-sm font-semibold text-warning">CNIC not on your profile yet</p>
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+            You can still file a claim, but insurers often need identity verification. Add your CNIC
+            below to improve approval confidence in your AI report.
+          </p>
+          <div className="mt-4">
+            <UserCnicGate onSaved={() => void refreshUser()} />
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-6 lg:gap-8 items-start">
         {viewingClaim ? (

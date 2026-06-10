@@ -9,8 +9,8 @@ export const CLAIM_TYPE_OPTIONS = [
   {
     id: "damage",
     label: "Damage",
-    description: "Physical damage to property, vehicle, or belongings",
-    categories: ["home", "auto", "others"],
+    description: "Physical damage to property, vehicle, pet, or belongings",
+    categories: ["home", "auto", "pet", "others"],
   },
   {
     id: "theft",

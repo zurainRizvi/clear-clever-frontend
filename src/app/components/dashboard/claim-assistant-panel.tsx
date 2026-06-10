@@ -678,11 +678,11 @@ export function ClaimAssistantPanel({
             {pendingFiles.length > 0 && !hasCnicInUploads ? (
               <ClaimBotRow delay={0.07}>
                 <ClaimBotBubble>
-                  <p className="font-semibold text-warning">CNIC required for submission</p>
+                  <p className="font-semibold text-warning">CNIC not in your uploads</p>
                   <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                    Your damage photos look good, but you still need to upload a clear photo of your
-                    CNIC. Submission requires identity verification — add your CNIC before generating
-                    the final report or submitting.
+                    You can still submit, but your AI report will flag identity as incomplete and
+                    approval confidence will be lower. Add a clear CNIC photo to move toward 100%
+                    readiness.
                   </p>
                 </ClaimBotBubble>
               </ClaimBotRow>

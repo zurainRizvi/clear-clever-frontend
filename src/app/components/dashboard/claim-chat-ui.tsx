@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, CheckCheck, Loader2, Paperclip, Send, Sparkles, X } from "lucide-react";
+import { ArrowRight, CheckCheck, ChevronDown, Loader2, Paperclip, Send, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { easeOut, quickTransition, staggerDelay } from "@/lib/motion-presets";
 import { cn } from "../ui/utils";
 
@@ -178,6 +178,8 @@ export interface ClaimRichCardData {
   detail?: string;
 }
 
+const CARD_DESCRIPTION_COLLAPSE_CHARS = 120;
+
 export function ClaimRichCard({
   card,
   index = 0,
@@ -186,6 +188,7 @@ export function ClaimRichCard({
   index?: number;
 }) {
   const reducedMotion = useReducedMotion();
+  const [expanded, setExpanded] = useState(false);
   const Icon = card.icon;
   const statusRing =
     card.status === "success"
@@ -193,6 +196,7 @@ export function ClaimRichCard({
       : card.status === "warning"
         ? "ring-warning/40 text-warning"
         : "ring-primary/30 text-primary";
+  const canExpand = card.description.length > CARD_DESCRIPTION_COLLAPSE_CHARS;
 
   return (
     <motion.article
@@ -210,9 +214,28 @@ export function ClaimRichCard({
       </div>
       <div className="flex flex-1 flex-col p-4">
         <h4 className="font-semibold text-[15px] tracking-tight leading-snug">{card.title}</h4>
-        <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-3 flex-1">
+        <p
+          className={cn(
+            "mt-1.5 text-xs text-muted-foreground leading-relaxed flex-1",
+            !expanded && canExpand && "line-clamp-3"
+          )}
+        >
           {card.description}
         </p>
+        {canExpand ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            className="mt-1.5 inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+            aria-expanded={expanded}
+          >
+            {expanded ? "See less" : "See more"}
+            <ChevronDown
+              className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")}
+              aria-hidden
+            />
+          </button>
+        ) : null}
         {card.detail ? (
           <p className="mt-2 text-xs font-medium text-foreground/80">{card.detail}</p>
         ) : null}

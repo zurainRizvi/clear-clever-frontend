@@ -70,6 +70,7 @@ export interface ClaimIntelligenceReport {
     readyToSubmit: boolean;
     missingItems: string[];
   };
+  approvalImprovements?: string[];
   executiveSummary: string;
   insurerRecommendation: InsurerRecommendation;
   modelVersion: string;

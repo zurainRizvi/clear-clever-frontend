@@ -163,9 +163,15 @@ export function damageSeverityLabel(severity: string): string {
 }
 
 export function consistencyCheckLabel(level: string): string {
-  if (level === "high") return "Passed";
-  if (level === "medium") return "Review suggested";
-  return "Failed";
+  if (level === "high") return "Aligned";
+  if (level === "medium") return "Minor gaps";
+  return "Inconsistencies found";
+}
+
+export function consistencyCardStatus(level: string): string {
+  if (level === "high") return "Matches your description";
+  if (level === "medium") return "Some details need review";
+  return "Conflicts with your claim";
 }
 
 export function documentVerificationLabel(report: {
@@ -175,8 +181,61 @@ export function documentVerificationLabel(report: {
   const checks: boolean[] = [];
   if (report.identity) checks.push(report.identity.matchesUserProfile);
   if (report.policyDoc) checks.push(report.policyDoc.matchesLinkedPolicy);
-  if (checks.length === 0) return "Not applicable";
-  return checks.every(Boolean) ? "Passed" : "Review required";
+  if (checks.length === 0) return "No ID docs uploaded";
+  return checks.every(Boolean) ? "Verified" : "Needs verification";
+}
+
+export function isMeaningfulReportValue(value?: string | null): boolean {
+  if (!value?.trim()) return false;
+  const lower = value.trim().toLowerCase();
+  return !["unknown", "n/a", "na", "not applicable", "none", "unavailable", "not provided"].includes(
+    lower
+  );
+}
+
+export function medicalComplexityLabel(complexity: string): string {
+  const labels: Record<string, string> = {
+    low: "Low severity",
+    medium: "Moderate severity",
+    high: "High severity",
+  };
+  return labels[complexity] ?? titleCaseWords(complexity);
+}
+
+export interface ReadinessCheckItem {
+  ok: boolean;
+  passLabel: string;
+  failLabel: string;
+}
+
+export function claimReadinessCheckItems(readiness: {
+  documentsComplete: boolean;
+  photosClear: boolean;
+  informationConsistent: boolean;
+  noMajorIssues: boolean;
+}): ReadinessCheckItem[] {
+  return [
+    {
+      ok: readiness.documentsComplete,
+      passLabel: "Key documents provided",
+      failLabel: "Missing documents — add CNIC and incident evidence",
+    },
+    {
+      ok: readiness.photosClear,
+      passLabel: "Photos are clear enough to assess",
+      failLabel: "Photos unclear — upload sharper, well-lit images",
+    },
+    {
+      ok: readiness.informationConsistent,
+      passLabel: "Description matches your evidence",
+      failLabel: "Description and evidence do not fully align",
+    },
+    {
+      ok: readiness.noMajorIssues,
+      passLabel: "No major red flags detected",
+      failLabel: "Major issues flagged — see items to review below",
+    },
+  ];
 }
 
 export function insurerRecommendationLabel(
@@ -207,13 +266,13 @@ export function claimReadinessSeekerCopy(score: number): ClaimReadinessSeekerCop
     return {
       headline: "Almost there — a few items to double-check",
       subtitle:
-        "Most details look fine, but reviewing the flagged items below may speed up insurer approval.",
+        "You can submit now. Fixing the items below may raise approval confidence toward 100%.",
     };
   }
   return {
-    headline: "More evidence may help",
+    headline: "Application has gaps",
     subtitle:
-      "We found gaps or inconsistencies. Consider updating your description or uploading clearer photos before submitting.",
+      "You can still submit — your insurer may request more information or reject an incomplete file. See suggestions below to improve approval odds.",
   };
 }
 
