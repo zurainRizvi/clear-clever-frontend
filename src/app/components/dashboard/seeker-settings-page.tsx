@@ -161,6 +161,11 @@ export function SeekerSettingsPage() {
             <KycStatusBadge status={user.kycStatus} />
           ) : null}
         </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Your CNIC is verified against completed policy purchases. Save your CNIC, then upload a
+          clear photo — full verification passes when your ID matches the policyholder details on
+          your policies.
+        </p>
         {user?.cnicMasked ? (
           <p className="text-sm text-muted-foreground font-mono">{user.cnicMasked}</p>
         ) : null}

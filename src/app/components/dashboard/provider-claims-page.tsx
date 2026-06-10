@@ -135,10 +135,10 @@ export function ProviderClaimsPage() {
   return (
     <AnimatedPage className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-1">Claims review</h1>
+        <h1 className="text-3xl font-bold mb-1">AI claims review</h1>
         <p className="text-muted-foreground max-w-2xl leading-relaxed">
-          Review policyholder claims with AI Claims Intelligence Reports and risk scoring. You
-          always make the final approval decision.
+          Review policyholder claims with AI Claims Intelligence Reports, ML risk scoring, and smart
+          recommendations. You always make the final approval decision.
         </p>
         {pendingCount > 0 ? (
           <p className="text-sm text-warning mt-2">

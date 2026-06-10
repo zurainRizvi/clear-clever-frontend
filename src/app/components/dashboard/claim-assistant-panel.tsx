@@ -90,8 +90,8 @@ const INFO_REPLIES: Record<string, { title: string; body: string }> = {
     body: "Clear photos of damage, police reports, medical bills, CNIC, or your policy document work best. Up to 3 files, 4 MB each — images or PDF.",
   },
   ai: {
-    title: "How AI analysis works",
-    body: "Our AI reviews your description and uploads in memory only — nothing is stored until you submit. You receive a readiness score, consistency check, and executive summary for your insurer.",
+    title: "How AI & ML analysis works",
+    body: "Our hybrid AI engine reviews your description and uploads in memory only — nothing is stored until you submit. You get smart insights: readiness score, consistency checks, fraud signals, and a personalized executive summary for your insurer.",
   },
   privacy: {
     title: "Your privacy",
@@ -342,8 +342,8 @@ export function ClaimAssistantPanel({
           </div>
           <h2 className="font-bold text-xl tracking-tight">No active policies</h2>
           <p className="text-sm text-muted-foreground mt-2 max-w-sm leading-relaxed">
-            Complete a policy purchase first, then return here to file a claim with AI-assisted
-            evidence review.
+            Complete a policy purchase first, then return here for AI-powered claim filing with
+            smart evidence review and personalized recommendations.
           </p>
         </div>
       </section>
@@ -362,8 +362,8 @@ export function ClaimAssistantPanel({
             <Sparkles className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-base tracking-tight truncate">Claims Assistant</p>
-            <p className="text-xs text-muted-foreground">AI-assisted filing · Secure & private</p>
+            <p className="font-bold text-base tracking-tight truncate">AI Claims Assistant</p>
+            <p className="text-xs text-muted-foreground">Smart insights · ML-powered · Secure</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
@@ -381,9 +381,9 @@ export function ClaimAssistantPanel({
         <ClaimBotRow timestamp={welcomeTime}>
           <ClaimBotBubble>
             <p>
-              Hi there! I&apos;m your ClearClever claims assistant. I&apos;ll guide you through
-              filing a claim, reviewing your evidence, and preparing an intelligence report for your
-              insurer.
+              Hi there! I&apos;m your ClearClever AI claims assistant. I&apos;ll guide you with
+              personalized recommendations — from evidence upload to a smart intelligence report
+              your insurer can trust.
             </p>
           </ClaimBotBubble>
         </ClaimBotRow>
@@ -575,7 +575,8 @@ export function ClaimAssistantPanel({
               <ClaimBotBubble>
                 <p>
                   Tell me what happened — include the date, estimated cost if you know it, and a
-                  clear description. This helps our AI check consistency with your photos.
+                  clear description. Our ML models use this for smart consistency checks with your
+                  evidence.
                 </p>
               </ClaimBotBubble>
             </ClaimBotRow>
@@ -753,12 +754,12 @@ export function ClaimAssistantPanel({
                     {analyzing ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Generating report…
+                        Generating smart insights…
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4" />
-                        Generate AI Claims Intelligence Report
+                        Generate AI intelligence report
                       </>
                     )}
                   </motion.button>
@@ -785,7 +786,7 @@ export function ClaimAssistantPanel({
                         Submitting…
                       </>
                     ) : (
-                      "Submit without AI report"
+                      "Submit without AI report (optional)"
                     )}
                   </motion.button>
                 </div>

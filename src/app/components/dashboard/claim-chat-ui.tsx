@@ -27,14 +27,14 @@ export function ClaimChatHero() {
       />
       <div className="relative px-5 py-6 sm:py-7">
         <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mb-1">
-          ClearClever Claims
+          AI Claims Intelligence
         </p>
         <h2 className="text-white font-bold text-xl sm:text-2xl tracking-tight leading-tight">
-          Welcome to your claims assistant
+          Smart claims assistant — personalized for you
         </h2>
         <p className="text-white/85 text-sm mt-2 max-w-md leading-relaxed">
-          I can help you file a claim, upload evidence, and generate an AI intelligence report
-          before you submit to your insurer.
+          File with confidence: our ML models review your evidence, surface smart insights, and
+          prepare an AI intelligence report before you submit to your insurer.
         </p>
       </div>
     </motion.div>

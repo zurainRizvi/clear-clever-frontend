@@ -30,6 +30,10 @@ export interface KycVerificationReport {
   blurScore?: "Low" | "Medium" | "High";
   tamperingRisk?: "Low" | "Medium" | "High";
   verifiedAt?: string;
+  policyLinked?: boolean;
+  linkedPolicyCount?: number;
+  linkedPolicyNames?: string[];
+  policyLinkageNote?: string;
 }
 
 export interface KycAttachmentPayload {

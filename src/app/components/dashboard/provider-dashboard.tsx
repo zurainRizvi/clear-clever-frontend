@@ -133,7 +133,7 @@ function ProviderDashboardInner() {
 
   return (
     <div
-      className="min-h-screen flex bg-background overflow-x-hidden"
+      className="h-screen flex bg-background overflow-hidden"
       style={{ fontFamily: "Inter, sans-serif" }}
     >
       <PortalSidebarBackdrop open={isNarrow && sidebarOpen} onClose={closeSidebar} />
@@ -173,7 +173,7 @@ function ProviderDashboardInner() {
             ) : null}
           </div>
 
-          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 min-h-0">
+          <nav className="flex-1 overflow-hidden py-4 px-3 space-y-0.5 min-h-0">
             {menuItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
@@ -250,7 +250,7 @@ function ProviderDashboardInner() {
         </div>
       </motion.aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         {!isHome ? (
           <header
             className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md"

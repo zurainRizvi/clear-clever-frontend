@@ -180,6 +180,7 @@ export function KycVerificationPanel({
         <ul className="space-y-1.5">
           <CheckRow ok={Boolean(report.nameMatch)} label="Name matches profile" />
           <CheckRow ok={Boolean(report.cnicMatch)} label="CNIC matches profile" />
+          <CheckRow ok={Boolean(report.policyLinked)} label="Matches purchased policy details" />
           <CheckRow ok={Boolean(report.documentReadable)} label="Document readable" />
           <CheckRow
             ok={report.cnicExpired === false}
@@ -236,6 +237,25 @@ export function KycVerificationPanel({
           )}
         </div>
       )}
+
+      {report.policyLinkageNote ? (
+        <div
+          className={cn(
+            "rounded-xl border p-3 text-sm leading-relaxed",
+            report.policyLinked
+              ? "border-success/30 bg-success/5 text-foreground"
+              : "border-warning/30 bg-warning/5 text-muted-foreground"
+          )}
+        >
+          <p className="font-medium text-foreground mb-1">Policy linkage</p>
+          <p>{report.policyLinkageNote}</p>
+          {report.linkedPolicyNames && report.linkedPolicyNames.length > 0 ? (
+            <p className="text-xs mt-2 text-muted-foreground">
+              Policies: {report.linkedPolicyNames.join(" · ")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {report.extractedFullName && !compact && (
         <div className="text-xs text-muted-foreground flex items-start gap-1.5">

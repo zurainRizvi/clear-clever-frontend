@@ -49,6 +49,7 @@ import {
 import { ProviderDateRangePicker } from "./provider-date-range-picker";
 import { CustomerDemographicsSection } from "./customer-demographics-charts";
 import { PakistanUsersByRegion } from "./pakistan-users-by-region";
+import { RegionMapFilters, type RegionMapAudience } from "./region-map-filters";
 import { PROVIDER_PAGE_CLASS, PROVIDER_THEME } from "./provider-portal-theme";
 import { toast } from "sonner";
 
@@ -170,9 +171,37 @@ function opportunityPill(level: string) {
   return "bg-slate-100 text-slate-600";
 }
 
+const REGION_MAP_AUDIENCE_KEY = "clearclever.providerAnalyticsRegionAudience";
+const REGION_MAP_REGION_KEY = "clearclever.providerAnalyticsRegionFilter";
+
+function loadStoredRegionAudience(): RegionMapAudience {
+  if (typeof window === "undefined") return "all";
+  const stored = window.localStorage.getItem(REGION_MAP_AUDIENCE_KEY);
+  return stored === "purchasers" ? "purchasers" : "all";
+}
+
+function saveStoredRegionAudience(audience: RegionMapAudience) {
+  window.localStorage.setItem(REGION_MAP_AUDIENCE_KEY, audience);
+}
+
+function loadStoredRegionFilter(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(REGION_MAP_REGION_KEY);
+}
+
+function saveStoredRegionFilter(region: string | null) {
+  if (region) {
+    window.localStorage.setItem(REGION_MAP_REGION_KEY, region);
+  } else {
+    window.localStorage.removeItem(REGION_MAP_REGION_KEY);
+  }
+}
+
 export function ProviderAnalyticsPage() {
   const chartColors = useChartColors();
   const [range, setRange] = useState<DateRangeValue>(loadStoredProviderRange);
+  const [audience, setAudience] = useState<RegionMapAudience>(loadStoredRegionAudience);
+  const [regionFilter, setRegionFilter] = useState<string | null>(loadStoredRegionFilter);
   const [analytics, setAnalytics] = useState<InsurerAnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportFlash, setExportFlash] = useState(false);
@@ -183,28 +212,47 @@ export function ProviderAnalyticsPage() {
     boxShadow: PROVIDER_THEME.shadow,
   };
 
-  const load = useCallback(async (r: DateRangeValue) => {
-    setLoading(true);
-    try {
-      const q = toRangeQuery(r);
-      const data = await fetchInsurerAnalytics(q);
-      setAnalytics(data.analytics);
-      setRange(parseRangeFromApi(data.analytics.dateRange.from, data.analytics.dateRange.to));
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not load analytics");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (r: DateRangeValue, nextAudience: RegionMapAudience, nextRegion: string | null) => {
+      setLoading(true);
+      try {
+        const q = toRangeQuery(r);
+        const data = await fetchInsurerAnalytics({
+          ...q,
+          audience: nextAudience,
+          region: nextRegion ?? undefined,
+        });
+        setAnalytics(data.analytics);
+        setRange(parseRangeFromApi(data.analytics.dateRange.from, data.analytics.dateRange.to));
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : "Could not load analytics");
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    void load(loadStoredProviderRange());
+    void load(loadStoredProviderRange(), loadStoredRegionAudience(), loadStoredRegionFilter());
   }, []);
 
   const handleRangeChange = (next: DateRangeValue) => {
     setRange(next);
     saveStoredProviderRange(next);
-    void load(next);
+    void load(next, audience, regionFilter);
+  };
+
+  const handleAudienceChange = (next: RegionMapAudience) => {
+    setAudience(next);
+    saveStoredRegionAudience(next);
+    void load(range, next, regionFilter);
+  };
+
+  const handleRegionChange = (next: string | null) => {
+    setRegionFilter(next);
+    saveStoredRegionFilter(next);
+    void load(range, audience, next);
   };
 
   const interestChartData = useMemo(() => {
@@ -323,15 +371,22 @@ export function ProviderAnalyticsPage() {
       </p>
 
       <PakistanUsersByRegion
-        data={analytics.usersByRegionLifetime ?? analytics.usersByRegion}
+        data={analytics.usersByRegion}
         cardStyle={cardStyle}
+        filters={
+          <RegionMapFilters
+            range={range}
+            onRangeChange={handleRangeChange}
+            audience={audience}
+            onAudienceChange={handleAudienceChange}
+            region={regionFilter}
+            onRegionChange={handleRegionChange}
+          />
+        }
       />
 
-      {analytics.usersByRegionLifetime ? (
-        <PakistanUsersByRegion
-          data={analytics.usersByRegion}
-          cardStyle={cardStyle}
-        />
+      {analytics.usersByRegion.coverageNote ? (
+        <p className="text-xs text-muted-foreground -mt-3">{analytics.usersByRegion.coverageNote}</p>
       ) : null}
 
       {analytics.customerDemographics && analytics.customerDemographics.totalPurchasers > 0 && (

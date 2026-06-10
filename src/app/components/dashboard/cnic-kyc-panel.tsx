@@ -51,22 +51,29 @@ export function CnicKycPanel({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const onKycUpdatedRef = useRef(onKycUpdated);
+  const onCnicSavedRef = useRef(onCnicSaved);
+
+  useEffect(() => {
+    onKycUpdatedRef.current = onKycUpdated;
+    onCnicSavedRef.current = onCnicSaved;
+  }, [onKycUpdated, onCnicSaved]);
 
   const loadStatus = useCallback(async () => {
     setStatusLoading(true);
     try {
       const { kyc } = await fetchKycStatus();
       setReport(kyc);
-      onKycUpdated?.(kyc);
-      if (kyc.cnicMasked && !initialCnic) {
-        setCnic(kyc.cnicMasked);
-      }
     } catch {
       setReport(null);
     } finally {
       setStatusLoading(false);
     }
-  }, [onKycUpdated, initialCnic]);
+  }, []);
+
+  useEffect(() => {
+    if (initialCnic) setCnic(initialCnic);
+  }, [initialCnic]);
 
   useEffect(() => {
     void loadStatus();
@@ -88,8 +95,8 @@ export function CnicKycPanel({
       await updateMeProfile({ cnic: normalizeCnicInput(cnic) });
       const { kyc } = await deriveKycFromCnic(normalizeCnicInput(cnic));
       setReport(kyc);
-      onKycUpdated?.(kyc);
-      onCnicSaved?.();
+      onKycUpdatedRef.current?.(kyc);
+      onCnicSavedRef.current?.();
       setEditingCnic(false);
       toast.success("CNIC updated — demographics refreshed");
     } catch (err) {
@@ -144,12 +151,12 @@ export function CnicKycPanel({
         dataBase64,
       });
       setReport(kyc);
-      onKycUpdated?.(kyc);
+      onKycUpdatedRef.current?.(kyc);
       clearPendingFile();
       toast.success(
         kyc.identityVerified
-          ? "CNIC verified — identity match confirmed"
-          : "CNIC analyzed — review results below"
+          ? "Identity verified — your CNIC matches your purchased policies"
+          : kyc.policyLinkageNote ?? "CNIC analyzed — review results below"
       );
     } catch (err) {
       toast.error(friendlyKycError(err));
@@ -232,10 +239,10 @@ export function CnicKycPanel({
               <Sparkles className="w-5 h-5 text-primary" aria-hidden />
             </div>
             <div>
-              <p className="font-medium text-sm">AI CNIC verification (optional)</p>
+              <p className="font-medium text-sm">Verify CNIC against your policies</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Upload a clear photo of your CNIC for identity match, age verification, and
-                expiry checks.
+                Upload a clear CNIC photo. Full verification passes only when your ID matches the
+                policyholder name and CNIC on a completed policy purchase.
               </p>
             </div>
           </div>

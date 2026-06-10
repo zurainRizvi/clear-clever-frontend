@@ -66,6 +66,7 @@ export function ClaimDetailPanel({
 }) {
   const [reportOpen, setReportOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingClaimFile[]>([]);
+  const [editedDescription, setEditedDescription] = useState(claim.description);
   const [intelligenceReport, setIntelligenceReport] = useState<ClaimIntelligenceReport | null>(
     claim.intelligenceReport ?? null
   );
@@ -84,6 +85,7 @@ export function ClaimDetailPanel({
   const currentFingerprint = useMemo(() => fingerprintFiles(pendingFiles), [pendingFiles]);
   const attachmentsChanged =
     pendingFiles.length > 0 && currentFingerprint !== originalFingerprint;
+  const descriptionChanged = editedDescription.trim() !== claim.description.trim();
 
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;
@@ -103,6 +105,12 @@ export function ClaimDetailPanel({
   };
 
   const handleResubmit = async () => {
+    const trimmedDescription = editedDescription.trim();
+    if (trimmedDescription.length < 5) {
+      toast.error("Please add at least 5 characters in your description or comment.");
+      return;
+    }
+
     setResubmitting(true);
     try {
       const attachments =
@@ -116,16 +124,20 @@ export function ClaimDetailPanel({
       }
 
       const result = await resubmitClaim(claim.id, {
+        description: descriptionChanged ? trimmedDescription : undefined,
         attachments,
         intelligenceReport: attachmentsChanged ? intelligenceReport ?? undefined : undefined,
         reuseIntelligenceReport: !attachmentsChanged,
       });
       onUpdated(result.claim);
       setPendingFiles([]);
+      setEditedDescription(result.claim.description);
       toast.success(
         result.attachmentsChanged
-          ? "Claim resubmitted with updated evidence"
-          : "Claim resubmitted — existing AI report kept"
+          ? "Claim resubmitted with your updated response"
+          : descriptionChanged
+            ? "Claim resubmitted with your updated comments"
+            : "Claim resubmitted — existing AI report kept"
       );
     } catch (err) {
       toast.error(err instanceof ApiError ? err.errors[0] ?? err.message : "Could not resubmit");
@@ -145,7 +157,7 @@ export function ClaimDetailPanel({
       const result = await analyzeClaimIntelligence({
         purchaseId: claim.purchaseId,
         claimType: claim.claimType,
-        description: claim.description,
+        description: editedDescription.trim() || claim.description,
         estimatedAmountPkr: claim.estimatedAmountPkr,
         incidentDate: claim.incidentDate,
         attachments,
@@ -223,7 +235,7 @@ export function ClaimDetailPanel({
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
               >
                 <Sparkles className="w-4 h-4" />
-                Open full AI report
+                Open full AI intelligence report
               </button>
             </div>
             <div className="rounded-2xl border border-border bg-muted/10 p-3 max-h-[420px] overflow-y-auto">
@@ -237,8 +249,25 @@ export function ClaimDetailPanel({
             <div>
               <h3 className="font-semibold">Update & resubmit</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Add more evidence or respond to your insurer. AI analysis runs only if you change
-                or add images.
+                Add comments, update your description, or attach more evidence for your insurer.
+                Smart AI analysis runs only if you change or add files.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="claim-resubmit-description" className="text-sm font-medium">
+                Your description & comments
+              </label>
+              <textarea
+                id="claim-resubmit-description"
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                rows={5}
+                placeholder="Explain what happened, answer the insurer's questions, or add any new details…"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm leading-relaxed resize-y min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-xs text-muted-foreground">
+                Edit your incident narrative or reply to the insurer before resubmitting.
               </p>
             </div>
 
@@ -302,7 +331,7 @@ export function ClaimDetailPanel({
             <button
               type="button"
               onClick={() => void handleResubmit()}
-              disabled={resubmitting}
+              disabled={resubmitting || editedDescription.trim().length < 5}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border font-semibold text-sm hover:bg-muted/40 disabled:opacity-50"
             >
               {resubmitting ? (

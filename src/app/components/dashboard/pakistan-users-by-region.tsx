@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import type { InsurerAnalyticsPayload } from "@/lib/insurer-api";
 import { PAKISTAN_MAP_VIEWBOX, PAKISTAN_REGION_PATHS } from "./pakistan-map-paths";
 import { PAKISTAN_REGION_META } from "./pakistan-region-meta";
@@ -7,9 +6,10 @@ import { PAKISTAN_REGION_META } from "./pakistan-region-meta";
 interface PakistanUsersByRegionProps {
   data: InsurerAnalyticsPayload["usersByRegion"];
   cardStyle?: CSSProperties;
+  filters?: ReactNode;
 }
 
-export function PakistanUsersByRegion({ data, cardStyle }: PakistanUsersByRegionProps) {
+export function PakistanUsersByRegion({ data, cardStyle, filters }: PakistanUsersByRegionProps) {
   const countBySlug = useMemo(() => {
     const map = new Map(data.regions.map((r) => [r.slug, r]));
     return map;
@@ -32,10 +32,12 @@ export function PakistanUsersByRegion({ data, cardStyle }: PakistanUsersByRegion
   const hasAnyUsers = legendRows.some((r) => r.active);
 
   return (
-    <section
-      className="provider-portal-card border bg-card p-5 min-w-0"
-      style={cardStyle}
-    >
+    <div className="space-y-4 min-w-0">
+      {filters}
+      <section
+        className="provider-portal-card border bg-card p-5 min-w-0"
+        style={cardStyle}
+      >
       <div className="mb-4">
         <h2 className="text-base font-bold text-slate-900">{data.title}</h2>
         <p className="text-xs text-slate-500 mt-0.5">{data.subtitle}</p>
@@ -136,5 +138,6 @@ export function PakistanUsersByRegion({ data, cardStyle }: PakistanUsersByRegion
         </div>
       </div>
     </section>
+    </div>
   );
 }

@@ -134,7 +134,7 @@ function PolicySeekerDashboardInner() {
   };
 
   return (
-    <motion.div className="min-h-screen flex bg-background overflow-x-hidden">
+    <motion.div className="h-screen flex bg-background overflow-hidden">
         <PortalSidebarBackdrop open={isNarrow && sidebarOpen} onClose={closeSidebar} />
         <motion.aside
           initial={false}
@@ -164,7 +164,7 @@ function PolicySeekerDashboardInner() {
               ) : null}
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-6 px-3 min-h-0">
+            <nav className="flex-1 overflow-hidden py-4 px-3 min-h-0">
               <div className="space-y-1">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
@@ -261,7 +261,7 @@ function PolicySeekerDashboardInner() {
           </div>
         </motion.aside>
 
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
             <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4 min-w-0">
               <div className="flex items-center gap-2 sm:gap-4 min-w-0">

@@ -259,20 +259,51 @@ export async function fetchHealth(): Promise<HealthStatus> {
 
 export interface AdminMlOverview {
   geminiUsage: AssistantUsageSummary;
-  models: {
-    claimRiskLoaded: boolean;
-    claimRiskVersion: string | null;
-    policyRankerCategories: string[];
+  summary: {
+    activeModels: number;
+    totalModels: number;
+    aiReportAdoptionPct: number;
+    verifiedIdentities: number;
+    completedPurchases: number;
+    questionnaireSeekers: number;
   };
-  claims: {
-    total: number;
-    withIntelligenceReport: number;
-    last24h: number;
+  models: Array<{
+    id: string;
+    title: string;
+    subtitle: string;
+    status: "active" | "missing";
+    statusLabel: string;
+    useCase: string;
+    businessValue: string;
+    whereUsed: string;
+    metrics: Array<{ label: string; value: string }>;
+  }>;
+  platformActivity: {
+    claimsTotal: number;
+    claimsWithAiReports: number;
+    claimsLast24h: number;
+    claimsWithAiLast24h: number;
+    questionnaireResponses: number;
+    questionnaireUniqueUsers: number;
+    purchasesCompleted: number;
   };
-  questionnaires: {
-    totalResponses: number;
-    uniqueUsers: number;
+  adoption: {
+    aiReportRateLabel: string;
+    kycVerifiedRateLabel: string;
+    rankerCoverageLabel: string;
   };
+  trends: {
+    labels: string[];
+    claimsSubmitted: number[];
+    aiReportsGenerated: number[];
+    questionnaireCompletions: number[];
+  };
+  insights: Array<{
+    title: string;
+    description: string;
+    badge: string;
+    theme: "blue" | "green" | "purple" | "amber";
+  }>;
 }
 
 export async function fetchMlOverview(): Promise<AdminMlOverview> {

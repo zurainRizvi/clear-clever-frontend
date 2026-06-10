@@ -280,6 +280,8 @@ export interface InsurerAnalyticsPayload {
     totalUsers: number;
     mappedUsers: number;
     coverageNote?: string;
+    audience: "all" | "purchasers";
+    regionFilter: string | null;
     regions: Array<{
       slug: string;
       label: string;
@@ -287,7 +289,6 @@ export interface InsurerAnalyticsPayload {
       userCount: number;
     }>;
   };
-  usersByRegionLifetime: InsurerAnalyticsPayload["usersByRegion"];
   customerDemographics: {
     title: string;
     subtitle: string;
@@ -321,10 +322,14 @@ export interface InsurerAnalyticsPayload {
 export async function fetchInsurerAnalytics(params?: {
   from?: string;
   to?: string;
+  audience?: "all" | "purchasers";
+  region?: string;
 }): Promise<{ analytics: InsurerAnalyticsPayload }> {
   const search = new URLSearchParams();
   if (params?.from) search.set("from", params.from);
   if (params?.to) search.set("to", params.to);
+  if (params?.audience) search.set("audience", params.audience);
+  if (params?.region) search.set("region", params.region);
   const query = search.toString();
   return apiRequest(`/api/insurer/analytics${query ? `?${query}` : ""}`, { auth: true });
 }
