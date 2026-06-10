@@ -436,7 +436,12 @@ export async function deleteInsurerPolicy(policyId: string): Promise<{ policyId:
   });
 }
 
-export type InsurerClaimStatus = "submitted" | "in_review" | "approved" | "rejected";
+export type InsurerClaimStatus =
+  | "submitted"
+  | "in_review"
+  | "needs_info"
+  | "approved"
+  | "rejected";
 
 export type MlRiskLevel = "low" | "medium" | "high";
 
@@ -476,6 +481,16 @@ export interface InsurerClaimSummary {
   };
   mlRisk?: ClaimMlRisk;
   intelligenceReport?: ClaimIntelligenceReport;
+  attachments?: {
+    fileName: string;
+    mimeType: string;
+    dataBase64: string;
+    uploadedAt: string;
+  }[];
+  insurerComment?: {
+    text: string;
+    createdAt: string;
+  };
 }
 
 export async function fetchInsurerClaims(): Promise<{
@@ -488,11 +503,15 @@ export async function fetchInsurerClaims(): Promise<{
 export async function updateInsurerClaimStatus(
   claimId: string,
   status: Exclude<InsurerClaimStatus, "submitted">,
-  options?: { revert?: boolean }
+  options?: { revert?: boolean; comment?: string }
 ): Promise<{ claim: InsurerClaimSummary }> {
   return apiRequest(`/api/insurer/claims/${claimId}`, {
     method: "PATCH",
     auth: true,
-    body: JSON.stringify({ status, revert: options?.revert }),
+    body: JSON.stringify({
+      status,
+      revert: options?.revert,
+      comment: options?.comment,
+    }),
   });
 }

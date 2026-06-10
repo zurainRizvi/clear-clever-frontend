@@ -5,13 +5,16 @@ import {
   ChevronDown,
   FileBadge,
   HeartPulse,
+  Maximize2,
   ShieldCheck,
   Sparkles,
   Stethoscope,
   UserCheck,
+  X,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ClaimIntelligenceReport } from "@/lib/claim-intelligence-types";
 import type { ClaimMlRisk } from "@/lib/insurer-api";
@@ -586,6 +589,30 @@ export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntellige
         </ChatAssistantRow>
       )}
 
+      {report.policyAlignment && !report.policyAlignment.matchesPolicyCategory ? (
+        <ChatAssistantRow delay={0.12}>
+          <motion.div className="rounded-2xl rounded-tl-md border border-destructive/30 bg-destructive/[0.06] p-4 w-full">
+            <p className="text-sm font-semibold text-destructive">Policy category mismatch</p>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              {report.policyAlignment.reason}
+            </p>
+          </motion.div>
+        </ChatAssistantRow>
+      ) : null}
+
+      {report.submissionChecklist && !report.submissionChecklist.readyToSubmit ? (
+        <ChatAssistantRow delay={0.13}>
+          <motion.div className="rounded-2xl rounded-tl-md border border-warning/30 bg-warning/[0.06] p-4 w-full space-y-2">
+            <p className="text-sm font-semibold text-warning">Before you submit</p>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-4">
+              {report.submissionChecklist.missingItems.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </motion.div>
+        </ChatAssistantRow>
+      ) : null}
+
       {report.consistency.level !== "high" || report.suspiciousFlags.length > 0 ? (
         <ChatAssistantRow delay={0.14}>
           <motion.div
@@ -645,6 +672,52 @@ export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntellige
   );
 }
 
+export function ClaimIntelligenceFullReportDialog({
+  report,
+  open,
+  onOpenChange,
+}: {
+  report: ClaimIntelligenceReport;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50"
+        aria-label="Close report"
+        onClick={() => onOpenChange(false)}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative w-full sm:max-w-3xl max-h-[92vh] overflow-hidden rounded-t-3xl sm:rounded-3xl border border-border bg-card shadow-2xl flex flex-col"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Sparkles className="w-5 h-5 text-primary shrink-0" />
+            <h2 className="font-bold truncate">AI Claims Intelligence Report</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="p-2 rounded-lg hover:bg-muted"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto p-4 sm:p-5">
+          <ClaimIntelligenceChatReport report={report} />
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export function ClaimIntelligenceSubmitCard({
   report,
   submitting,
@@ -656,6 +729,8 @@ export function ClaimIntelligenceSubmitCard({
   canSubmit: boolean;
   onSubmit: () => void;
 }) {
+  const ready = report.submissionChecklist?.readyToSubmit !== false;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -668,14 +743,16 @@ export function ClaimIntelligenceSubmitCard({
         <p className="text-sm text-muted-foreground leading-relaxed">
           Your intelligence report (
           <AnimatedNumber value={report.claimReadiness.score} className="tabular-nums font-medium" />
-          % ready) will be attached when you submit. You can still file without it, but including
-          it helps your insurer review faster.
+          % ready) will be attached when you submit.
+          {!ready
+            ? " Complete the checklist above — especially your CNIC upload — before submitting with this report."
+            : " Your insurer will receive the full snapshot including evidence analysis."}
         </p>
       </div>
       <motion.button
         type="button"
         onClick={onSubmit}
-        disabled={!canSubmit || submitting}
+        disabled={!canSubmit || submitting || !ready}
         whileHover={canSubmit && !submitting ? { scale: 1.01 } : undefined}
         whileTap={canSubmit && !submitting ? { scale: 0.99 } : undefined}
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-foreground text-background font-semibold text-[15px] disabled:opacity-50"
@@ -816,7 +893,7 @@ export function ClaimIntelligenceInsurerSummary({
   const hasEvidenceSections = Boolean(
     report.vehicle || report.identity || report.policyDoc || report.medical
   );
-  const showEvidenceToggle = hasEvidenceSections && mlRisk && expandedMl !== undefined;
+  const showEvidenceToggle = hasEvidenceSections && onToggleEvidence !== undefined;
 
   let metricIndex = 0;
 
@@ -965,6 +1042,7 @@ export function ClaimIntelligenceHistoryBadge({
   onToggle: () => void;
 }) {
   const readinessCopy = claimReadinessSeekerCopy(report.claimReadiness.score);
+  const [fullOpen, setFullOpen] = useState(false);
 
   return (
     <div className="mt-4 border-t border-border pt-4">
@@ -1000,12 +1078,25 @@ export function ClaimIntelligenceHistoryBadge({
             transition={quickTransition}
             className="overflow-hidden"
           >
-            <div className="mt-3">
+            <div className="mt-3 space-y-2">
+              <button
+                type="button"
+                onClick={() => setFullOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                Open full report
+              </button>
               <ClaimIntelligenceReportCard report={report} compact />
             </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
+      <ClaimIntelligenceFullReportDialog
+        report={report}
+        open={fullOpen}
+        onOpenChange={setFullOpen}
+      />
     </div>
   );
 }

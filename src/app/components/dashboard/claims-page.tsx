@@ -30,6 +30,7 @@ import {
   ClaimAssistantPanel,
   type PendingClaimFile,
 } from "./claim-assistant-panel";
+import { ClaimDetailPanel } from "./claim-detail-panel";
 import { UserCnicGate } from "./user-cnic-gate";
 import { ClaimIntelligenceHistoryBadge } from "./claim-intelligence-ui";
 
@@ -89,8 +90,10 @@ export function ClaimsPage() {
     null
   );
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [viewingClaimId, setViewingClaimId] = useState<string | null>(null);
   const [userActionTimestamp, setUserActionTimestamp] = useState<Date | null>(null);
   const focusId = searchParams.get("focus");
+  const viewingClaim = claims.find((c) => c.id === viewingClaimId) ?? null;
 
   const load = async () => {
     setLoading(true);
@@ -172,6 +175,7 @@ export function ClaimsPage() {
 
   const canGenerate =
     Boolean(selectedPurchaseId) &&
+    Boolean(claimType) &&
     Boolean(incidentDate) &&
     resolvedDescription.length >= 5 &&
     pendingFiles.length > 0 &&
@@ -219,6 +223,9 @@ export function ClaimsPage() {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
+      const attachments = await Promise.all(
+        pendingFiles.map((pf) => fileToAttachment(pf.file))
+      );
       const result = await createClaim({
         purchaseId: selectedPurchaseId,
         claimType,
@@ -226,8 +233,10 @@ export function ClaimsPage() {
         estimatedAmountPkr: estimatedAmountPkr ? Number(estimatedAmountPkr) : undefined,
         description: resolvedDescription,
         intelligenceReport: intelligenceReport ?? undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
       setClaims((prev) => [result.claim, ...prev]);
+      setViewingClaimId(result.claim.id);
       setSelectedPurchaseId("");
       setClaimType("");
       setDescription("");
@@ -242,7 +251,7 @@ export function ClaimsPage() {
       });
       clearReport();
       setUserActionTimestamp(null);
-      setSearchParams({}, { replace: true });
+      setSearchParams({ focus: result.claim.id }, { replace: true });
       toast.success("Claim sent to your insurer for review");
     } catch (err) {
       toast.error(
@@ -297,6 +306,15 @@ export function ClaimsPage() {
       </header>
 
       <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-6 lg:gap-8 items-start">
+        {viewingClaim ? (
+          <ClaimDetailPanel
+            claim={viewingClaim}
+            onBack={() => setViewingClaimId(null)}
+            onUpdated={(updated) => {
+              setClaims((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+            }}
+          />
+        ) : (
         <ClaimAssistantPanel
           key={wizardResetKey}
           purchases={purchases}
@@ -336,6 +354,7 @@ export function ClaimsPage() {
           canSubmit={canSubmit}
           userActionTimestamp={userActionTimestamp}
         />
+        )}
 
         <aside className="space-y-4 xl:sticky xl:top-6">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -363,9 +382,18 @@ export function ClaimsPage() {
                     initial="hidden"
                     animate="visible"
                     transition={{ delay: staggerDelay(index, false, 0.05) }}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setViewingClaimId(claim.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setViewingClaimId(claim.id);
+                      }
+                    }}
                     className={cn(
-                      "rounded-xl border p-4 transition-shadow",
-                      focusId === claim.id
+                      "rounded-xl border p-4 transition-shadow cursor-pointer",
+                      focusId === claim.id || viewingClaimId === claim.id
                         ? "border-primary shadow-lg shadow-primary/10 bg-primary/[0.02]"
                         : "border-border bg-card hover:border-border/80 hover:shadow-sm"
                     )}
@@ -411,13 +439,18 @@ export function ClaimsPage() {
                       ) : null}
                     </div>
                     {claim.intelligenceReport ? (
-                      <ClaimIntelligenceHistoryBadge
-                        report={claim.intelligenceReport}
-                        expanded={expandedHistoryId === claim.id}
-                        onToggle={() =>
-                          setExpandedHistoryId((prev) => (prev === claim.id ? null : claim.id))
-                        }
-                      />
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <ClaimIntelligenceHistoryBadge
+                          report={claim.intelligenceReport}
+                          expanded={expandedHistoryId === claim.id}
+                          onToggle={() =>
+                            setExpandedHistoryId((prev) => (prev === claim.id ? null : claim.id))
+                          }
+                        />
+                      </div>
                     ) : null}
                   </motion.article>
                 ))}

@@ -11,6 +11,7 @@ export function statusClass(status: string) {
   if (status === "pending" || status === "new" || status === "submitted")
     return "bg-warning/10 text-warning";
   if (status === "in_progress" || status === "in_review") return "bg-primary/10 text-primary";
+  if (status === "needs_info") return "bg-warning/10 text-warning";
   return "bg-muted text-muted-foreground";
 }
 

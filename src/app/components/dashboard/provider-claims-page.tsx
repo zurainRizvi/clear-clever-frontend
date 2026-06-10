@@ -16,7 +16,11 @@ import { motion } from "motion/react";
 import { AnimatedPage } from "../ui/animated-page";
 import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
 import { fadeUpItem } from "@/lib/motion-presets";
-import { ClaimIntelligenceInsurerSummary } from "./claim-intelligence-ui";
+import { ClaimAttachmentsGallery } from "./claim-attachments-gallery";
+import {
+  ClaimIntelligenceFullReportDialog,
+  ClaimIntelligenceInsurerSummary,
+} from "./claim-intelligence-ui";
 import {
   ClaimRiskInsightCard,
   ClaimRiskQueueSummary,
@@ -27,6 +31,7 @@ const FILTERS: Array<"all" | InsurerClaimStatus> = [
   "all",
   "submitted",
   "in_review",
+  "needs_info",
   "approved",
   "rejected",
 ];
@@ -35,6 +40,7 @@ const RISK_ORDER = { high: 0, medium: 1, low: 2 } as const;
 
 function claimStatusLabel(status: InsurerClaimStatus) {
   if (status === "submitted") return "Awaiting review";
+  if (status === "needs_info") return "Needs more info";
   return titleCase(status);
 }
 
@@ -47,6 +53,8 @@ export function ProviderClaimsPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedMlId, setExpandedMlId] = useState<string | null>(null);
   const [expandedEvidenceId, setExpandedEvidenceId] = useState<string | null>(null);
+  const [fullReportId, setFullReportId] = useState<string | null>(null);
+  const [infoCommentById, setInfoCommentById] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,13 +95,16 @@ export function ProviderClaimsPage() {
   }, [claims, filter, priorityFirst]);
 
   const pendingCount = claims.filter(
-    (claim) => claim.status === "submitted" || claim.status === "in_review"
+    (claim) =>
+      claim.status === "submitted" ||
+      claim.status === "in_review" ||
+      claim.status === "needs_info"
   ).length;
 
   const setStatus = async (
     claimId: string,
     status: Exclude<InsurerClaimStatus, "submitted">,
-    options?: { revert?: boolean }
+    options?: { revert?: boolean; comment?: string }
   ) => {
     setUpdatingId(claimId);
     try {
@@ -224,19 +235,32 @@ export function ProviderClaimsPage() {
                     </p>
                   ) : null}
 
+                  {claim.attachments?.length ? (
+                    <ClaimAttachmentsGallery attachments={claim.attachments} compact />
+                  ) : null}
+
                   {claim.intelligenceReport ? (
-                    <ClaimIntelligenceInsurerSummary
-                      report={claim.intelligenceReport}
-                      mlRisk={claim.mlRisk}
-                      expandedMl={expandedMlId === claim.id}
-                      onToggleMlExpand={() =>
-                        setExpandedMlId((prev) => (prev === claim.id ? null : claim.id))
-                      }
-                      expandedEvidence={expandedEvidenceId === claim.id}
-                      onToggleEvidence={() =>
-                        setExpandedEvidenceId((prev) => (prev === claim.id ? null : claim.id))
-                      }
-                    />
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setFullReportId(claim.id)}
+                        className="text-sm font-semibold text-primary hover:underline"
+                      >
+                        Open full AI intelligence report
+                      </button>
+                      <ClaimIntelligenceInsurerSummary
+                        report={claim.intelligenceReport}
+                        mlRisk={claim.mlRisk}
+                        expandedMl={expandedMlId === claim.id}
+                        onToggleMlExpand={() =>
+                          setExpandedMlId((prev) => (prev === claim.id ? null : claim.id))
+                        }
+                        expandedEvidence={expandedEvidenceId === claim.id}
+                        onToggleEvidence={() =>
+                          setExpandedEvidenceId((prev) => (prev === claim.id ? null : claim.id))
+                        }
+                      />
+                    </div>
                   ) : claim.mlRisk ? (
                     <ClaimRiskInsightCard
                       mlRisk={claim.mlRisk}
@@ -273,34 +297,70 @@ export function ProviderClaimsPage() {
                     </div>
                   </div>
 
-                  {(claim.status === "submitted" || claim.status === "in_review") && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {claim.status === "submitted" ? (
+                  {(claim.status === "submitted" ||
+                    claim.status === "in_review" ||
+                    claim.status === "needs_info") && (
+                    <div className="space-y-3 pt-1">
+                      <label className="block">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Message to policyholder (required for “request info”)
+                        </span>
+                        <textarea
+                          value={infoCommentById[claim.id] ?? ""}
+                          onChange={(e) =>
+                            setInfoCommentById((prev) => ({
+                              ...prev,
+                              [claim.id]: e.target.value,
+                            }))
+                          }
+                          rows={2}
+                          placeholder="e.g. Please upload a clearer CNIC photo and police report."
+                          className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {claim.status === "submitted" ? (
+                          <button
+                            type="button"
+                            disabled={updatingId === claim.id}
+                            onClick={() => void setStatus(claim.id, "in_review")}
+                            className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent disabled:opacity-50"
+                          >
+                            Start review
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           disabled={updatingId === claim.id}
-                          onClick={() => void setStatus(claim.id, "in_review")}
-                          className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent disabled:opacity-50"
+                          onClick={() => {
+                            const comment = infoCommentById[claim.id]?.trim();
+                            if (!comment) {
+                              toast.error("Add a comment before requesting more information");
+                              return;
+                            }
+                            void setStatus(claim.id, "needs_info", { comment });
+                          }}
+                          className="px-4 py-2 text-sm border border-warning/40 text-warning rounded-lg hover:bg-warning/10 disabled:opacity-50"
                         >
-                          Start review
+                          Request more info
                         </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        disabled={updatingId === claim.id}
-                        onClick={() => void setStatus(claim.id, "approved")}
-                        className="px-4 py-2 text-sm bg-success text-success-foreground rounded-lg disabled:opacity-50"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        disabled={updatingId === claim.id}
-                        onClick={() => void setStatus(claim.id, "rejected")}
-                        className="px-4 py-2 text-sm border border-destructive/40 text-destructive rounded-lg hover:bg-destructive/10 disabled:opacity-50"
-                      >
-                        Reject
-                      </button>
+                        <button
+                          type="button"
+                          disabled={updatingId === claim.id}
+                          onClick={() => void setStatus(claim.id, "approved")}
+                          className="px-4 py-2 text-sm bg-success text-success-foreground rounded-lg disabled:opacity-50"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={updatingId === claim.id}
+                          onClick={() => void setStatus(claim.id, "rejected")}
+                          className="px-4 py-2 text-sm border border-destructive/40 text-destructive rounded-lg hover:bg-destructive/10 disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </div>
                     </div>
                   )}
                   {(claim.status === "approved" || claim.status === "rejected") && (
@@ -321,6 +381,22 @@ export function ProviderClaimsPage() {
           ))
         )}
       </div>
+
+      {fullReportId ? (
+        (() => {
+          const claim = claims.find((c) => c.id === fullReportId);
+          if (!claim?.intelligenceReport) return null;
+          return (
+            <ClaimIntelligenceFullReportDialog
+              report={claim.intelligenceReport}
+              open
+              onOpenChange={(open) => {
+                if (!open) setFullReportId(null);
+              }}
+            />
+          );
+        })()
+      ) : null}
     </AnimatedPage>
   );
 }

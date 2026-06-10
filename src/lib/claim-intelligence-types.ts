@@ -60,6 +60,16 @@ export interface ClaimIntelligenceReport {
     informationConsistent: boolean;
     noMajorIssues: boolean;
   };
+  policyAlignment?: {
+    matchesPolicyCategory: boolean;
+    reason: string;
+  };
+  submissionChecklist?: {
+    cnicDocumentUploaded: boolean;
+    cnicVerified: boolean;
+    readyToSubmit: boolean;
+    missingItems: string[];
+  };
   executiveSummary: string;
   insurerRecommendation: InsurerRecommendation;
   modelVersion: string;

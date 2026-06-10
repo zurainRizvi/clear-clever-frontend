@@ -37,7 +37,12 @@ import {
   type ClaimRichCardData,
 } from "./claim-chat-ui";
 import {
+  claimTypesForPolicyCategory,
+  pendingFilesIncludeCnic,
+} from "@/lib/claim-category-types";
+import {
   ClaimIntelligenceChatReport,
+  ClaimIntelligenceFullReportDialog,
   ClaimIntelligenceSubmitCard,
 } from "./claim-intelligence-ui";
 
@@ -49,56 +54,35 @@ export type PendingClaimFile = {
 
 type FlowStep = "welcome" | "policy" | "type" | "details" | "evidence" | "report";
 
-const CLAIM_TYPES: {
-  id: string;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-  gradient: string;
-}[] = [
-  {
-    id: "accident",
-    label: "Accident",
-    description: "Collision or road incident involving your vehicle",
+const CLAIM_TYPE_META: Record<
+  string,
+  { icon: LucideIcon; gradient: string }
+> = {
+  accident: {
     icon: Car,
     gradient: "bg-gradient-to-br from-slate-600/30 via-blue-500/20 to-slate-400/10",
   },
-  {
-    id: "damage",
-    label: "Damage",
-    description: "Physical damage to property, vehicle, or belongings",
+  damage: {
     icon: Home,
     gradient: "bg-gradient-to-br from-amber-500/25 via-orange-400/15 to-amber-300/10",
   },
-  {
-    id: "theft",
-    label: "Theft",
-    description: "Stolen vehicle, belongings, or property",
+  theft: {
     icon: Shield,
     gradient: "bg-gradient-to-br from-violet-500/25 via-purple-400/15 to-indigo-300/10",
   },
-  {
-    id: "medical",
-    label: "Medical",
-    description: "Health treatment, hospitalization, or medical expenses",
+  medical: {
     icon: Stethoscope,
     gradient: "bg-gradient-to-br from-rose-500/25 via-pink-400/15 to-rose-300/10",
   },
-  {
-    id: "pet_care",
-    label: "Pet care",
-    description: "Veterinary treatment or pet-related incident",
+  pet_care: {
     icon: PawPrint,
     gradient: "bg-gradient-to-br from-emerald-500/25 via-teal-400/15 to-green-300/10",
   },
-  {
-    id: "other",
-    label: "Other",
-    description: "Another claim type not listed above",
+  other: {
     icon: FileText,
     gradient: "bg-gradient-to-br from-slate-500/20 via-gray-400/15 to-slate-300/10",
   },
-];
+};
 
 const INFO_REPLIES: Record<string, { title: string; body: string }> = {
   documents: {
@@ -195,9 +179,23 @@ export function ClaimAssistantPanel({
   const [confirmedClaimType, setConfirmedClaimType] = useState("");
   const [stepTimestamp, setStepTimestamp] = useState<Date | null>(null);
   const [reportViewOpen, setReportViewOpen] = useState(false);
+  const [fullReportOpen, setFullReportOpen] = useState(false);
 
   const confirmedPurchase = purchases.find((p) => p.id === confirmedPolicyId);
-  const claimTypeMeta = CLAIM_TYPES.find((t) => t.id === confirmedClaimType);
+  const activePolicyCategory =
+    confirmedPurchase?.policy?.category ??
+    purchases.find((p) => p.id === selectedPurchaseId)?.policy?.category;
+  const availableClaimTypes = useMemo(
+    () =>
+      claimTypesForPolicyCategory(activePolicyCategory).map((type) => ({
+        ...type,
+        icon: CLAIM_TYPE_META[type.id]?.icon ?? FileText,
+        gradient: CLAIM_TYPE_META[type.id]?.gradient ?? CLAIM_TYPE_META.other.gradient,
+      })),
+    [activePolicyCategory]
+  );
+  const claimTypeMeta = availableClaimTypes.find((t) => t.id === confirmedClaimType);
+  const hasCnicInUploads = pendingFilesIncludeCnic(pendingFiles);
 
   const displayStep: FlowStep =
     intelligenceReport && reportViewOpen ? "report" : activeStep;
@@ -205,6 +203,8 @@ export function ClaimAssistantPanel({
   useEffect(() => {
     if (!intelligenceReport) {
       setReportViewOpen(false);
+    } else {
+      setReportViewOpen(true);
     }
   }, [intelligenceReport]);
 
@@ -257,6 +257,11 @@ export function ClaimAssistantPanel({
   const handleConfirmPolicy = () => {
     if (!selectedPurchaseId || analyzing) return;
     setConfirmedPolicyId(selectedPurchaseId);
+    const category = purchases.find((p) => p.id === selectedPurchaseId)?.policy?.category;
+    const allowed = claimTypesForPolicyCategory(category).map((t) => t.id);
+    if (claimType && !allowed.includes(claimType)) {
+      onClaimTypeChange("");
+    }
     advanceStep("type");
   };
 
@@ -491,8 +496,9 @@ export function ClaimAssistantPanel({
             <ClaimBotRow delay={0.04}>
               <ClaimBotBubble>
                 <p>
-                  What type of claim are you filing? Pick the option that best describes your
-                  situation.
+                  What type of claim are you filing? Options match your{" "}
+                  {activePolicyCategory ? `${titleCase(activePolicyCategory)} ` : ""}
+                  policy — pick the one that best describes your situation.
                 </p>
               </ClaimBotBubble>
             </ClaimBotRow>
@@ -500,7 +506,7 @@ export function ClaimAssistantPanel({
             <ClaimBotRow delay={0.06}>
               <div className="w-full overflow-x-auto pb-1 -mx-1 px-1">
                 <div className="flex gap-2.5 min-w-max sm:min-w-0 sm:grid sm:grid-cols-3 sm:gap-2">
-                  {CLAIM_TYPES.map((type) => {
+                  {availableClaimTypes.map((type) => {
                     const Icon = type.icon;
                     const active =
                       activeStep === "type"
@@ -669,6 +675,19 @@ export function ClaimAssistantPanel({
               <ClaimRichCardRow cards={evidenceGuideCards} label="Recommended evidence" />
             </ClaimBotRow>
 
+            {pendingFiles.length > 0 && !hasCnicInUploads ? (
+              <ClaimBotRow delay={0.07}>
+                <ClaimBotBubble>
+                  <p className="font-semibold text-warning">CNIC required for submission</p>
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                    Your damage photos look good, but you still need to upload a clear photo of your
+                    CNIC. Submission requires identity verification — add your CNIC before generating
+                    the final report or submitting.
+                  </p>
+                </ClaimBotBubble>
+              </ClaimBotRow>
+            ) : null}
+
             <ClaimBotRow delay={0.08}>
               <ClaimInlinePanel title="Your uploads">
                 <input
@@ -800,9 +819,21 @@ export function ClaimAssistantPanel({
                 </ClaimBotBubble>
               </ClaimBotRow>
 
-              <div className="pl-12 pr-1">
+              <div className="pl-12 pr-1 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setFullReportOpen(true)}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Open full-screen report
+                </button>
                 <ClaimIntelligenceChatReport report={intelligenceReport} />
               </div>
+              <ClaimIntelligenceFullReportDialog
+                report={intelligenceReport}
+                open={fullReportOpen}
+                onOpenChange={setFullReportOpen}
+              />
 
               <ClaimBotRow delay={0.12}>
                 <ClaimInlinePanel>

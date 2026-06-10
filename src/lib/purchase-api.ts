@@ -69,6 +69,18 @@ export interface PurchaseSummary {
   };
 }
 
+export interface ClaimStoredAttachment {
+  fileName: string;
+  mimeType: string;
+  dataBase64: string;
+  uploadedAt: string;
+}
+
+export interface ClaimInsurerComment {
+  text: string;
+  createdAt: string;
+}
+
 export interface ClaimSummary {
   id: string;
   purchaseId: string;
@@ -90,6 +102,8 @@ export interface ClaimSummary {
     contactPhone?: string;
   };
   intelligenceReport?: ClaimIntelligenceReport;
+  attachments?: ClaimStoredAttachment[];
+  insurerComment?: ClaimInsurerComment;
 }
 
 export interface AppNotification {
@@ -173,9 +187,31 @@ export async function createClaim(body: {
   estimatedAmountPkr?: number;
   description: string;
   intelligenceReport?: ClaimIntelligenceReport;
+  attachments?: ClaimAttachmentPayload[];
 }): Promise<{ claim: ClaimSummary }> {
   return apiRequest("/api/claims", {
     method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchClaim(id: string): Promise<{ claim: ClaimSummary }> {
+  return apiRequest(`/api/claims/${id}`, { auth: true });
+}
+
+export async function resubmitClaim(
+  id: string,
+  body: {
+    description?: string;
+    estimatedAmountPkr?: number;
+    attachments?: ClaimAttachmentPayload[];
+    intelligenceReport?: ClaimIntelligenceReport;
+    reuseIntelligenceReport?: boolean;
+  }
+): Promise<{ claim: ClaimSummary; attachmentsChanged: boolean }> {
+  return apiRequest(`/api/claims/${id}/resubmit`, {
+    method: "PATCH",
     auth: true,
     body: JSON.stringify(body),
   });
