@@ -44,6 +44,7 @@ export function CnicKycPanel({
 }) {
   const [cnic, setCnic] = useState(initialCnic);
   const [editingCnic, setEditingCnic] = useState(!cnicOnFile);
+  const [savedLocally, setSavedLocally] = useState(false);
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -76,6 +77,10 @@ export function CnicKycPanel({
   }, [initialCnic]);
 
   useEffect(() => {
+    setSavedLocally(false);
+  }, [cnicOnFile]);
+
+  useEffect(() => {
     void loadStatus();
   }, [loadStatus]);
 
@@ -92,12 +97,15 @@ export function CnicKycPanel({
     }
     setSaving(true);
     try {
-      await updateMeProfile({ cnic: normalizeCnicInput(cnic) });
-      const { kyc } = await deriveKycFromCnic(normalizeCnicInput(cnic));
+      const normalized = normalizeCnicInput(cnic);
+      const { user } = await updateMeProfile({ cnic: normalized });
+      const { kyc } = await deriveKycFromCnic(normalized);
       setReport(kyc);
       onKycUpdatedRef.current?.(kyc);
       onCnicSavedRef.current?.();
+      setSavedLocally(true);
       setEditingCnic(false);
+      setCnic(user.cnicMasked ?? normalized);
       toast.success("CNIC updated — demographics refreshed");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not save CNIC");
@@ -155,8 +163,10 @@ export function CnicKycPanel({
       clearPendingFile();
       toast.success(
         kyc.identityVerified
-          ? "Identity verified — your CNIC matches your purchased policies"
-          : kyc.policyLinkageNote ?? "CNIC analyzed — review results below"
+          ? "Identity verified — your CNIC matches your profile"
+          : kyc.status === "partial"
+            ? "CNIC submitted — verification is under review"
+            : kyc.policyLinkageNote ?? "CNIC analyzed — review results below"
       );
     } catch (err) {
       toast.error(friendlyKycError(err));
@@ -165,7 +175,11 @@ export function CnicKycPanel({
     }
   };
 
-  const canUpload = cnicOnFile || isValidCnicInput(cnic) || report?.status !== "none";
+  const effectiveCnicOnFile = Boolean(cnicOnFile || savedLocally);
+  const uploadLocked =
+    report?.status === "verified" ||
+    (report?.status === "partial" && report?.source === "upload");
+  const canShowUpload = showUpload && effectiveCnicOnFile && !uploadLocked;
 
   return (
     <div className="space-y-5">
@@ -212,7 +226,7 @@ export function CnicKycPanel({
               ) : cnicOnFile ? (
                 "Save updated CNIC"
               ) : (
-                "Save CNIC & derive region"
+                "Save CNIC to continue"
               )}
             </button>
             {cnicOnFile ? (
@@ -232,17 +246,17 @@ export function CnicKycPanel({
         )}
       </div>
 
-      {showUpload && canUpload ? (
+      {canShowUpload ? (
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5 text-primary" aria-hidden />
             </div>
             <div>
-              <p className="font-medium text-sm">Verify CNIC against your policies</p>
+              <p className="font-medium text-sm">Upload CNIC for AI verification</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Upload a clear CNIC photo. Full verification passes only when your ID matches the
-                policyholder name and CNIC on a completed policy purchase.
+                We cross-check your saved CNIC and name against the document. Front side only or
+                front and back — at least one clear photo is required.
               </p>
             </div>
           </div>
@@ -308,9 +322,15 @@ export function CnicKycPanel({
             Front side, well lit, all corners visible
           </p>
         </div>
-      ) : showUpload && !canUpload ? (
+      ) : showUpload && !effectiveCnicOnFile ? (
         <p className="text-sm text-muted-foreground">
           Save your CNIC number above before uploading a verification photo.
+        </p>
+      ) : showUpload && uploadLocked ? (
+        <p className="text-sm text-muted-foreground">
+          {report?.status === "verified"
+            ? "Your identity is verified. You cannot submit KYC again unless it is rejected."
+            : "Your CNIC is under review. You will be notified once verification completes."}
         </p>
       ) : null}
 
@@ -320,7 +340,7 @@ export function CnicKycPanel({
           Loading verification status…
         </div>
       ) : report ? (
-        <KycVerificationPanel report={report} />
+        <KycVerificationPanel report={report} cnicOnFile={effectiveCnicOnFile} />
       ) : null}
     </div>
   );

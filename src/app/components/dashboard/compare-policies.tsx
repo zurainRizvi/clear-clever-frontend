@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import {
   Shield,
   Car,
@@ -22,6 +22,7 @@ import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { useSavedPolicies } from "../saved-policies-context";
 import { fetchCategories, fetchCategoryQuestions, fetchRecommendations, trackComparePolicies } from "@/lib/auth-api";
+import { fetchStoredQuestionnaireAnswers } from "@/lib/purchase-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { formatPkr, formatPkrYearly } from "@/lib/format";
@@ -54,6 +55,7 @@ import {
   buildCrossCategorySuggestions,
   type CrossCategorySuggestion,
 } from "@/lib/cross-category-suggestions";
+import { mergePresetAnswers, resolveCategoryNav } from "@/lib/category-nav";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   home: Home,
@@ -79,8 +81,15 @@ type UiCategoryItem = CategoryItem & {
   presetAnswers?: Record<string, unknown>;
 };
 
+type CompareLocationState = {
+  category?: string;
+  presetAnswers?: Record<string, unknown>;
+};
+
 export function ComparePolicies() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { savePolicy, removeSavedPolicy, isPolicySaved } = useSavedPolicies();
   const { openAssistant, setAssistantCategory } = useAssistantWidget();
   const { isAuthenticated, user } = useAuth();
@@ -101,7 +110,9 @@ export function ComparePolicies() {
   const [drawerRequest, setDrawerRequest] = useState<ConversationDrawerRequest | null>(null);
   const [drawerTitle, setDrawerTitle] = useState("");
   const [drawerDescription, setDrawerDescription] = useState("");
+  const [prefillNotice, setPrefillNotice] = useState<string | null>(null);
   const restoredDraftRef = useRef(false);
+  const handledNavStateRef = useRef(false);
 
   useEffect(() => {
     fetchCategories()
@@ -205,17 +216,48 @@ export function ComparePolicies() {
     clearCompareFlowDraft();
     setSelectedCategory(category);
     setLoadingQuestions(true);
+    setPrefillNotice(null);
     try {
       const data = await fetchCategoryQuestions(category.slug);
       if (!data.available || data.questions.length === 0) {
         toast.message(copy.compare.othersTitle, { description: copy.compare.othersBody });
         return;
       }
+
+      let mergedAnswers = mergePresetAnswers(presetAnswers);
+      if (isAuthenticated) {
+        const stored = await fetchStoredQuestionnaireAnswers(category.slug).catch(() => null);
+        if (stored?.response?.answers) {
+          mergedAnswers = mergePresetAnswers(stored.response.answers, mergedAnswers);
+        }
+      }
+
       setQuestions(data.questions);
-      setAnswers(presetAnswers ?? {});
-      setCurrentQuestion(0);
+      setAnswers(mergedAnswers);
       setRecommendations([]);
       setRankingMethod(undefined);
+
+      const answeredCount = data.questions.filter(
+        (question) => mergedAnswers[question.id] != null && mergedAnswers[question.id] !== ""
+      ).length;
+      const remaining = data.questions.length - answeredCount;
+
+      if (requiredQuestionsAnswered(data.questions, mergedAnswers)) {
+        setPrefillNotice("We remembered your answers — jumping to your recommendations.");
+        await submitAnswers(mergedAnswers, category);
+        return;
+      }
+
+      if (answeredCount > 0 && remaining > 0) {
+        setPrefillNotice(
+          `We remembered your answers — only ${remaining} question${remaining === 1 ? "" : "s"} left.`
+        );
+      }
+
+      const firstUnanswered = data.questions.findIndex(
+        (question) => mergedAnswers[question.id] == null || mergedAnswers[question.id] === ""
+      );
+      setCurrentQuestion(firstUnanswered >= 0 ? firstUnanswered : 0);
       setStep("questionnaire");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
@@ -246,6 +288,30 @@ export function ComparePolicies() {
     await startCategoryFlow(category, suggestion.presetAnswers);
   };
 
+  useEffect(() => {
+    if (loadingCategories || handledNavStateRef.current) return;
+
+    const navState = location.state as CompareLocationState | null;
+    const queryCategory = searchParams.get("category");
+    const rawCategory = navState?.category ?? queryCategory;
+    if (!rawCategory) return;
+
+    const resolved = resolveCategoryNav(rawCategory, navState?.presetAnswers);
+    const category =
+      categories.find((item) => item.slug === resolved.slug) ??
+      ({
+        slug: resolved.slug,
+        name: resolved.slug,
+        available: true,
+      } as CategoryItem);
+
+    handledNavStateRef.current = true;
+    if (navState?.category) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    void startCategoryFlow(category, resolved.presetAnswers);
+  }, [loadingCategories, categories, location.pathname, location.state, navigate, searchParams]);
+
   const currentQ = questions[currentQuestion];
   const progress =
     questions.length > 0 ? ((currentQuestion + 1) / questions.length) * 100 : 0;
@@ -274,12 +340,16 @@ export function ComparePolicies() {
     }
   };
 
-  const submitAnswers = async (finalAnswers: Record<string, unknown>) => {
-    if (!selectedCategory) return;
+  const submitAnswers = async (
+    finalAnswers: Record<string, unknown>,
+    categoryOverride?: CategoryItem
+  ) => {
+    const activeCategory = categoryOverride ?? selectedCategory;
+    if (!activeCategory) return;
     setLoadingResults(true);
     try {
       const data = await fetchRecommendations({
-        category: selectedCategory.slug,
+        category: activeCategory.slug,
         answers: finalAnswers,
       });
       const recs = data.recommendations ?? [];
@@ -290,7 +360,7 @@ export function ComparePolicies() {
           /* compare tracking is best-effort */
         });
       }
-      setAssistantCategory(selectedCategory.slug);
+      setAssistantCategory(activeCategory.slug);
       setStep("results");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
@@ -459,6 +529,11 @@ export function ComparePolicies() {
             className="max-w-2xl mx-auto"
           >
             <div className="bg-card border border-border rounded-xl p-8">
+              {prefillNotice ? (
+                <p className="mb-4 text-sm rounded-lg border border-primary/20 bg-primary/5 text-primary px-3 py-2">
+                  {prefillNotice}
+                </p>
+              ) : null}
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-3 text-sm text-muted-foreground">
                   <span>
@@ -484,6 +559,7 @@ export function ComparePolicies() {
                 </div>
               ) : (
                 <QuestionInput
+                  key={currentQ.id}
                   question={currentQ}
                   value={answers[currentQ.id]}
                   otherDetail={String(answers[otherDetailKey(currentQ.id)] ?? "")}

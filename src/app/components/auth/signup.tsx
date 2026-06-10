@@ -12,6 +12,8 @@ import { signup } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { isValidCnicInput, normalizeCnicInput, formatCnicWhileTyping } from "@/lib/cnic";
+import { isSignupPasswordValid } from "@/lib/password-strength";
+import { PasswordStrengthField } from "./password-strength-field";
 import { setPendingEmail } from "@/lib/auth-storage";
 
 const schema = z
@@ -25,7 +27,13 @@ const schema = z
       .refine((v) => !v?.trim() || isValidCnicInput(v), {
         message: "CNIC must be 13 digits (e.g. 42101-1234567-1)",
       }),
-    password: z.string().min(8, "Use at least 8 characters"),
+    password: z
+      .string()
+      .min(8, "Use at least 8 characters")
+      .refine(isSignupPasswordValid, {
+        message:
+          "Use 8+ characters with upper & lower case letters, a number, and no special symbols",
+      }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -40,6 +48,7 @@ export function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [passwordValue, setPasswordValue] = useState("");
 
   const {
     register,
@@ -219,8 +228,10 @@ export function SignUp() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  {...register("password")}
-                  placeholder="At least 8 characters"
+                  {...register("password", {
+                    onChange: (event) => setPasswordValue(event.target.value),
+                  })}
+                  placeholder="Create a strong password"
                   className="w-full pl-12 pr-12 py-3 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                 />
                 <button
@@ -234,6 +245,7 @@ export function SignUp() {
               {errors.password && (
                 <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
               )}
+              <PasswordStrengthField password={passwordValue} showRequirements className="mt-3" />
             </motion.div>
 
             <motion.div

@@ -6,10 +6,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import {
   defaultProviderRange,
   formatProviderRangeLabel,
+  matchesProviderPreset,
   providerRangeAllTime,
   providerRangeLastDays,
   type DateRangeValue,
 } from "@/lib/provider-date-range";
+
+function presetButtonClass(active: boolean): string {
+  return active
+    ? "text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-1 rounded-md"
+    : "text-xs text-slate-500 dark:text-muted-foreground hover:text-slate-800 dark:hover:text-foreground px-2 py-1";
+}
 
 export function ProviderDateRangePicker({
   value,
@@ -32,10 +39,10 @@ export function ProviderDateRangePicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border bg-white text-sm text-slate-700 hover:bg-slate-50 transition-colors shrink-0 ${className}`}
+          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border bg-white dark:bg-card text-sm text-slate-700 dark:text-foreground hover:bg-slate-50 dark:hover:bg-accent transition-colors shrink-0 ${className}`}
           style={{ borderColor: "#E5E7EB", boxShadow: "0 8px 30px rgba(15,23,42,0.05)" }}
         >
-          <CalendarIcon className="w-4 h-4 text-slate-500 shrink-0" />
+          <CalendarIcon className="w-4 h-4 text-slate-500 dark:text-muted-foreground shrink-0" />
           <span className="whitespace-nowrap">{formatProviderRangeLabel(value)}</span>
         </button>
       </PopoverTrigger>
@@ -64,7 +71,7 @@ export function ProviderDateRangePicker({
         <div className="border-t p-2 flex flex-wrap justify-between gap-2">
           <button
             type="button"
-            className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1"
+            className={presetButtonClass(matchesProviderPreset(value, "7d"))}
             onClick={() => {
               onChange(defaultProviderRange());
               setOpen(false);
@@ -74,7 +81,7 @@ export function ProviderDateRangePicker({
           </button>
           <button
             type="button"
-            className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1"
+            className={presetButtonClass(matchesProviderPreset(value, "30d"))}
             onClick={() => {
               onChange(providerRangeLastDays(30));
               setOpen(false);
@@ -84,7 +91,7 @@ export function ProviderDateRangePicker({
           </button>
           <button
             type="button"
-            className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1"
+            className={presetButtonClass(matchesProviderPreset(value, "all"))}
             onClick={() => {
               onChange(providerRangeAllTime());
               setOpen(false);

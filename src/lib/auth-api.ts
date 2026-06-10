@@ -99,6 +99,10 @@ export async function getMe(): Promise<{ user: AuthUser }> {
 export async function updateMeProfile(body: {
   profilePhotoDataUrl?: string | null;
   cnic?: string;
+  addressLine?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
   notificationPreferences?: Partial<NonNullable<AuthUser["profile"]>["notificationPreferences"]>;
 }): Promise<{ user: AuthUser }> {
   return apiRequest("/api/auth/me", {

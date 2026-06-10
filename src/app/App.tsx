@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
 import { ThemeProvider } from "./components/theme-provider";
 import { AuthProvider } from "./components/auth-context";
 import { SavedPoliciesProvider } from "./components/saved-policies-context";
@@ -55,6 +55,11 @@ import { PublicSupportFormPage } from "./components/public-support-form-page";
 import { AboutPage, PartnersPage } from "./components/marketing-pages";
 import { AssistantWidgetProvider } from "./components/assistant/assistant-widget-context";
 import { AssistantWidget } from "./components/assistant/assistant-widget";
+
+function CompareRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/dashboard/compare${location.search}`} replace />;
+}
 
 export default function App() {
   return (
@@ -175,7 +180,7 @@ export default function App() {
                 <Route path="health" element={<AdminHealthPage />} />
                 <Route path="settings" element={<AdminSettingsPage variant="superadmin" />} />
               </Route>
-              <Route path="/compare" element={<Navigate to="/dashboard/compare" replace />} />
+              <Route path="/compare" element={<CompareRedirect />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/partners" element={<PartnersPage />} />
               <Route path="/help-center" element={<PublicSupportFormPage title="Help Center" />} />

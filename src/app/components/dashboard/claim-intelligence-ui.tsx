@@ -987,6 +987,7 @@ export function ClaimIntelligenceInsurerSummary({
 
   const docVerification = documentVerificationLabel(report);
   const consistencyLabel = consistencyCheckLabel(report.consistency.level);
+  const readinessCopy = claimReadinessSeekerCopy(report.claimReadiness.score);
   const hasEvidenceSections = Boolean(
     report.vehicle || report.identity || report.policyDoc || report.medical
   );
@@ -1022,7 +1023,11 @@ export function ClaimIntelligenceInsurerSummary({
               </motion.span>
               <h3 className="font-semibold text-lg">AI Claims Intelligence Report</h3>
             </div>
+            <p className="text-sm font-medium text-foreground mt-1">{readinessCopy.headline}</p>
             <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              {readinessCopy.subtitle}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
               {insurerRecommendationLabel(report.insurerRecommendation)}
             </p>
           </div>
@@ -1058,12 +1063,6 @@ export function ClaimIntelligenceInsurerSummary({
           {costRange ? (
             <MetricTile label="Estimated cost" value={costRange} index={metricIndex++} />
           ) : null}
-          <MetricTile
-            label="Claim readiness"
-            value={`${report.claimReadiness.score}%`}
-            tone={report.claimReadiness.score >= 85 ? "success" : "default"}
-            index={metricIndex++}
-          />
           <MetricTile label="Consistency check" value={consistencyLabel} index={metricIndex++} />
           <MetricTile label="Document verification" value={docVerification} index={metricIndex++} />
         </motion.div>

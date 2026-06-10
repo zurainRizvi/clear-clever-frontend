@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Bell, HelpCircle, ImageIcon, Mail, Phone, Shield, User } from "lucide-react";
+import { Bell, CreditCard, HelpCircle, ImageIcon, Mail, MapPin, Phone, Shield, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, useLogout } from "../auth-context";
 import { DarkModeToggle } from "../dark-mode-toggle";
@@ -144,6 +144,10 @@ export function SeekerSettingsPage() {
             <Mail className="w-4 h-4 shrink-0" />
             <span>{userEmail ?? "—"}</span>
           </div>
+          <div className="flex items-center gap-2 text-muted-foreground sm:col-span-2">
+            <CreditCard className="w-4 h-4 shrink-0" />
+            <span className="font-mono">{user?.cnicMasked ?? "CNIC not added yet"}</span>
+          </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="w-4 h-4 shrink-0" />
             <span>{user?.phone ?? "—"}</span>
@@ -157,22 +161,45 @@ export function SeekerSettingsPage() {
             <Shield className="w-5 h-5 text-primary" />
             Identity verification
           </h2>
-          {user?.kycStatus && user.kycStatus !== "none" ? (
-            <KycStatusBadge status={user.kycStatus} />
+          {user?.kycStatus ? (
+            <KycStatusBadge status={user.kycStatus} cnicOnFile={Boolean(user?.hasCnic)} />
+          ) : user?.hasCnic ? (
+            <KycStatusBadge status="none" cnicOnFile />
           ) : null}
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Your CNIC is verified against completed policy purchases. Save your CNIC, then upload a
-          clear photo — full verification passes when your ID matches the policyholder details on
-          your policies.
+          Save your CNIC here first. Then upload a clear photo — AI cross-checks your name, CNIC
+          number, and expiry against what you entered. Verified KYC is required before you can
+          purchase a policy.
         </p>
         {user?.cnicMasked ? (
           <p className="text-sm text-muted-foreground font-mono">{user.cnicMasked}</p>
         ) : null}
         <CnicKycPanel
+          initialCnic={user?.cnicMasked ?? ""}
           cnicOnFile={Boolean(user?.hasCnic)}
           onCnicSaved={() => void refreshUser()}
           onKycUpdated={() => void refreshUser()}
+        />
+      </section>
+
+      <section className="bg-card border border-border rounded-xl p-6 space-y-4 xl:col-span-2">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-primary" />
+          Address
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Used to pre-fill checkout. KYC may auto-fill these fields from your CNIC when verified.
+        </p>
+        <AddressForm
+          key={`${user?.id ?? "guest"}-${user?.profile?.addressLine ?? ""}-${user?.profile?.city ?? ""}`}
+          initial={{
+            addressLine: user?.profile?.addressLine ?? "",
+            city: user?.profile?.city ?? "",
+            province: user?.profile?.province ?? "",
+            postalCode: user?.profile?.postalCode ?? "",
+          }}
+          onSaved={() => void refreshUser()}
         />
       </section>
 
@@ -240,6 +267,85 @@ export function SeekerSettingsPage() {
           Sign out
         </button>
       </section>
+    </div>
+  );
+}
+
+function AddressForm({
+  initial,
+  onSaved,
+}: {
+  initial: { addressLine: string; city: string; province: string; postalCode: string };
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm(initial);
+  }, [initial.addressLine, initial.city, initial.province, initial.postalCode]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateMeProfile(form);
+      onSaved();
+      toast.success("Address saved");
+    } catch {
+      toast.error("Could not save address");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="grid sm:grid-cols-2 gap-4">
+      <label className="sm:col-span-2 block space-y-1.5">
+        <span className="text-sm font-medium">Street address</span>
+        <input
+          type="text"
+          value={form.addressLine}
+          onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
+          className="w-full px-3 py-2.5 bg-input-background border border-border rounded-xl"
+        />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-sm font-medium">City</span>
+        <input
+          type="text"
+          value={form.city}
+          onChange={(e) => setForm({ ...form, city: e.target.value })}
+          className="w-full px-3 py-2.5 bg-input-background border border-border rounded-xl"
+        />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-sm font-medium">Province</span>
+        <input
+          type="text"
+          value={form.province}
+          onChange={(e) => setForm({ ...form, province: e.target.value })}
+          className="w-full px-3 py-2.5 bg-input-background border border-border rounded-xl"
+        />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-sm font-medium">Postal code (optional)</span>
+        <input
+          type="text"
+          value={form.postalCode}
+          onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+          className="w-full px-3 py-2.5 bg-input-background border border-border rounded-xl"
+        />
+      </label>
+      <div className="sm:col-span-2">
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving}
+          className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save address"}
+        </button>
+      </div>
     </div>
   );
 }

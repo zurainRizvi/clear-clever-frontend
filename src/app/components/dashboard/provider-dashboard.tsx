@@ -14,6 +14,7 @@ import {
   LogOut,
   Shield,
   Bell,
+  ArrowLeft,
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -269,10 +270,11 @@ function ProviderDashboardInner() {
                 ) : null}
                 <Link
                   to="/provider-dashboard"
-                  className="text-sm font-medium hover:underline truncate"
-                  style={{ color: "#2563EB" }}
+                  className="inline-flex items-center gap-2 px-2.5 py-2 sm:px-3 rounded-xl border border-border text-sm hover:bg-accent transition-colors min-w-0"
                 >
-                  ← Dashboard
+                  <ArrowLeft className="w-4 h-4 shrink-0" />
+                  <span className="hidden sm:inline">Back to dashboard</span>
+                  <span className="sm:hidden truncate">Back</span>
                 </Link>
               </div>
               <div className="flex items-center gap-3">

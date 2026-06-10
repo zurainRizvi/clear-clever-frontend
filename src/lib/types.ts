@@ -36,6 +36,10 @@ export interface AuthUser {
     id: string;
     userId: string;
     profilePhotoDataUrl?: string;
+    addressLine?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
     notificationPreferences: {
       emailUpdates: boolean;
       claimAlerts: boolean;

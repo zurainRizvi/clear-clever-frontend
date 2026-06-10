@@ -76,18 +76,33 @@ function CheckRow({ ok, label }: { ok: boolean; label: string }) {
 const KYC_DISCLAIMER =
   "AI-assisted identity verification from your CNIC — not an official NADRA check.";
 
-export function KycStatusBadge({ status }: { status: KycVerificationReport["status"] }) {
+export function KycStatusBadge({
+  status,
+  cnicOnFile = false,
+}: {
+  status: KycVerificationReport["status"];
+  cnicOnFile?: boolean;
+}) {
+  if (status === "none" && cnicOnFile) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-muted text-muted-foreground border-border">
+        <ShieldCheck className="w-3 h-3" aria-hidden />
+        CNIC saved — upload to verify
+      </span>
+    );
+  }
+
   const styles: Record<KycVerificationReport["status"], string> = {
-    verified: "bg-success/10 text-success border-success/20",
-    partial: "bg-primary/10 text-primary border-primary/20",
-    failed: "bg-destructive/10 text-destructive border-destructive/20",
+    verified: "bg-success/10 text-success border-success/30",
+    partial: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+    failed: "bg-destructive/10 text-destructive border-destructive/30",
     none: "bg-muted text-muted-foreground border-border",
   };
   const labels: Record<KycVerificationReport["status"], string> = {
-    verified: "Verified",
-    partial: "Partial",
-    failed: "Failed",
-    none: "Not verified",
+    verified: "KYC verified",
+    partial: "Under review",
+    failed: "Not approved",
+    none: "Not started",
   };
   return (
     <span
@@ -105,14 +120,20 @@ export function KycStatusBadge({ status }: { status: KycVerificationReport["stat
 export function KycVerificationPanel({
   report,
   compact = false,
+  cnicOnFile = false,
 }: {
   report: KycVerificationReport;
   compact?: boolean;
+  cnicOnFile?: boolean;
 }) {
+  if (report.status === "none" && !cnicOnFile) {
+    return null;
+  }
+
   if (report.status === "none") {
     return (
       <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-        Add your CNIC and optionally upload a photo to unlock identity insights.
+        Add your CNIC and upload a photo to unlock identity insights.
       </div>
     );
   }

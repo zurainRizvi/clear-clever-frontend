@@ -68,3 +68,13 @@ export function firstUnansweredQuestionIndex(
 export function otherDetailKey(questionId: string): string {
   return `${questionId}_other`;
 }
+
+/** Loose match for stored vs option labels (case / whitespace). */
+export function isOptionSelected(value: unknown, option: string): boolean {
+  const normalizedOption = option.trim().toLowerCase();
+  if (Array.isArray(value)) {
+    return value.some((item) => String(item).trim().toLowerCase() === normalizedOption);
+  }
+  if (value === undefined || value === null || value === "") return false;
+  return String(value).trim().toLowerCase() === normalizedOption;
+}

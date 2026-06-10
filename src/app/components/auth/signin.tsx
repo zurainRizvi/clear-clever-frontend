@@ -11,10 +11,14 @@ import {
   Building2,
   Users,
   Crown,
+  Eye,
+  EyeOff,
+  Shield,
 } from "lucide-react";
 import { DarkModeToggle } from "../dark-mode-toggle";
 import { BackToHomeLink } from "./back-to-home";
 import { ClearCleverLogo } from "./clearclever-logo";
+import { PasswordStrengthField } from "./password-strength-field";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { login, sendOtp } from "@/lib/auth-api";
@@ -23,7 +27,6 @@ import { copy } from "@/lib/copy";
 import { useAuthRedirect } from "../auth-context";
 import { setPendingEmail } from "@/lib/auth-storage";
 import {
-  SIGN_IN_ROLES,
   signInRoleById,
   type SignInRoleId,
 } from "@/lib/role-routes";
@@ -42,13 +45,52 @@ const ROLE_ICONS = {
   "super-admin": Crown,
 } as const;
 
+const CONSUMER_ROLE_IDS: SignInRoleId[] = ["policy-seeker", "insurance-provider"];
+const ADMIN_ROLE_IDS: SignInRoleId[] = ["employee", "super-admin"];
+
+function ProfileRoleCard({
+  roleId,
+  onSelect,
+}: {
+  roleId: SignInRoleId;
+  onSelect: (id: SignInRoleId) => void;
+}) {
+  const role = signInRoleById(roleId);
+  if (!role) return null;
+  const Icon = ROLE_ICONS[roleId];
+
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => onSelect(roleId)}
+      className="relative flex flex-col items-center text-center p-6 bg-card border border-border rounded-2xl hover:border-primary/40 hover:shadow-md transition-all group min-w-0 flex-1"
+    >
+      {role.premium ? (
+        <span className="absolute -top-2 right-3 px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold rounded-full">
+          Admin
+        </span>
+      ) : null}
+      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors mb-3">
+        <Icon className="w-8 h-8" />
+      </div>
+      <h3 className="font-semibold text-base mb-1">{role.title}</h3>
+      <p className="text-xs text-muted-foreground leading-relaxed">{role.description}</p>
+    </motion.button>
+  );
+}
+
 export function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
   const authRedirect = useAuthRedirect();
+  const [portalMode, setPortalMode] = useState<"consumer" | "admin">("consumer");
   const [step, setStep] = useState<"role" | "credentials">("role");
   const [selectedRoleId, setSelectedRoleId] = useState<SignInRoleId | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordValue, setPasswordValue] = useState("");
 
   const {
     register,
@@ -59,9 +101,11 @@ export function SignIn() {
   } = useForm<SignInForm>();
 
   const selectedRole = selectedRoleId ? signInRoleById(selectedRoleId) : undefined;
+  const visibleRoleIds = portalMode === "admin" ? ADMIN_ROLE_IDS : CONSUMER_ROLE_IDS;
 
   useEffect(() => {
     reset({ email: "", password: "" });
+    setPasswordValue("");
   }, [reset]);
 
   useEffect(() => {
@@ -75,6 +119,7 @@ export function SignIn() {
   useEffect(() => {
     if (step === "credentials") {
       reset({ email: "", password: "" });
+      setPasswordValue("");
     }
   }, [step, reset]);
 
@@ -146,7 +191,23 @@ export function SignIn() {
             <BackToHomeLink />
           </div>
         ) : null}
-        <div className="absolute top-6 right-6">
+        <div className="absolute top-6 right-6 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPortalMode((mode) => (mode === "admin" ? "consumer" : "admin"));
+              setStep("role");
+              setSelectedRoleId(null);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
+              portalMode === "admin"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            Admin
+          </button>
           <DarkModeToggle />
         </div>
 
@@ -154,59 +215,53 @@ export function SignIn() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-md"
+          className="w-full max-w-xl"
         >
           {step === "role" ? (
             <>
               <ClearCleverLogo className="mb-8" />
               <h1 className="text-3xl font-bold mb-2">{copy.auth.signInTitle}</h1>
-              <p className="text-muted-foreground mb-8">Select your role to continue</p>
-              <div className="space-y-3">
-                {SIGN_IN_ROLES.map((role, index) => {
-                  const Icon = ROLE_ICONS[role.id];
-                  return (
-                    <motion.button
-                      key={role.id}
-                      type="button"
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.06 }}
-                      onClick={() => {
-                        setSelectedRoleId(role.id);
-                        setStep("credentials");
-                      }}
-                      className="relative w-full text-left p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group"
-                    >
-                      {role.premium ? (
-                        <span className="absolute -top-2 right-3 px-2 py-0.5 bg-primary text-primary-foreground text-xs font-medium rounded-full">
-                          Admin
-                        </span>
-                      ) : null}
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
-                          <Icon className="w-6 h-6" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold mb-0.5">{role.title}</h3>
-                          <p className="text-sm text-muted-foreground">{role.description}</p>
-                        </div>
-                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0" />
-                      </div>
-                    </motion.button>
-                  );
-                })}
+              <p className="text-muted-foreground mb-8">
+                {portalMode === "admin"
+                  ? "Choose your admin profile to continue"
+                  : "Choose how you use ClearClever — side by side, just like picking a profile"}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                {visibleRoleIds.map((roleId) => (
+                  <ProfileRoleCard
+                    key={roleId}
+                    roleId={roleId}
+                    onSelect={(id) => {
+                      setSelectedRoleId(id);
+                      setStep("credentials");
+                    }}
+                  />
+                ))}
               </div>
+              {portalMode === "consumer" ? (
+                <p className="mt-6 text-center text-xs text-muted-foreground">
+                  Platform staff? Use the <strong className="text-foreground">Admin</strong> button
+                  above for Admin or Super Admin access.
+                </p>
+              ) : (
+                <p className="mt-6 text-center text-xs text-muted-foreground">
+                  Returning as a seeker or insurer? Switch back with the Admin button above.
+                </p>
+              )}
             </>
           ) : (
             <>
               <div className="mb-6">
                 <button
                   type="button"
-                  onClick={() => setStep("role")}
+                  onClick={() => {
+                    setStep("role");
+                    setSelectedRoleId(null);
+                  }}
                   className="text-sm text-primary hover:underline inline-flex items-center gap-1"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Change role
+                  Choose a different profile
                 </button>
               </div>
               <ClearCleverLogo linkToHome={false} className="mb-6" />
@@ -255,15 +310,26 @@ export function SignIn() {
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
-                      type="password"
-                      {...register("password")}
+                      type={showPassword ? "text" : "password"}
+                      {...register("password", {
+                        onChange: (event) => setPasswordValue(event.target.value),
+                      })}
                       placeholder="Enter your password"
-                      className="w-full pl-12 pr-4 py-3 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full pl-12 pr-12 py-3 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                   {errors.password ? (
                     <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
                   ) : null}
+                  <PasswordStrengthField password={passwordValue} className="mt-3" />
                   <div className="mt-2 text-right">
                     <Link
                       to="/forgot-password"

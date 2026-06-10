@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useNavigate, useLocation } from "react-router";
+import { Link, useNavigate, useLocation } from "react-router";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -28,7 +28,6 @@ import {
 import type { PolicyQuestion, PublicPolicy } from "@/lib/types";
 import { ClearCleverLogo } from "../auth/clearclever-logo";
 import { InsurerLogo } from "./insurer-logo";
-import { CnicKycPanel } from "./cnic-kyc-panel";
 import { KycStatusBadge } from "./kyc-verification-ui";
 import { QuestionInput, otherDetailKey } from "./questionnaire-inputs";
 import {
@@ -115,8 +114,12 @@ export function PurchaseFlow() {
       fullName: prev.fullName || user.fullName || "",
       email: prev.email || user.email || "",
       phone: prev.phone || (user.phone ? toLocalPkPhoneDisplay(user.phone) : ""),
+      cnic: prev.cnic || user.cnicMasked?.replace(/-/g, "").length === 13 ? user.cnicMasked ?? "" : prev.cnic,
+      address: prev.address || user.profile?.addressLine || "",
+      city: prev.city || user.profile?.city || "",
+      postalCode: prev.postalCode || user.profile?.postalCode || "",
     }));
-  }, [user?.id, user?.fullName, user?.email, user?.phone]);
+  }, [user?.id, user?.fullName, user?.email, user?.phone, user?.profile?.addressLine, user?.profile?.city, user?.profile?.postalCode, user?.cnicMasked]);
 
   useEffect(() => {
     if (!policy) return;
@@ -187,6 +190,41 @@ export function PurchaseFlow() {
     return (
       <motion.div className="flex justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </motion.div>
+    );
+  }
+
+  const kycVerified = user?.kycStatus === "verified";
+  if (!kycVerified) {
+    return (
+      <motion.div className="max-w-lg mx-auto space-y-5 py-10">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 dark:bg-amber-950/30 dark:border-amber-900/40 p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-xl font-bold">Complete KYC before checkout</h2>
+            {user?.kycStatus ? (
+              <KycStatusBadge status={user.kycStatus} cnicOnFile={Boolean(user?.hasCnic)} />
+            ) : user?.hasCnic ? (
+              <KycStatusBadge status="none" cnicOnFile />
+            ) : null}
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Save your CNIC in Settings, upload a clear CNIC photo, and wait for verification. Your
+            contact details and address will then pre-fill automatically at checkout.
+          </p>
+          <Link
+            to="/dashboard/settings"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90"
+          >
+            Go to Settings
+          </Link>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(returnTo)}
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          Back to comparison
+        </button>
       </motion.div>
     );
   }
@@ -509,24 +547,6 @@ export function PurchaseFlow() {
                       className={inputClass(false)}
                     />
                   }
-                />
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card/50 p-4 sm:p-5 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-semibold text-sm">Identity verification</h3>
-                  {user?.kycStatus && user.kycStatus !== "none" ? (
-                    <KycStatusBadge status={user.kycStatus} />
-                  ) : null}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Optional AI KYC unlocks identity match scoring. Manual CNIC still works for checkout.
-                </p>
-                <CnicKycPanel
-                  initialCnic={contact.cnic}
-                  cnicOnFile={Boolean(user?.hasCnic)}
-                  onCnicSaved={() => void refreshUser()}
-                  onKycUpdated={() => void refreshUser()}
                 />
               </div>
 

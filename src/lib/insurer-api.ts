@@ -280,7 +280,7 @@ export interface InsurerAnalyticsPayload {
     totalUsers: number;
     mappedUsers: number;
     coverageNote?: string;
-    audience: "all" | "purchasers";
+    audience: "all" | "purchasers" | "leads";
     regionFilter: string | null;
     regions: Array<{
       slug: string;
@@ -289,6 +289,13 @@ export interface InsurerAnalyticsPayload {
       userCount: number;
     }>;
   };
+  audienceUsers: Array<{
+    userId: string;
+    name: string;
+    category: string;
+    lastStage: string;
+    purchased: boolean;
+  }>;
   customerDemographics: {
     title: string;
     subtitle: string;
@@ -322,7 +329,7 @@ export interface InsurerAnalyticsPayload {
 export async function fetchInsurerAnalytics(params?: {
   from?: string;
   to?: string;
-  audience?: "all" | "purchasers";
+  audience?: "all" | "purchasers" | "leads";
   region?: string;
 }): Promise<{ analytics: InsurerAnalyticsPayload }> {
   const search = new URLSearchParams();

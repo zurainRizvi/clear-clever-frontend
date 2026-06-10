@@ -69,7 +69,7 @@ function HealthTabs({
   return (
     <div className="overflow-x-auto scrollbar-none">
       <LayoutGroup id="admin-health-tabs">
-        <div className="inline-flex gap-1 rounded-xl bg-slate-100 p-1 border border-slate-200">
+        <div className="inline-flex gap-1 rounded-xl bg-muted p-1 border border-border">
           {tabs.map((tab) => {
             const isActive = tab.id === active;
             return (
@@ -78,7 +78,7 @@ function HealthTabs({
                 type="button"
                 onClick={() => onChange(tab.id)}
                 className={`relative rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                  isActive ? "text-white" : "text-slate-600 hover:text-slate-900"
+                  isActive ? "text-white" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {isActive ? (
@@ -100,20 +100,41 @@ function HealthTabs({
 }
 
 function ServiceRow({ service }: { service: InfrastructureServiceStatus }) {
+  const sparkSeed = `${service.label}-${service.ok ? "ok" : "bad"}`;
   return (
-    <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200">
-      <div>
-        <p className="font-semibold text-sm text-slate-900">{service.label}</p>
-        <p className="text-xs text-slate-500 mt-0.5">
+    <div className="relative flex items-center justify-between p-4 bg-card rounded-xl border border-border overflow-hidden gap-4">
+      {service.ok ? (
+        <span
+          className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500"
+          aria-hidden
+        />
+      ) : null}
+      <div className="pl-2 min-w-0 flex-1">
+        <p className="font-semibold text-sm text-foreground">{service.label}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
           {service.detail ?? (service.url ? service.url : "Monitoring active")}
         </p>
+        {service.ok ? (
+          <div className="mt-3 max-w-[160px]">
+            <LiveSparkline seed={sparkSeed} color="#10B981" className="h-8" height={32} width={140} />
+          </div>
+        ) : null}
       </div>
-      <div className="text-right">
-        <span className={`text-sm font-semibold ${statusTone(service.ok)}`}>
+      <div className="text-right space-y-1">
+        <span
+          className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full border ${
+            service.ok
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+              : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800"
+          }`}
+        >
+          {service.ok ? (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+          ) : null}
           {service.ok ? "Operational" : "Needs attention"}
         </span>
         {service.latencyMs > 0 ? (
-          <p className="text-[10px] text-slate-400 mt-0.5">{service.latencyMs}ms response</p>
+          <p className="text-[10px] text-muted-foreground">{service.latencyMs}ms response</p>
         ) : null}
       </div>
     </div>
@@ -127,10 +148,10 @@ function InsightBanner({
   theme,
 }: AdminMlOverview["insights"][number]) {
   const styles = {
-    blue: "border-blue-200 bg-blue-50 text-blue-900",
-    green: "border-emerald-200 bg-emerald-50 text-emerald-900",
-    purple: "border-violet-200 bg-violet-50 text-violet-900",
-    amber: "border-amber-200 bg-amber-50 text-amber-900",
+    blue: "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200",
+    purple: "border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-200",
+    amber: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200",
   } as const;
 
   return (
@@ -140,7 +161,7 @@ function InsightBanner({
           <p className="font-semibold text-sm">{title}</p>
           <p className="text-sm mt-1 opacity-90 leading-relaxed">{description}</p>
         </div>
-        <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/70 border border-white">
+        <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-background/70 border border-border">
           {badge}
         </span>
       </div>
@@ -150,17 +171,17 @@ function InsightBanner({
 
 function ModelCard({ model }: { model: AdminMlOverview["models"][number] }) {
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+    <article className="rounded-2xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h4 className="font-bold text-slate-900">{model.title}</h4>
-          <p className="text-sm text-slate-500 mt-0.5">{model.subtitle}</p>
+          <h4 className="font-bold text-foreground">{model.title}</h4>
+          <p className="text-sm text-muted-foreground mt-0.5">{model.subtitle}</p>
         </div>
         <span
           className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${
             model.status === "active"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-              : "bg-amber-50 text-amber-700 border border-amber-200"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+              : "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
           }`}
         >
           {model.statusLabel}
@@ -169,27 +190,30 @@ function ModelCard({ model }: { model: AdminMlOverview["models"][number] }) {
 
       <div className="space-y-3 text-sm">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
             What it does
           </p>
-          <p className="text-slate-700 leading-relaxed">{model.useCase}</p>
+          <p className="text-foreground/90 leading-relaxed">{model.useCase}</p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
             Business value
           </p>
-          <p className="text-slate-700 leading-relaxed">{model.businessValue}</p>
+          <p className="text-foreground/90 leading-relaxed">{model.businessValue}</p>
         </div>
-        <p className="text-xs text-slate-500">
-          <span className="font-semibold text-slate-600">Used in:</span> {model.whereUsed}
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground/80">Used in:</span> {model.whereUsed}
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 pt-4 border-t border-border">
         {model.metrics.map((metric) => (
-          <div key={metric.label} className="rounded-xl bg-slate-50 px-2 py-2 text-center">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">{metric.label}</p>
-            <p className="text-sm font-bold text-slate-900 mt-0.5">{metric.value}</p>
+          <div key={metric.label} className="rounded-xl bg-muted/40 px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+            <p className="text-sm font-bold text-foreground mt-0.5">{metric.value}</p>
+            {"description" in metric && metric.description ? (
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{metric.description}</p>
+            ) : null}
           </div>
         ))}
       </div>
@@ -202,18 +226,18 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="rounded-2xl border border-border bg-card p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
               <Bot className="w-5 h-5" style={{ color: FB_BLUE }} />
               Gemini AI assistant
             </h3>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Powers conversational support, policy explainers, claim intelligence, and CNIC
               verification across ClearClever.
             </p>
-            <p className="text-xs text-slate-400 mt-2">
+            <p className="text-xs text-muted-foreground/80 mt-2">
               Model: {assistant.displayName ?? assistant.model}
               {assistant.modelResourceName ? ` · ${assistant.modelResourceName}` : ""}
             </p>
@@ -263,38 +287,47 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
             spark: usage.rateLimitErrors,
           },
         ].map((item) => (
-          <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-[11px] uppercase tracking-wide text-slate-400">{item.label}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{item.value}</p>
-            {item.sub ? <p className="text-xs text-slate-500 mt-1">{item.sub}</p> : null}
+          <div key={item.label} className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{item.label}</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{item.value}</p>
+            {item.sub ? <p className="text-xs text-muted-foreground mt-1">{item.sub}</p> : null}
             <LiveSparkline seed={item.label} color={FB_BLUE} className="mt-3 h-8" height={32} />
           </div>
         ))}
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm space-y-2">
-          <p className="font-semibold text-slate-900">Configured limits</p>
-          <ul className="space-y-1 text-slate-600">
+        <div className="rounded-2xl border border-border bg-card p-5 text-sm space-y-2">
+          <p className="font-semibold text-foreground">Fair-use limits</p>
+          <p className="text-xs text-muted-foreground">
+            These limits protect response quality and keep AI costs predictable across ClearClever.
+          </p>
+          <ul className="space-y-2 text-muted-foreground">
             <li>
-              Max output tokens: chat{" "}
+              <span className="font-medium text-foreground">Response length cap:</span> up to ~
               {(assistant.limits.configuredChatMaxOutputTokens ?? assistant.limits.configuredMaxOutputTokens).toLocaleString()}{" "}
-              · structured {assistant.limits.configuredMaxOutputTokens.toLocaleString()}
+              tokens per chat reply · up to {assistant.limits.configuredMaxOutputTokens.toLocaleString()}{" "}
+              for structured reports
             </li>
             <li>
-              App rate limit: {assistant.limits.assistantRateLimitPerMin}/min signed-in ·{" "}
-              {assistant.limits.anonymousRateLimitPerMin}/min guest
+              <span className="font-medium text-foreground">Fair-use throttle:</span>{" "}
+              {assistant.limits.assistantRateLimitPerMin}/min for signed-in users ·{" "}
+              {assistant.limits.anonymousRateLimitPerMin}/min for guests
             </li>
-            <li>Upstream Gemini cap: {assistant.limits.geminiUpstreamRpm}/min</li>
             <li>
-              Attachments: {assistant.limits.maxAttachmentsPerMessage} files · max{" "}
+              <span className="font-medium text-foreground">Google AI quota:</span> platform-wide{" "}
+              {assistant.limits.geminiUpstreamRpm} Gemini calls/min
+            </li>
+            <li>
+              <span className="font-medium text-foreground">File uploads:</span> up to{" "}
+              {assistant.limits.maxAttachmentsPerMessage} images per message · max{" "}
               {formatBytes(assistant.limits.maxBytesPerAttachment)} each
             </li>
           </ul>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm space-y-2">
-          <p className="font-semibold text-slate-900">Runtime</p>
-          <ul className="space-y-1 text-slate-600">
+        <div className="rounded-2xl border border-border bg-card p-5 text-sm space-y-2">
+          <p className="font-semibold text-foreground">Runtime</p>
+          <ul className="space-y-1 text-muted-foreground">
             <li>Server started: {new Date(usage.serverStartedAt).toLocaleString()}</li>
             <li>
               Last Gemini call:{" "}
@@ -307,11 +340,11 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
 
       {usage.recentErrors.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-slate-900">Recent Gemini errors</p>
+          <p className="text-sm font-semibold text-foreground">Recent Gemini errors</p>
           {usage.recentErrors.map((item) => (
             <p
               key={`${item.at}-${item.route}`}
-              className="text-xs p-3 rounded-xl bg-red-50 border border-red-100 text-red-700"
+              className="text-xs p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 dark:bg-red-950/30 dark:border-red-900 dark:text-red-300"
             >
               [{item.route}] {new Date(item.at).toLocaleString()} — {item.message}
             </p>
@@ -347,57 +380,57 @@ function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
         footer: <span className="text-emerald-600 font-medium">{ml.adoption.rankerCoverageLabel}</span>,
         sparkColor: FB_BLUE,
         sparkline: ml.trends.claimsSubmitted,
-        cardClassName: "bg-white border-slate-200",
+        cardClassName: "bg-card border-border",
       },
       {
         id: "ai",
         icon: (
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-50">
-            <Sparkles className="w-4 h-4 text-violet-600" />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-50 dark:bg-violet-950/40">
+            <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-300" />
           </div>
         ),
         value: ml.adoption.aiReportRateLabel,
         label: "Claims with AI intelligence reports",
         footer: (
-          <span className="text-slate-500">
+          <span className="text-muted-foreground">
             {ml.platformActivity.claimsWithAiReports} of {ml.platformActivity.claimsTotal} claims
           </span>
         ),
         sparkColor: "#8B5CF6",
         sparkline: ml.trends.aiReportsGenerated,
-        cardClassName: "bg-white border-slate-200",
+        cardClassName: "bg-card border-border",
       },
       {
         id: "kyc",
         icon: (
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-50">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-50 dark:bg-emerald-950/40">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
           </div>
         ),
         value: String(ml.summary.verifiedIdentities),
         label: "Verified policyholder identities",
-        footer: <span className="text-slate-500">{ml.adoption.kycVerifiedRateLabel} of purchasers</span>,
+        footer: <span className="text-muted-foreground">{ml.adoption.kycVerifiedRateLabel} of purchasers</span>,
         sparkColor: "#10B981",
         sparkline: ml.trends.questionnaireCompletions,
-        cardClassName: "bg-white border-slate-200",
+        cardClassName: "bg-card border-border",
       },
       {
         id: "engagement",
         icon: (
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-50">
-            <Users className="w-4 h-4 text-amber-600" />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-50 dark:bg-amber-950/40">
+            <Users className="w-4 h-4 text-amber-600 dark:text-amber-300" />
           </div>
         ),
         value: String(ml.summary.questionnaireSeekers),
         label: "Seekers feeding ML questionnaires",
         footer: (
-          <span className="text-slate-500">
+          <span className="text-muted-foreground">
             {ml.platformActivity.questionnaireResponses} total responses
           </span>
         ),
         sparkColor: "#F59E0B",
         sparkline: ml.trends.questionnaireCompletions,
-        cardClassName: "bg-white border-slate-200",
+        cardClassName: "bg-card border-border",
       },
     ];
   }, [ml]);
@@ -428,9 +461,9 @@ function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
       <DashboardStatsCarousel items={statItems} durationSec={42} />
 
       <div className="grid lg:grid-cols-2 gap-5">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h4 className="font-bold text-slate-900 mb-1">Platform activity (7 days)</h4>
-          <p className="text-xs text-slate-500 mb-4">Claims submitted vs AI reports generated</p>
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-bold text-foreground mb-1">Platform activity (7 days)</h4>
+          <p className="text-xs text-muted-foreground mb-4">Claims submitted vs AI reports generated</p>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trendData}>
@@ -455,9 +488,9 @@ function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h4 className="font-bold text-slate-900 mb-1">Questionnaire completions</h4>
-          <p className="text-xs text-slate-500 mb-4">Signals that train recommendation & fraud models</p>
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-bold text-foreground mb-1">Questionnaire completions</h4>
+          <p className="text-xs text-muted-foreground mb-4">Signals that train recommendation & fraud models</p>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={trendData}>
@@ -481,7 +514,7 @@ function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
       <div>
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="w-5 h-5" style={{ color: FB_BLUE }} />
-          <h4 className="font-bold text-slate-900">Models & use cases</h4>
+          <h4 className="font-bold text-foreground">Models & use cases</h4>
         </div>
         <div className="grid xl:grid-cols-2 gap-4">
           {ml.models.map((model) => (
@@ -490,8 +523,8 @@ function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
         </div>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h4 className="font-bold text-slate-900 mb-3">Last 24 hours snapshot</h4>
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <h4 className="font-bold text-foreground mb-3">Last 24 hours snapshot</h4>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { label: "New claims", value: ml.platformActivity.claimsLast24h },
@@ -499,9 +532,9 @@ function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
             { label: "Completed purchases", value: ml.platformActivity.purchasesCompleted },
             { label: "Unique questionnaire users", value: ml.platformActivity.questionnaireUniqueUsers },
           ].map((row) => (
-            <div key={row.label} className="rounded-xl bg-slate-50 border border-slate-100 p-4">
-              <p className="text-[11px] uppercase tracking-wide text-slate-400">{row.label}</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{row.value.toLocaleString()}</p>
+            <div key={row.label} className="rounded-xl bg-muted/40 border border-border p-4">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{row.label}</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{row.value.toLocaleString()}</p>
             </div>
           ))}
         </div>
@@ -515,7 +548,7 @@ export function AdminHealthPage() {
   const [mlOverview, setMlOverview] = useState<AdminMlOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<HealthTab>("ml");
+  const [tab, setTab] = useState<HealthTab>("infrastructure");
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -566,8 +599,8 @@ export function AdminHealthPage() {
     <div className="space-y-6 max-w-6xl">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-1">System health</h1>
-          <p className="text-slate-500 max-w-2xl">
+          <h1 className="text-3xl font-bold text-foreground mb-1">System health</h1>
+          <p className="text-muted-foreground max-w-2xl">
             Monitor infrastructure, AI services, and machine learning models that power ClearClever
             for seekers and insurers.
           </p>
@@ -576,7 +609,7 @@ export function AdminHealthPage() {
           type="button"
           onClick={() => void load(true)}
           disabled={refreshing}
-          className="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium bg-white hover:bg-slate-50 disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm font-medium bg-card hover:bg-accent disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           Refresh
@@ -585,23 +618,25 @@ export function AdminHealthPage() {
 
       <div
         className={`rounded-2xl border p-5 ${
-          allOk ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
+          allOk
+            ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800"
+            : "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800"
         }`}
       >
         <div className="flex items-center gap-3">
-          <CheckCircle2 className={`w-6 h-6 ${allOk ? "text-emerald-600" : "text-amber-600"}`} />
+          <CheckCircle2 className={`w-6 h-6 ${allOk ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`} />
           <div>
-            <p className="font-semibold text-slate-900">
+            <p className="font-semibold text-foreground">
               {allOk ? "Platform services are healthy" : "Some services need your attention"}
             </p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               Environment: {health?.environment ?? "unknown"} · Last check:{" "}
               {infra?.checkedAt
                 ? new Date(infra.checkedAt).toLocaleString()
                 : health?.timestamp
                   ? new Date(health.timestamp).toLocaleString()
                   : "—"}
-              <span className="ml-2 text-xs text-slate-400">Auto-refresh every 30s</span>
+              <span className="ml-2 text-xs text-muted-foreground/80">Auto-refresh every 30s</span>
             </p>
           </div>
         </div>
@@ -611,8 +646,8 @@ export function AdminHealthPage() {
 
       {tab === "infrastructure" ? (
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5" style={{ color: FB_BLUE }} />
               Infrastructure services
             </h3>
@@ -623,27 +658,41 @@ export function AdminHealthPage() {
                 <ServiceRow service={infra.mongodb} />
                 <ServiceRow service={infra.brevo} />
                 <ServiceRow service={infra.gemini} />
+                {assistant && !assistant.ok && assistant.configured ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                    Gemini probe failed{assistant.detail ? `: ${assistant.detail}` : ""}. On localhost,
+                    ensure <code className="font-mono">GEMINI_API_KEY</code> is set in{" "}
+                    <code className="font-mono">clear-clever-backend/.env</code> and restart the API.
+                    Free-tier quotas also reset daily on Google AI Studio.
+                  </p>
+                ) : null}
+                {!assistant?.configured ? (
+                  <p className="text-xs text-muted-foreground bg-muted/40 border border-border rounded-xl p-3">
+                    Gemini is not configured. Add <code className="font-mono">GEMINI_API_KEY</code> to
+                    your backend environment (Render for production, `.env` for local dev).
+                  </p>
+                ) : null}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Infrastructure probe data unavailable.</p>
+              <p className="text-sm text-muted-foreground">Infrastructure probe data unavailable.</p>
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Diagnostics</h3>
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h3 className="text-lg font-bold text-foreground mb-4">Diagnostics</h3>
             <div className="space-y-3 text-sm">
               {diagnosticItems.length === 0 ? (
-                <p className="text-slate-500">No additional diagnostics reported.</p>
+                <p className="text-muted-foreground">No additional diagnostics reported.</p>
               ) : (
                 diagnosticItems.map((item, index) => (
                   <p
                     key={`${item.tone}-${index}`}
                     className={`p-3 rounded-xl ${
                       item.tone === "error"
-                        ? "bg-red-50 border border-red-100 text-red-700"
+                        ? "bg-red-50 border border-red-100 text-red-700 dark:bg-red-950/30 dark:border-red-900 dark:text-red-300"
                         : item.tone === "warning"
-                          ? "bg-amber-50 border border-amber-100 text-amber-800"
-                          : "bg-slate-50 border border-slate-100 text-slate-600"
+                          ? "bg-amber-50 border border-amber-100 text-amber-800 dark:bg-amber-950/30 dark:border-amber-900 dark:text-amber-200"
+                          : "bg-muted/40 border border-border text-muted-foreground"
                     }`}
                   >
                     {item.text}

@@ -276,7 +276,7 @@ export interface AdminMlOverview {
     useCase: string;
     businessValue: string;
     whereUsed: string;
-    metrics: Array<{ label: string; value: string }>;
+    metrics: Array<{ label: string; value: string; description?: string }>;
   }>;
   platformActivity: {
     claimsTotal: number;
@@ -350,4 +350,20 @@ export async function deleteInsurerPermanently(id: string): Promise<{
     method: "DELETE",
     auth: true,
   });
+}
+
+export interface AuditLogItem {
+  id: string;
+  action: string;
+  subject: string;
+  severity: "low" | "medium" | "high";
+  time: string;
+}
+
+export async function fetchAuditLogs(): Promise<{ events: AuditLogItem[] }> {
+  return apiRequest("/api/admin/audit", { auth: true });
+}
+
+export async function clearAuditLogs(): Promise<{ deletedCount: number }> {
+  return apiRequest("/api/admin/audit", { method: "DELETE", auth: true });
 }

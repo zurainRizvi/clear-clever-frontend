@@ -4,6 +4,7 @@ import { copy } from "@/lib/copy";
 import type { PolicyQuestion } from "@/lib/types";
 import {
   isExclusiveOption,
+  isOptionSelected,
   isOtherOption,
   otherDetailKey,
   toggleMultiSelection,
@@ -46,8 +47,8 @@ export function QuestionInput({
             onClick={() => onAnswer(option)}
             className={cn(
               "w-full text-left p-4 rounded-lg border transition-all duration-200",
-              value === option
-                ? "border-primary bg-primary/5"
+              isOptionSelected(value, option)
+                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                 : "border-border hover:border-primary/30 hover:bg-accent/50"
             )}
           >
@@ -175,14 +176,18 @@ export function MultiQuestionInput({
     (question.required === false || selected.length > 0) && otherValid;
 
   const toggle = (option: string) => {
-    setSelected((current) => toggleMultiSelection(current, option));
+    setSelected((current) => {
+      const next = toggleMultiSelection(current, option);
+      onAnswer(next);
+      return next;
+    });
   };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         {question.options?.map((option) => {
-          const checked = selected.includes(option);
+          const checked = isOptionSelected(selected, option);
           return (
             <button
               key={option}

@@ -151,11 +151,13 @@ export function HybridRecommendationPickCard({
   category,
   index = 0,
   to = "/dashboard/compare",
+  presetAnswers,
 }: {
   rec: ScoredRecommendation;
   category: string;
   index?: number;
   to?: string;
+  presetAnswers?: Record<string, unknown>;
 }) {
   const reducedMotion = useReducedMotion();
   const showAiBadge = rec.rankingMethod === "hybrid" || rec.score >= 55;
@@ -171,6 +173,7 @@ export function HybridRecommendationPickCard({
     >
       <Link
         to={to}
+        state={{ category, presetAnswers }}
         className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-primary/15 bg-background/80 p-4 transition-colors hover:border-primary/35 hover:bg-accent/20"
       >
         <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary/5 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
@@ -199,9 +202,11 @@ export function HybridRecommendationPickCard({
 export function HybridRecommendationPickGrid({
   picks,
   className,
+  questionnaireAnswers,
 }: {
   picks: Array<{ category: string; rec: ScoredRecommendation }>;
   className?: string;
+  questionnaireAnswers?: Record<string, Record<string, unknown>>;
 }) {
   const reducedMotion = useReducedMotion();
   if (picks.length === 0) return null;
@@ -228,6 +233,7 @@ export function HybridRecommendationPickGrid({
             rec={pick.rec}
             category={pick.category}
             index={index}
+            presetAnswers={questionnaireAnswers?.[pick.category]}
           />
         ))}
       </motion.div>

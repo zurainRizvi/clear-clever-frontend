@@ -67,3 +67,33 @@ export function parseRangeFromApi(from?: string, to?: string): DateRangeValue {
   toDate.setHours(23, 59, 59, 999);
   return { from: fromDate, to: toDate };
 }
+
+export type ProviderRangePreset = "7d" | "30d" | "all";
+
+function normalizeRangeBounds(range: DateRangeValue): DateRangeValue {
+  const from = new Date(range.from);
+  const to = new Date(range.to);
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
+  return { from, to };
+}
+
+function sameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+export function matchesProviderPreset(range: DateRangeValue, preset: ProviderRangePreset): boolean {
+  const normalized = normalizeRangeBounds(range);
+  const expected = normalizeRangeBounds(
+    preset === "7d"
+      ? defaultProviderRange()
+      : preset === "30d"
+        ? providerRangeLastDays(30)
+        : providerRangeAllTime()
+  );
+  return sameDay(normalized.from, expected.from) && sameDay(normalized.to, expected.to);
+}

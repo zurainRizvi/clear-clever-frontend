@@ -30,7 +30,6 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type DotProps,
 } from "recharts";
 import {
   fetchInsurerAnalytics,
@@ -49,9 +48,11 @@ import {
 import { ProviderDateRangePicker } from "./provider-date-range-picker";
 import { CustomerDemographicsSection } from "./customer-demographics-charts";
 import { PakistanUsersByRegion } from "./pakistan-users-by-region";
+import { AudienceTracePanel } from "./audience-trace-panel";
 import { RegionMapFilters, type RegionMapAudience } from "./region-map-filters";
 import { PROVIDER_PAGE_CLASS, PROVIDER_THEME } from "./provider-portal-theme";
 import { toast } from "sonner";
+import { compressChartSeries, maxSeriesValue } from "@/lib/chart-series";
 
 const METRIC_ICONS: Record<string, LucideIcon> = {
   users: Users,
@@ -71,43 +72,12 @@ const INSIGHT_STYLES = {
   blue: "border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/30",
 } as const;
 
-const INTEREST_DOT_OFFSETS: Record<string, number> = {
-  home: -10,
-  auto: -4,
-  life: 4,
-  pet: 10,
-};
-
 const INTEREST_LINE_DASHES: Record<string, string | undefined> = {
   home: undefined,
-  auto: "5 4",
-  life: "2 3",
-  pet: undefined,
+  auto: "6 4",
+  life: "4 4",
+  pet: "2 6",
 };
-
-function InterestTrendDot({
-  cx,
-  cy,
-  stroke,
-  payload,
-  dataKey,
-}: DotProps & { dataKey?: string | number; payload?: Record<string, number> }) {
-  const key = String(dataKey ?? "");
-  if (cx == null || cy == null || !payload) return null;
-  const value = payload[key];
-  if (value == null || value <= 0) return null;
-
-  return (
-    <circle
-      cx={cx + (INTEREST_DOT_OFFSETS[key] ?? 0)}
-      cy={cy}
-      r={4}
-      fill={stroke}
-      stroke="var(--popover)"
-      strokeWidth={2}
-    />
-  );
-}
 
 function useChartColors() {
   const { resolvedTheme } = useTheme();
@@ -177,7 +147,9 @@ const REGION_MAP_REGION_KEY = "clearclever.providerAnalyticsRegionFilter";
 function loadStoredRegionAudience(): RegionMapAudience {
   if (typeof window === "undefined") return "all";
   const stored = window.localStorage.getItem(REGION_MAP_AUDIENCE_KEY);
-  return stored === "purchasers" ? "purchasers" : "all";
+  if (stored === "purchasers") return "purchasers";
+  if (stored === "leads") return "leads";
+  return "all";
 }
 
 function saveStoredRegionAudience(audience: RegionMapAudience) {
@@ -257,22 +229,40 @@ export function ProviderAnalyticsPage() {
 
   const interestChartData = useMemo(() => {
     if (!analytics) return [];
-    return analytics.interestTrends.xAxis.map((label, i) => {
+    const rawSeries: Record<string, number[]> = {};
+    for (const ds of analytics.interestTrends.datasets) {
+      rawSeries[ds.key] = ds.values;
+    }
+    const compressed = compressChartSeries(analytics.interestTrends.xAxis, rawSeries);
+    return compressed.xAxis.map((label, i) => {
       const row: Record<string, string | number> = { label };
       for (const ds of analytics.interestTrends.datasets) {
-        row[ds.key] = ds.values[i] ?? 0;
+        row[ds.key] = compressed.series[ds.key]?.[i] ?? 0;
       }
       return row;
     });
   }, [analytics]);
 
+  const interestYMax = useMemo(() => {
+    if (!analytics) return 1;
+    const keys = analytics.interestTrends.datasets.map((ds) => ds.key);
+    return Math.max(Math.ceil(maxSeriesValue(interestChartData, keys) * 1.15), 1);
+  }, [analytics, interestChartData]);
+
   const revenueChartData = useMemo(() => {
     if (!analytics) return [];
-    return analytics.revenue.xAxis.map((label, i) => ({
+    const compressed = compressChartSeries(analytics.revenue.xAxis, {
+      revenue: analytics.revenue.chartValues,
+    });
+    return compressed.xAxis.map((label, i) => ({
       label,
-      revenue: analytics.revenue.chartValues[i] ?? 0,
+      revenue: compressed.series.revenue?.[i] ?? 0,
     }));
   }, [analytics]);
+
+  const revenueYMax = useMemo(() => {
+    return Math.max(Math.ceil(maxSeriesValue(revenueChartData, ["revenue"]) * 1.15), 1);
+  }, [revenueChartData]);
 
   const leadSourceChartData = useMemo(() => {
     if (!analytics) return [];
@@ -389,6 +379,10 @@ export function ProviderAnalyticsPage() {
         <p className="text-xs text-muted-foreground -mt-3">{analytics.usersByRegion.coverageNote}</p>
       ) : null}
 
+      {analytics.audienceUsers ? (
+        <AudienceTracePanel users={analytics.audienceUsers} cardStyle={cardStyle} />
+      ) : null}
+
       {analytics.customerDemographics && analytics.customerDemographics.totalPurchasers > 0 && (
         <CustomerDemographicsSection
           data={analytics.customerDemographics}
@@ -438,7 +432,7 @@ export function ProviderAnalyticsPage() {
                       axisLine={false}
                       tickLine={false}
                       allowDecimals={false}
-                      domain={[0, (max: number) => Math.max(Math.ceil(max * 1.15), 1)]}
+                      domain={[0, interestYMax]}
                     />
                     <Tooltip
                       contentStyle={{
@@ -461,9 +455,9 @@ export function ProviderAnalyticsPage() {
                         dataKey={ds.key}
                         name={ds.label}
                         stroke={ds.color}
-                        strokeWidth={2.5}
+                        strokeWidth={2}
                         strokeDasharray={INTEREST_LINE_DASHES[ds.key]}
-                        dot={<InterestTrendDot dataKey={ds.key} />}
+                        dot={{ r: 3, strokeWidth: 2, stroke: "var(--popover)" }}
                         activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--popover)" }}
                         connectNulls
                         isAnimationActive={false}
@@ -513,18 +507,24 @@ export function ProviderAnalyticsPage() {
               title={analytics.funnel.title}
               definition={analytics.funnel.definition}
             />
-            <div className="space-y-2 max-w-lg mx-auto">
+            <div className="space-y-3 max-w-lg mx-auto">
               {analytics.funnel.steps.map((step, index) => {
                 const widthPct = Math.max(28, Math.round((step.users / maxFunnel) * 100));
+                const stepNum = index + 1;
                 return (
                   <div key={step.name} className="min-w-0">
                     <div className="flex justify-between text-xs mb-1 gap-2">
-                      <span className="font-medium text-slate-800 truncate">{step.name}</span>
-                      <span className="text-slate-500 shrink-0 text-right">
-                        {step.users.toLocaleString()}
-                        {step.conversion ? ` · ${step.conversion}` : ""}
+                      <span className="font-medium text-slate-800 dark:text-foreground min-w-0">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold mr-1.5 shrink-0">
+                          {stepNum}
+                        </span>
+                        <span className="truncate">{step.name}</span>
+                      </span>
+                      <span className="text-slate-500 dark:text-muted-foreground shrink-0 text-right">
+                        {step.users.toLocaleString()} seeker{step.users === 1 ? "" : "s"}
+                        {step.conversion ? ` · ${step.conversion} continued` : ""}
                         {step.dropOff != null && step.dropOff > 0
-                          ? ` · −${step.dropOff} dropped`
+                          ? ` · ${step.dropOff} stopped here`
                           : ""}
                       </span>
                     </div>
@@ -723,10 +723,31 @@ export function ProviderAnalyticsPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: chartColors.axis }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: chartColors.axis }} width={28} axisLine={false} tickLine={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 9, fill: chartColors.axis }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                    minTickGap={12}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: chartColors.axis }}
+                    width={28}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                    domain={[0, revenueYMax]}
+                  />
                   <Tooltip formatter={(v: number) => [`Rs ${(v * 1000).toLocaleString()}`, "Premium"]} />
-                  <Area type="monotone" dataKey="revenue" stroke="#2563EB" fill="url(#revGrad)" isAnimationActive={false} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#2563EB"
+                    strokeWidth={2}
+                    fill="url(#revGrad)"
+                    isAnimationActive={false}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

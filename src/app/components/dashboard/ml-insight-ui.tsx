@@ -474,47 +474,43 @@ export function ClaimRiskInsightCard({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden space-y-3"
           >
-            <div className="h-44 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} layout="vertical" margin={{ left: 4, right: 8 }}>
-                  <XAxis type="number" hide domain={[0, 100]} />
-                  <YAxis
-                    type="category"
-                    dataKey="label"
-                    width={120}
-                    tick={{ fontSize: 10 }}
-                    interval={0}
-                  />
-                  <Tooltip
-                    formatter={(value) => [`Influence ${value}`, "Relative weight"]}
-                    contentStyle={{ fontSize: 12 }}
-                  />
-                  <Bar dataKey="weight" radius={[0, 6, 6, 0]} isAnimationActive>
-                    {chartData.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          mlRisk.level === "high"
-                            ? "#ef4444"
-                            : mlRisk.level === "medium"
-                              ? "#f59e0b"
-                              : "#10b981"
-                        }
-                        fillOpacity={0.55 + index * 0.08}
+            <p className="text-xs text-muted-foreground">
+              Relative influence of each signal on this review (hover a bar for details).
+            </p>
+            <div className="space-y-2.5">
+              {chartData.map((item, index) => {
+                const label = humanizeClaimRiskFactor(String(item.label));
+                const barColor =
+                  mlRisk.level === "high"
+                    ? "bg-red-500"
+                    : mlRisk.level === "medium"
+                      ? "bg-amber-500"
+                      : "bg-emerald-500";
+                return (
+                  <div
+                    key={`${item.label}-${index}`}
+                    className="group rounded-lg border border-border/60 bg-background/60 px-3 py-2"
+                    title={label}
+                    aria-label={`${label}: ${item.weight}% influence`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-xs font-medium text-foreground truncate">{label}</span>
+                      <span className="text-[11px] tabular-nums text-muted-foreground shrink-0">
+                        {item.weight}% influence
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${item.weight}%` }}
+                        transition={{ duration: 0.45, delay: index * 0.05 }}
+                        className={`h-full rounded-full ${barColor}`}
                       />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <ul className="space-y-1.5 text-xs text-muted-foreground">
-              {mlRisk.topFactors.map((factor) => (
-                <li key={factor} className="flex gap-2">
-                  <span className="text-primary">•</span>
-                  {humanizeClaimRiskFactor(factor)}
-                </li>
-              ))}
-            </ul>
           </motion.div>
         ) : null}
       </AnimatePresence>

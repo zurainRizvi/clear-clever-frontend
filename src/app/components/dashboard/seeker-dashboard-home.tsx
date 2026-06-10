@@ -301,7 +301,11 @@ export function SeekerDashboardHome() {
             <p className="text-sm text-muted-foreground mb-4">{copy.dashboard.hybridPicksSubtitle}</p>
 
             {hybridTopPicks.length > 0 ? (
-              <HybridRecommendationPickGrid picks={hybridTopPicks} className="mb-4" />
+              <HybridRecommendationPickGrid
+                picks={hybridTopPicks}
+                questionnaireAnswers={questionnaireAnswers}
+                className="mb-4"
+              />
             ) : null}
 
             {crossSells.length > 0 ? (
@@ -319,7 +323,11 @@ export function SeekerDashboardHome() {
                     className="min-w-0"
                   >
                     <Link
-                      to={item.to}
+                      to="/dashboard/compare"
+                      state={{
+                        category: item.category,
+                        presetAnswers: questionnaireAnswers[item.category],
+                      }}
                       className="group block h-full rounded-lg border border-primary/15 bg-background/70 p-4 hover:border-primary/35 transition-colors"
                     >
                       <div className="flex flex-wrap items-center gap-2 mb-2">
