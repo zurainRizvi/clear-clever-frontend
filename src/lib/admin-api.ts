@@ -173,6 +173,7 @@ export interface AssistantHealthReport {
   supportedGenerationMethods: string[];
   limits: {
     configuredMaxOutputTokens: number;
+    configuredChatMaxOutputTokens?: number;
     modelInputTokenLimit?: number;
     modelOutputTokenLimit?: number;
     assistantRateLimitPerMin: number;

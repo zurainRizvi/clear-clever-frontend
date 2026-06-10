@@ -34,6 +34,7 @@ import { AssistantMessageShell } from "./assistant-message-shell";
 import { AssistantThreadSidebar } from "./assistant-thread-sidebar";
 import { getAssistantSuggestions } from "./assistant-suggestions";
 import { getAssistantSessionKey, getAssistantWelcomeMessage } from "./assistant-welcome";
+import { compactHistoryForApi } from "@/lib/assistant-history-trim";
 import { normalizeAssistantMarkdown } from "@/lib/assistant-markdown";
 
 type ChatMessage = {
@@ -345,10 +346,7 @@ export function AssistantWidget() {
         trimmed ||
         (files.length > 0 ? `Shared ${files.length} file(s) for review.` : "");
 
-      const historyForApi = messages.slice(-10).map((m) => ({
-        role: m.role === "user" ? ("user" as const) : ("model" as const),
-        content: m.content,
-      }));
+      const historyForApi = compactHistoryForApi(messages);
 
       const userMsg: ChatMessage = {
         id: `u-${Date.now()}`,

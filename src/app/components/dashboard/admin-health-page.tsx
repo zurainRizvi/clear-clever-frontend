@@ -111,7 +111,11 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
         <div className="rounded-xl border border-border p-4 space-y-2">
           <p className="font-medium">Configured limits</p>
           <ul className="space-y-1 text-muted-foreground">
-            <li>Max output tokens: {assistant.limits.configuredMaxOutputTokens.toLocaleString()}</li>
+            <li>
+              Max output tokens: chat{" "}
+              {(assistant.limits.configuredChatMaxOutputTokens ?? assistant.limits.configuredMaxOutputTokens).toLocaleString()}{" "}
+              · structured {assistant.limits.configuredMaxOutputTokens.toLocaleString()}
+            </li>
             <li>
               Model context:{" "}
               {assistant.limits.modelInputTokenLimit
