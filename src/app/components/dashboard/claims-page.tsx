@@ -12,6 +12,7 @@ import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
 import { AnimatedPage } from "../ui/animated-page";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
+import { friendlyAiBusyMessage } from "@/lib/ai-error";
 import type { ClaimAttachmentPayload, ClaimIntelligenceReport } from "@/lib/claim-intelligence-types";
 import { formatPkr } from "@/lib/format";
 import { fadeUpItem, staggerDelay } from "@/lib/motion-presets";
@@ -205,15 +206,7 @@ export function ClaimsPage() {
       setIntelligenceReport(result.intelligenceReport);
       toast.success("Your AI Claims Intelligence Report is ready");
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? /parse|invalid json|incomplete/i.test(err.errors[0] ?? err.message)
-            ? "AI analysis is busy or returned an incomplete result — please try again in a moment."
-            : /high demand|busy|503/i.test(err.errors[0] ?? err.message)
-              ? "AI is experiencing high demand — please wait a moment and try again."
-              : err.errors[0] ?? err.message
-          : "Could not generate report";
-      toast.error(message);
+      toast.error(friendlyAiBusyMessage(err, "Could not generate report"));
     } finally {
       setAnalyzing(false);
     }

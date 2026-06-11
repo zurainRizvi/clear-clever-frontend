@@ -189,7 +189,10 @@ export function CnicKycPanel({
           {cnicOnFile && !editingCnic ? (
             <button
               type="button"
-              onClick={() => setEditingCnic(true)}
+              onClick={() => {
+                setCnic("");
+                setEditingCnic(true);
+              }}
               className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
             >
               <Pencil className="w-3 h-3" aria-hidden />
@@ -224,9 +227,9 @@ export function CnicKycPanel({
                   Saving…
                 </span>
               ) : cnicOnFile ? (
-                "Save updated CNIC"
+                "Update CNIC"
               ) : (
-                "Save CNIC to continue"
+                "Save CNIC"
               )}
             </button>
             {cnicOnFile ? (

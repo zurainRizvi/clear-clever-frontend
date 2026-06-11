@@ -61,39 +61,38 @@ export function AdminAuditPage() {
             Platform events such as signups, policy submissions, and admin actions
           </p>
         </div>
-        {events.length > 0 ? (
-          confirmClear ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Clear all logs?</span>
-              <button
-                type="button"
-                onClick={() => void handleClear()}
-                disabled={clearing}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
-              >
-                {clearing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                Confirm clear
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmClear(false)}
-                disabled={clearing}
-                className="px-3 py-2 rounded-xl text-sm font-medium border border-border hover:bg-accent"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
+        {confirmClear ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Clear all logs?</span>
             <button
               type="button"
-              onClick={() => setConfirmClear(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border border-border hover:bg-accent"
+              onClick={() => void handleClear()}
+              disabled={clearing}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
             >
-              <Trash2 className="w-4 h-4" />
-              Clear logs
+              {clearing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Confirm clear
             </button>
-          )
-        ) : null}
+            <button
+              type="button"
+              onClick={() => setConfirmClear(false)}
+              disabled={clearing}
+              className="px-3 py-2 rounded-xl text-sm font-medium border border-border hover:bg-accent"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmClear(true)}
+            disabled={events.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border border-border hover:bg-accent disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear log
+          </button>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-xl p-6">

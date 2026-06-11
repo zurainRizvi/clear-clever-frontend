@@ -41,7 +41,10 @@ import { useAssistantWidget } from "../assistant/assistant-widget-context";
 import { explainRecommendation } from "@/lib/assistant-api";
 import { useAuth } from "../auth-context";
 import { QuestionInput, otherDetailKey } from "./questionnaire-inputs";
-import { requiredQuestionsAnswered } from "@/lib/questionnaire-utils";
+import {
+  filterAnswersForQuestions,
+  requiredQuestionsAnswered,
+} from "@/lib/questionnaire-utils";
 import {
   ConversationDrawer,
   type ConversationDrawerRequest,
@@ -215,11 +218,17 @@ export function ComparePolicies() {
 
     clearCompareFlowDraft();
     setSelectedCategory(category);
+    setQuestions([]);
+    setCurrentQuestion(0);
+    setRecommendations([]);
+    setRankingMethod(undefined);
+    setStep("questionnaire");
     setLoadingQuestions(true);
     setPrefillNotice(null);
     try {
       const data = await fetchCategoryQuestions(category.slug);
       if (!data.available || data.questions.length === 0) {
+        setStep("category");
         toast.message(copy.compare.othersTitle, { description: copy.compare.othersBody });
         return;
       }
@@ -231,11 +240,10 @@ export function ComparePolicies() {
           mergedAnswers = mergePresetAnswers(stored.response.answers, mergedAnswers);
         }
       }
+      mergedAnswers = filterAnswersForQuestions(mergedAnswers, data.questions);
 
       setQuestions(data.questions);
       setAnswers(mergedAnswers);
-      setRecommendations([]);
-      setRankingMethod(undefined);
 
       const answeredCount = data.questions.filter(
         (question) => mergedAnswers[question.id] != null && mergedAnswers[question.id] !== ""
@@ -244,8 +252,9 @@ export function ComparePolicies() {
 
       if (requiredQuestionsAnswered(data.questions, mergedAnswers)) {
         setPrefillNotice("We remembered your answers — jumping to your recommendations.");
-        await submitAnswers(mergedAnswers, category);
-        return;
+        const submitted = await submitAnswers(mergedAnswers, category, data.questions);
+        if (submitted) return;
+        setPrefillNotice("We need a few more details for this category.");
       }
 
       if (answeredCount > 0 && remaining > 0) {
@@ -342,15 +351,19 @@ export function ComparePolicies() {
 
   const submitAnswers = async (
     finalAnswers: Record<string, unknown>,
-    categoryOverride?: CategoryItem
-  ) => {
+    categoryOverride?: CategoryItem,
+    questionSet?: PolicyQuestion[]
+  ): Promise<boolean> => {
     const activeCategory = categoryOverride ?? selectedCategory;
-    if (!activeCategory) return;
+    if (!activeCategory) return false;
+
+    const activeQuestions = questionSet ?? questions;
+    const scopedAnswers = filterAnswersForQuestions(finalAnswers, activeQuestions);
     setLoadingResults(true);
     try {
       const data = await fetchRecommendations({
         category: activeCategory.slug,
-        answers: finalAnswers,
+        answers: scopedAnswers,
       });
       const recs = data.recommendations ?? [];
       setRecommendations(recs);
@@ -362,8 +375,10 @@ export function ComparePolicies() {
       }
       setAssistantCategory(activeCategory.slug);
       setStep("results");
+      return true;
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : copy.errors.generic);
+      return false;
     } finally {
       setLoadingResults(false);
     }
@@ -520,7 +535,22 @@ export function ComparePolicies() {
           </motion.div>
         )}
 
-        {step === "questionnaire" && currentQ && (
+        {step === "questionnaire" && (loadingQuestions || !currentQ) && (
+          <motion.div
+            key="questionnaire-loading"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="bg-card border border-border rounded-xl p-8 flex flex-col items-center py-16 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground text-sm">Loading your questionnaire…</p>
+            </div>
+          </motion.div>
+        )}
+
+        {step === "questionnaire" && currentQ && !loadingQuestions && (
           <motion.div
             key="questionnaire"
             initial={{ opacity: 0, x: 16 }}
@@ -612,8 +642,9 @@ export function ComparePolicies() {
                     <button
                       key={item.key}
                       type="button"
+                      disabled={loadingQuestions || loadingResults}
                       onClick={() => void handleCrossCategorySelect(item)}
-                      className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-left hover:border-primary/40 hover:bg-accent/40 transition-colors"
+                      className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-left hover:border-primary/40 hover:bg-accent/40 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                     >
                       <span className="font-medium">{item.label}</span>
                       <span className="block text-xs text-muted-foreground">{item.reason}</span>

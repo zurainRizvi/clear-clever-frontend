@@ -135,7 +135,7 @@ export function SeekerSettingsPage() {
             ) : null}
           </div>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4 text-sm">
+        <div className="space-y-3 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <User className="w-4 h-4 shrink-0" />
             <span>{userName ?? "—"}</span>
@@ -144,7 +144,7 @@ export function SeekerSettingsPage() {
             <Mail className="w-4 h-4 shrink-0" />
             <span>{userEmail ?? "—"}</span>
           </div>
-          <div className="flex items-center gap-2 text-muted-foreground sm:col-span-2">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <CreditCard className="w-4 h-4 shrink-0" />
             <span className="font-mono">{user?.cnicMasked ?? "CNIC not added yet"}</span>
           </div>
@@ -172,11 +172,8 @@ export function SeekerSettingsPage() {
           number, and expiry against what you entered. Verified KYC is required before you can
           purchase a policy.
         </p>
-        {user?.cnicMasked ? (
-          <p className="text-sm text-muted-foreground font-mono">{user.cnicMasked}</p>
-        ) : null}
         <CnicKycPanel
-          initialCnic={user?.cnicMasked ?? ""}
+          initialCnic=""
           cnicOnFile={Boolean(user?.hasCnic)}
           onCnicSaved={() => void refreshUser()}
           onKycUpdated={() => void refreshUser()}

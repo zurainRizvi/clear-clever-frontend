@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
+import { friendlyAiBusyMessage } from "@/lib/ai-error";
 import type { ClaimAttachmentPayload, ClaimIntelligenceReport } from "@/lib/claim-intelligence-types";
 import { pendingFilesIncludeCnic } from "@/lib/claim-category-types";
 import { formatPkr } from "@/lib/format";
@@ -166,7 +167,7 @@ export function ClaimDetailPanel({
       setReportOpen(true);
       toast.success("Updated AI report ready");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.errors[0] ?? err.message : "Could not analyze");
+      toast.error(friendlyAiBusyMessage(err, "Could not analyze"));
     } finally {
       setAnalyzing(false);
     }

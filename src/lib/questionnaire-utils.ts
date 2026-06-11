@@ -69,6 +69,26 @@ export function otherDetailKey(questionId: string): string {
   return `${questionId}_other`;
 }
 
+/** Keep only answers that belong to the target category's question set. */
+export function filterAnswersForQuestions(
+  answers: Record<string, unknown>,
+  questions: PolicyQuestion[]
+): Record<string, unknown> {
+  const ids = new Set(questions.map((question) => question.id));
+  const filtered: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(answers)) {
+    if (key.endsWith("_other")) {
+      const baseId = key.replace(/_other$/, "");
+      if (ids.has(baseId)) filtered[key] = value;
+      continue;
+    }
+    if (ids.has(key)) filtered[key] = value;
+  }
+
+  return filtered;
+}
+
 /** Loose match for stored vs option labels (case / whitespace). */
 export function isOptionSelected(value: unknown, option: string): boolean {
   const normalizedOption = option.trim().toLowerCase();

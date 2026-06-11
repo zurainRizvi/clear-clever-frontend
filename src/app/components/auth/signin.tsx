@@ -192,22 +192,48 @@ export function SignIn() {
           </div>
         ) : null}
         <div className="absolute top-6 right-6 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setPortalMode((mode) => (mode === "admin" ? "consumer" : "admin"));
-              setStep("role");
-              setSelectedRoleId(null);
-            }}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
-              portalMode === "admin"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
+          <div
+            className="inline-flex rounded-xl border border-border bg-card p-1 text-sm font-medium"
+            role="tablist"
+            aria-label="Sign-in portal"
           >
-            <Shield className="w-4 h-4" />
-            Admin
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={portalMode === "consumer"}
+              onClick={() => {
+                setPortalMode("consumer");
+                setStep("role");
+                setSelectedRoleId(null);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                portalMode === "consumer"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
+            >
+              <User className="w-4 h-4" />
+              User
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={portalMode === "admin"}
+              onClick={() => {
+                setPortalMode("admin");
+                setStep("role");
+                setSelectedRoleId(null);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                portalMode === "admin"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Admin
+            </button>
+          </div>
           <DarkModeToggle />
         </div>
 

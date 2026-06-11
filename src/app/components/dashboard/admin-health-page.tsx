@@ -120,7 +120,7 @@ function ServiceRow({ service }: { service: InfrastructureServiceStatus }) {
           </div>
         ) : null}
       </div>
-      <div className="text-right space-y-1">
+      <div className="text-right flex flex-col items-end justify-center min-h-[52px] gap-1">
         <span
           className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full border ${
             service.ok
@@ -133,9 +133,9 @@ function ServiceRow({ service }: { service: InfrastructureServiceStatus }) {
           ) : null}
           {service.ok ? "Operational" : "Needs attention"}
         </span>
-        {service.latencyMs > 0 ? (
-          <p className="text-[10px] text-muted-foreground">{service.latencyMs}ms response</p>
-        ) : null}
+        <p className="text-[10px] text-muted-foreground tabular-nums min-w-[72px] text-right">
+          {service.latencyMs > 0 ? `${service.latencyMs}ms response` : "—"}
+        </p>
       </div>
     </div>
   );
