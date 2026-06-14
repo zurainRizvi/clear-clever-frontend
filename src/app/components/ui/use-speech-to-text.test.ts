@@ -2,6 +2,11 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSpeechToText } from "./use-speech-to-text";
 
+vi.mock("@/lib/speech-to-text/speech-feedback", () => ({
+  playMicStartTone: vi.fn(),
+  playMicStopTone: vi.fn(),
+}));
+
 type MockRecognition = {
   lang: string;
   continuous: boolean;
@@ -62,10 +67,12 @@ describe("useSpeechToText", () => {
       configurable: true,
       value: ["en-PK", "en"],
     });
+    localStorage.clear();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    localStorage.clear();
   });
 
   it("starts unsupported when SpeechRecognition is unavailable", () => {
@@ -79,11 +86,9 @@ describe("useSpeechToText", () => {
     expect(result.current.status).toBe("unsupported");
   });
 
-  it("transitions to listening and calls onTranscript with final text", async () => {
+  it("calls onTranscript only with final text, not interim", async () => {
     const onTranscript = vi.fn();
     const { result } = renderHook(() => useSpeechToText({ onTranscript }));
-
-    expect(result.current.isSupported).toBe(true);
 
     await act(async () => {
       await result.current.startListening();
@@ -93,8 +98,9 @@ describe("useSpeechToText", () => {
       expect(result.current.status).toBe("idle");
     });
 
+    expect(onTranscript).toHaveBeenCalledTimes(1);
     expect(onTranscript).toHaveBeenCalledWith("hello world");
-    expect(mockRecognition.start).toHaveBeenCalledTimes(1);
+    expect(mockRecognition.continuous).toBe(true);
     expect(mockRecognition.lang).toBe("en-PK");
   });
 

@@ -36,7 +36,7 @@ import { getAssistantSuggestions } from "./assistant-suggestions";
 import { getAssistantSessionKey, getAssistantWelcomeMessage } from "./assistant-welcome";
 import { compactHistoryForApi } from "@/lib/assistant-history-trim";
 import { normalizeAssistantMarkdown } from "@/lib/assistant-markdown";
-import { SpeechInputButton } from "../ui/speech-input-button";
+import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton } from "../ui/speech-input-button";
 
 type ChatMessage = {
   id: string;
@@ -948,6 +948,20 @@ export function AssistantWidget() {
                       void sendMessage(input);
                     }}
                   >
+                  <SpeechInputProvider
+                    disabled={
+                      sending ||
+                      availability === "unconfigured" ||
+                      availability === "quota_exhausted"
+                    }
+                    onTranscript={(text) =>
+                      setInput((prev) => {
+                        const merged = prev.trim() ? `${prev.trim()} ${text}` : text;
+                        return merged.slice(0, 2000);
+                      })
+                    }
+                  >
+                    <SpeechListeningBanner />
                     <div className="flex items-end gap-2 rounded-2xl border border-border bg-muted/30 px-3 py-2">
                       <textarea
                         value={input}
@@ -982,19 +996,7 @@ export function AssistantWidget() {
                       >
                         <Paperclip className="h-5 w-5" />
                       </button>
-                      <SpeechInputButton
-                        disabled={
-                          sending ||
-                          availability === "unconfigured" ||
-                          availability === "quota_exhausted"
-                        }
-                        onTranscript={(text) =>
-                          setInput((prev) => {
-                            const merged = prev.trim() ? `${prev.trim()} ${text}` : text;
-                            return merged.slice(0, 2000);
-                          })
-                        }
-                      />
+                      <SpeechMicButton />
                       <button
                         type="submit"
                         disabled={
@@ -1009,6 +1011,7 @@ export function AssistantWidget() {
                         <Send className="h-5 w-5" />
                       </button>
                     </div>
+                  </SpeechInputProvider>
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Shield className="h-3.5 w-3.5 shrink-0" />
                       AI guidance only — not legal or financial advice. Confirm details with your insurer.

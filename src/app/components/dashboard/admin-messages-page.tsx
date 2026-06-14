@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Building2, Loader2, MessageSquare, Send, User } from "lucide-react";
-import { SpeechInputButton } from "../ui/speech-input-button";
+import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton } from "../ui/speech-input-button";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { useMessagesOptional } from "./messages-context";
@@ -317,38 +317,43 @@ export function AdminMessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="p-4 border-t border-border flex gap-2">
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void sendMessage();
-                    }
-                  }}
-                  placeholder="Write a reply…"
-                  className="flex-1 min-h-11 max-h-28 px-4 py-3 bg-input-background border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                <SpeechInputButton
-                  size="sm"
+              <div className="border-t border-border">
+                <SpeechInputProvider
                   disabled={sending || !activeConversationId}
-                  className="self-end"
                   onTranscript={(text) =>
                     setDraft((prev) => {
                       const merged = prev.trim() ? `${prev.trim()} ${text}` : text;
                       return merged;
                     })
                   }
-                />
-                <button
-                  type="button"
-                  onClick={() => void sendMessage()}
-                  disabled={sending || !draft.trim()}
-                  className="px-4 py-3 bg-primary text-primary-foreground rounded-xl disabled:opacity-50 self-end"
                 >
-                  <Send className="w-5 h-5" />
-                </button>
+                  <div className="px-4 pt-3 pb-4 space-y-2">
+                    <SpeechListeningBanner />
+                    <div className="flex gap-2">
+                      <textarea
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void sendMessage();
+                          }
+                        }}
+                        placeholder="Write a reply…"
+                        className="flex-1 min-h-11 max-h-28 px-4 py-3 bg-input-background border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <SpeechMicButton size="sm" className="self-end" />
+                      <button
+                        type="button"
+                        onClick={() => void sendMessage()}
+                        disabled={sending || !draft.trim()}
+                        className="px-4 py-3 bg-primary text-primary-foreground rounded-xl disabled:opacity-50 self-end"
+                      >
+                        <Send className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </SpeechInputProvider>
               </div>
             </>
           ) : (

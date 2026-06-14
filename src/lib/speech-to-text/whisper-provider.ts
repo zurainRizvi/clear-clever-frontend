@@ -15,7 +15,7 @@ export function createWhisperProvider(): SpeechToTextProvider {
     isSupported: () => isWhisperEnabled() && typeof window !== "undefined",
     getDefaultLanguage: () => "en-PK",
 
-    async start() {
+    async start(_callbacks: SpeechToTextCallbacks, _options?: { language?: string }) {
       throw new Error(
         "Whisper STT is not implemented yet. Set VITE_STT_WHISPER=1 only after adding @xenova/transformers.",
       );

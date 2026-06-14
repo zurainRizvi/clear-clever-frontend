@@ -15,3 +15,20 @@
   animation: stats-marquee 36s linear infinite;
   will-change: transform;
 }
+
+@keyframes speech-wave {
+  0%,
+  100% {
+    height: 0.25rem;
+    opacity: 0.45;
+  }
+  50% {
+    height: 1rem;
+    opacity: 1;
+  }
+}
+
+.speech-wave-bar {
+  height: 0.25rem;
+  animation: speech-wave 0.9s ease-in-out infinite;
+}

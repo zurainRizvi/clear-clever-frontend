@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { ArrowLeft, Building2, MessageSquare, Paperclip, Send, Shield, User } from "lucide-react";
-import { SpeechInputButton } from "../ui/speech-input-button";
+import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton } from "../ui/speech-input-button";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { useProviderOptional } from "./provider-context";
@@ -573,52 +573,53 @@ export function MessagesPanel({
                     ))}
                   </div>
                 ) : null}
-                <div className="flex gap-3">
-                  <textarea
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        void sendMessage();
-                      }
-                    }}
-                    placeholder="Type a message..."
-                    className="flex-1 min-h-12 max-h-32 px-4 py-3 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                  />
-                  <SpeechInputButton
-                    size="sm"
-                    disabled={sending || !activeConversationId}
-                    className="self-end"
-                    onTranscript={(text) =>
-                      setDraft((prev) => {
-                        const merged = prev.trim() ? `${prev.trim()} ${text}` : text;
-                        return merged;
-                      })
-                    }
-                  />
-                  <label className="px-3 py-3 border border-border rounded-xl cursor-pointer hover:bg-accent self-end">
-                    <Paperclip className="w-5 h-5" />
-                    <input
-                      type="file"
-                      className="sr-only"
-                      multiple
-                      accept=".pdf,image/*"
-                      onChange={(event) => {
-                        const files = Array.from(event.target.files ?? []).slice(0, 3);
-                        setPendingFiles(files);
+                <SpeechInputProvider
+                  disabled={sending || !activeConversationId}
+                  onTranscript={(text) =>
+                    setDraft((prev) => {
+                      const merged = prev.trim() ? `${prev.trim()} ${text}` : text;
+                      return merged;
+                    })
+                  }
+                >
+                  <SpeechListeningBanner />
+                  <div className="flex gap-3">
+                    <textarea
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          void sendMessage();
+                        }
                       }}
+                      placeholder="Type a message..."
+                      className="flex-1 min-h-12 max-h-32 px-4 py-3 bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                     />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => void sendMessage()}
-                    disabled={sending || (!draft.trim() && pendingFiles.length === 0)}
-                    className="px-5 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 self-end"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
+                    <SpeechMicButton size="sm" className="self-end" />
+                    <label className="px-3 py-3 border border-border rounded-xl cursor-pointer hover:bg-accent self-end">
+                      <Paperclip className="w-5 h-5" />
+                      <input
+                        type="file"
+                        className="sr-only"
+                        multiple
+                        accept=".pdf,image/*"
+                        onChange={(event) => {
+                          const files = Array.from(event.target.files ?? []).slice(0, 3);
+                          setPendingFiles(files);
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void sendMessage()}
+                      disabled={sending || (!draft.trim() && pendingFiles.length === 0)}
+                      className="px-5 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 self-end"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </div>
+                </SpeechInputProvider>
               </div>
             </>
           ) : onSupportTab && !existingSupportConversation ? (
