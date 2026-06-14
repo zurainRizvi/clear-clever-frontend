@@ -17,7 +17,7 @@ export function AssistantMessageShell({ children }: { children: ReactNode }) {
       >
         <Sparkles className="h-4 w-4" />
       </div>
-      <div className="min-w-0 flex-1 rounded-2xl rounded-tl-md border border-border/60 bg-card px-4 py-3.5 shadow-sm">
+      <div className="min-w-0 flex-1 rounded-2xl rounded-tl-md border border-border/60 bg-popover px-4 py-3.5 shadow-sm">
         {children}
       </div>
     </motion.div>

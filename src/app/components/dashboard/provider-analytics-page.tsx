@@ -24,8 +24,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -53,6 +51,7 @@ import { RegionMapFilters, type RegionMapAudience } from "./region-map-filters";
 import { PROVIDER_PAGE_CLASS, PROVIDER_THEME } from "./provider-portal-theme";
 import { toast } from "sonner";
 import { compressChartSeries, maxSeriesValue } from "@/lib/chart-series";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 const METRIC_ICONS: Record<string, LucideIcon> = {
   users: Users,
@@ -71,13 +70,6 @@ const INSIGHT_STYLES = {
     "border-emerald-100 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/30",
   blue: "border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/30",
 } as const;
-
-const INTEREST_LINE_DASHES: Record<string, string | undefined> = {
-  home: undefined,
-  auto: "6 4",
-  life: "4 4",
-  pet: "2 6",
-};
 
 function useChartColors() {
   const { resolvedTheme } = useTheme();
@@ -116,14 +108,23 @@ function SectionHeader({
         <div className="flex items-center gap-1.5">
           <h2 className="text-base font-bold text-slate-900">{title}</h2>
           {definition ? (
-            <span title={definition} className="text-slate-400 cursor-help">
-              <HelpCircle className="w-3.5 h-3.5" />
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="text-slate-400 cursor-help inline-flex"
+                  aria-label={`About ${title}`}
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs bg-popover text-popover-foreground border border-border">
+                {definition}
+              </TooltipContent>
+            </Tooltip>
           ) : null}
         </div>
-        {(subtitle || definition) && (
-          <p className="text-xs text-slate-500 mt-0.5">{subtitle ?? definition}</p>
-        )}
+        {subtitle ? <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p> : null}
       </div>
       {action}
     </div>
@@ -233,7 +234,7 @@ export function ProviderAnalyticsPage() {
     for (const ds of analytics.interestTrends.datasets) {
       rawSeries[ds.key] = ds.values;
     }
-    const compressed = compressChartSeries(analytics.interestTrends.xAxis, rawSeries);
+    const compressed = compressChartSeries(analytics.interestTrends.xAxis, rawSeries, 60);
     return compressed.xAxis.map((label, i) => {
       const row: Record<string, string | number> = { label };
       for (const ds of analytics.interestTrends.datasets) {
@@ -414,9 +415,9 @@ export function ProviderAnalyticsPage() {
               }
             />
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_180px] gap-4 min-w-0">
-              <div className="h-52 min-w-0 w-full">
+              <div className="h-64 min-w-0 w-full">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                  <LineChart data={interestChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <BarChart data={interestChartData} margin={{ top: 8, right: 12, left: 4, bottom: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
                     <XAxis
                       dataKey="label"
@@ -424,7 +425,8 @@ export function ProviderAnalyticsPage() {
                       axisLine={false}
                       tickLine={false}
                       interval="preserveStartEnd"
-                      minTickGap={16}
+                      minTickGap={24}
+                      padding={{ left: 8, right: 8 }}
                     />
                     <YAxis
                       tick={{ fontSize: 10, fill: chartColors.axis }}
@@ -448,22 +450,20 @@ export function ProviderAnalyticsPage() {
                         return [value, dataset?.label ?? name];
                       }}
                     />
-                    {analytics.interestTrends.datasets.map((ds) => (
-                      <Line
+                    {analytics.interestTrends.datasets.map((ds, index, arr) => (
+                      <Bar
                         key={ds.key}
-                        type="monotone"
                         dataKey={ds.key}
                         name={ds.label}
-                        stroke={ds.color}
-                        strokeWidth={2}
-                        strokeDasharray={INTEREST_LINE_DASHES[ds.key]}
-                        dot={{ r: 3, strokeWidth: 2, stroke: "var(--popover)" }}
-                        activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--popover)" }}
-                        connectNulls
+                        stackId="leads"
+                        fill={ds.color}
+                        radius={
+                          index === arr.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
+                        }
                         isAnimationActive={false}
                       />
                     ))}
-                  </LineChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="space-y-2.5 min-w-0">
@@ -758,25 +758,19 @@ export function ProviderAnalyticsPage() {
               title="Operations snapshot"
               definition="Follow-up and service metrics you control on ClearClever."
             />
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {analytics.operations.map((item) => (
-                <li key={item.metric} className="border-b last:border-0 pb-3 last:pb-0">
-                  <div className="flex justify-between items-start gap-2 text-xs">
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-800">{item.metric}</p>
-                      <p className="text-slate-500 mt-0.5" title={item.definition}>
-                        {item.whyItMatters}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-semibold text-slate-900">{item.value}</p>
-                      <span
-                        className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${opsStatusPill(item.status)}`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
+                <li key={item.metric} className="border-b last:border-0 pb-4 last:pb-0">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <p className="text-xs font-semibold text-slate-800">{item.metric}</p>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${opsStatusPill(item.status)}`}
+                    >
+                      {item.status}
+                    </span>
                   </div>
+                  <p className="text-sm font-medium text-slate-900 leading-snug">{item.value}</p>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{item.whyItMatters}</p>
                 </li>
               ))}
             </ul>

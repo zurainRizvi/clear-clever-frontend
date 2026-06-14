@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CheckCheck,
   History,
   MessageCircle,
   Paperclip,
@@ -16,7 +15,8 @@ import {
   fromStoredMessages,
   resolveThreadTitle,
   loadAssistantChatStore,
-  saveAssistantChatStore,
+  scheduleSaveAssistantChatStore,
+  flushAssistantChatStore,
   toStoredMessages,
   type AssistantChatThread,
 } from "@/lib/assistant-chat-storage";
@@ -30,11 +30,12 @@ import {
 import { useAssistantWidget } from "./assistant-widget-context";
 import { AssistantMessageMarkdown } from "./assistant-message-markdown";
 import { AssistantMessageShell } from "./assistant-message-shell";
+import { AssistantChatMessage } from "./assistant-chat-message";
 import { AssistantThreadSidebar } from "./assistant-thread-sidebar";
 import { getAssistantSuggestions } from "./assistant-suggestions";
 import { getAssistantSessionKey, getAssistantWelcomeMessage } from "./assistant-welcome";
 import { compactHistoryForApi } from "@/lib/assistant-history-trim";
-import { normalizeAssistantMarkdown } from "@/lib/assistant-markdown";
+import { prepareAssistantMarkdown } from "@/lib/assistant-markdown";
 import {
   clampLauncherOffset,
   loadLauncherOffset,
@@ -66,10 +67,6 @@ const ALLOWED_TYPES = [
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_FILES = 3;
 const DRAG_CLICK_THRESHOLD_PX = 6;
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
 
 async function fileToAttachment(file: File): Promise<AssistantAttachmentPayload> {
   if (!ALLOWED_TYPES.includes(file.type)) {
@@ -144,6 +141,17 @@ export function AssistantWidget() {
   const panelRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const isOpenRef = useRef(isOpen);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    if (!isOpen) flushAssistantChatStore();
+  }, [isOpen]);
 
   const clampLauncher = useCallback((offset: { x: number; y: number }) => {
     return clampLauncherOffset(offset, launcherRef.current);
@@ -191,8 +199,8 @@ export function AssistantWidget() {
 
   const persistStore = useCallback(
     (nextThreads: AssistantChatThread[], nextActiveId: string | null) => {
-      if (!persistKey) return;
-      saveAssistantChatStore(persistKey.userId, persistKey.role, {
+      if (!persistKey || !isOpenRef.current) return;
+      scheduleSaveAssistantChatStore(persistKey.userId, persistKey.role, {
         activeThreadId: nextActiveId,
         threads: nextThreads,
       });
@@ -325,7 +333,7 @@ export function AssistantWidget() {
         trimmed ||
         (files.length > 0 ? `Shared ${files.length} file(s) for review.` : "");
 
-      const historyForApi = compactHistoryForApi(messages);
+      const historyForApi = compactHistoryForApi(messagesRef.current);
 
       const userMsg: ChatMessage = {
         id: `u-${Date.now()}`,
@@ -336,7 +344,7 @@ export function AssistantWidget() {
       };
       lastUserMessageIdRef.current = userMsg.id;
       shouldScrollToBottomRef.current = true;
-      const withUser = [...messages, userMsg];
+      const withUser = [...messagesRef.current, userMsg];
       setMessages(withUser);
       if (threadId) applyThreadMessages(threadId, withUser);
       setInput("");
@@ -357,7 +365,7 @@ export function AssistantWidget() {
           {
             id: `a-${Date.now()}`,
             role: "assistant" as const,
-            content: normalizeAssistantMarkdown(result.reply),
+            content: prepareAssistantMarkdown(result.reply),
             createdAt: new Date(),
           },
         ];
@@ -379,7 +387,6 @@ export function AssistantWidget() {
     },
     [
       sending,
-      messages,
       category,
       isAuthenticated,
       pendingFiles,
@@ -404,7 +411,7 @@ export function AssistantWidget() {
     next.push({
       id: `a-preset-${Date.now()}`,
       role: "assistant",
-      content: normalizeAssistantMarkdown(presetReply),
+      content: prepareAssistantMarkdown(presetReply),
       createdAt: new Date(),
     });
     setMessages(next);
@@ -447,7 +454,7 @@ export function AssistantWidget() {
         {
           id: `a-${Date.now()}`,
           role: "assistant" as const,
-          content: normalizeAssistantMarkdown(result.reply),
+          content: prepareAssistantMarkdown(result.reply),
           createdAt: new Date(),
         },
       ];
@@ -669,7 +676,8 @@ export function AssistantWidget() {
           />
           <div
             ref={panelRef}
-            className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-border/80 bg-card shadow-2xl sm:bottom-6 sm:right-6`}
+            data-assistant-panel
+            className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-border/80 bg-popover text-popover-foreground shadow-2xl sm:bottom-6 sm:right-6`}
             style={{
               borderRadius: "24px",
               maxHeight: "min(90vh, 720px)",
@@ -691,7 +699,7 @@ export function AssistantWidget() {
               )}
 
               <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex shrink-0 items-center justify-between border-b border-border/80 bg-gradient-to-r from-card via-card to-primary/5 px-5 py-4">
+                <header className="flex shrink-0 items-center justify-between border-b border-border/80 bg-gradient-to-r from-popover via-popover to-primary/5 px-5 py-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
                       <MessageCircle className="h-5 w-5" />
@@ -779,7 +787,7 @@ export function AssistantWidget() {
                 )}
 
                 {isAuthenticated && user?.role === "user" && category && (
-                  <div className="shrink-0 px-5 py-2 border-b border-border bg-card">
+                  <div className="shrink-0 px-5 py-2 border-b border-border bg-popover">
                     <button
                       type="button"
                       disabled={explaining || sending}
@@ -793,7 +801,7 @@ export function AssistantWidget() {
 
                 <div
                   ref={scrollRef}
-                  className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5 bg-muted/20"
+                  className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5 bg-muted"
                 >
                   {messages.length === 0 && (
                     <AssistantMessageShell>
@@ -801,35 +809,12 @@ export function AssistantWidget() {
                     </AssistantMessageShell>
                   )}
 
-                  {messages.map((msg) =>
-                    msg.role === "assistant" ? (
-                      <AssistantMessageShell key={msg.id}>
-                        <AssistantMessageMarkdown content={msg.content} />
-                      </AssistantMessageShell>
-                    ) : (
-                      <div
-                        key={msg.id}
-                        data-message-id={msg.id}
-                        className="flex flex-col items-end gap-1"
-                      >
-                        <div className="max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-[15px] font-medium text-primary-foreground">
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
-                          {msg.attachmentNames && msg.attachmentNames.length > 0 && (
-                            <p className="mt-1 text-xs text-white/80">
-                              📎 {msg.attachmentNames.join(", ")}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground pr-1">
-                          <span>{formatTime(msg.createdAt)}</span>
-                          <CheckCheck className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                      </div>
-                    )
-                  )}
+                  {messages.map((msg) => (
+                    <AssistantChatMessage key={msg.id} message={msg} />
+                  ))}
 
                   {(sending || explaining) && (
-                    <div className="flex gap-3 items-center rounded-2xl border border-border/60 bg-card/80 px-4 py-3 text-sm text-muted-foreground shadow-sm">
+                    <div className="flex gap-3 items-center rounded-2xl border border-border/60 bg-popover px-4 py-3 text-sm text-muted-foreground shadow-sm">
                       <span className="flex gap-1" aria-hidden>
                         <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
                         <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
@@ -848,7 +833,7 @@ export function AssistantWidget() {
                             key={chip.id}
                             type="button"
                             onClick={() => void sendMessage(chip.prompt)}
-                            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-accent transition-colors"
+                            className="inline-flex items-center gap-2 rounded-full border border-border bg-popover px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-accent transition-colors"
                           >
                             <Icon className="h-4 w-4 text-primary" />
                             {chip.text}
@@ -859,7 +844,7 @@ export function AssistantWidget() {
                   )}
                 </div>
 
-                <div className="shrink-0 border-t border-border bg-card px-4 pt-3 pb-3">
+                <div className="shrink-0 border-t border-border bg-popover px-4 pt-3 pb-3">
                   {pendingFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {pendingFiles.map((pf) => (
@@ -937,7 +922,7 @@ export function AssistantWidget() {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={sending || pendingFiles.length >= MAX_FILES}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-primary hover:bg-accent disabled:opacity-50"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-popover text-primary hover:bg-accent disabled:opacity-50"
                         aria-label="Attach files"
                         title="Attach images or PDF (max 3, 4MB each)"
                       >

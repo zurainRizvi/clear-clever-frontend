@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { useSavedPolicies } from "../saved-policies-context";
 import { fetchCategories, fetchCategoryQuestions, fetchRecommendations, trackComparePolicies } from "@/lib/auth-api";
 import { fetchStoredQuestionnaireAnswers } from "@/lib/purchase-api";
+import { clearPurchaseDraft } from "@/lib/purchase-draft";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { formatPkr, formatPkrYearly } from "@/lib/format";
@@ -793,16 +794,17 @@ export function ComparePolicies() {
                           </button>
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              clearPurchaseDraft();
                               navigate("/dashboard/purchase", {
                                 state: {
                                   policy: rec.policy,
-                                  answers,
+                                  answers: filterAnswersForQuestions(answers, questions),
                                   category: selectedCategory?.slug,
                                   returnTo: "/dashboard/compare",
                                 },
-                              })
-                            }
+                              });
+                            }}
                             className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all text-sm font-medium"
                           >
                             {copy.purchase.purchaseCta}

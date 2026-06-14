@@ -13,12 +13,29 @@ import {
 import type { InsurerAnalyticsPayload } from "@/lib/insurer-api";
 import { PROVIDER_THEME } from "./provider-portal-theme";
 import type { InsurerCustomerDemographics } from "@/lib/insurer-api";
+import { HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 function SectionHeader({ title, definition }: { title: string; definition: string }) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900 dark:text-foreground">{title}</h2>
-      <p className="text-sm text-slate-500 dark:text-muted-foreground mt-0.5">{definition}</p>
+      <div className="flex items-center gap-1.5">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-foreground">{title}</h2>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="text-slate-400 cursor-help inline-flex"
+              aria-label={`About ${title}`}
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs bg-popover text-popover-foreground border border-border">
+            {definition}
+          </TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 }

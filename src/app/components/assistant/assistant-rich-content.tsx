@@ -38,12 +38,128 @@ type ComparePayload = {
 
 const DEFAULT_COLORS = ["#2563EB", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981"];
 
+function sanitizeJsonText(raw: string): string {
+  return raw
+    .trim()
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'");
+}
+
 function parseJsonBlock(raw: string): unknown {
+  const trimmed = sanitizeJsonText(raw);
   try {
-    return JSON.parse(raw.trim());
+    return JSON.parse(trimmed);
   } catch {
+    const objectMatch = trimmed.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      try {
+        return JSON.parse(objectMatch[0]);
+      } catch {
+        return null;
+      }
+    }
     return null;
   }
+}
+
+function toNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[^\d.-]/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function normalizeChartPayload(payload: ChartPayload & Record<string, unknown>): ChartPayload | null {
+  if (payload.chart && typeof payload.chart === "object") {
+    return normalizeChartPayload(payload.chart as ChartPayload & Record<string, unknown>);
+  }
+
+  let labels = Array.isArray(payload.labels) ? payload.labels.map(String) : undefined;
+  let values = Array.isArray(payload.values) ? payload.values.map(toNumber) : undefined;
+
+  if ((!labels || !values) && Array.isArray(payload.data)) {
+    const rows = payload.data as Array<Record<string, unknown>>;
+    labels = rows.map((row) => String(row.label ?? row.name ?? row.category ?? ""));
+    values = rows.map((row) => toNumber(row.value ?? row.amount ?? row.premium ?? row.count));
+  }
+
+  if ((!labels || !values) && Array.isArray(payload.datasets)) {
+    const dataset = payload.datasets[0] as Record<string, unknown> | undefined;
+    if (dataset) {
+      if (!labels && Array.isArray(dataset.labels)) {
+        labels = dataset.labels.map(String);
+      }
+      if (!values) {
+        if (Array.isArray(dataset.values)) {
+          values = dataset.values.map(toNumber);
+        } else if (Array.isArray(dataset.data)) {
+          values = dataset.data.map(toNumber);
+        }
+      }
+    }
+  }
+
+  if ((!labels || !values) && Array.isArray(payload.series)) {
+    const series = payload.series[0] as Record<string, unknown> | undefined;
+    if (series) {
+      if (!labels && Array.isArray(series.labels)) {
+        labels = series.labels.map(String);
+      }
+      if (!values) {
+        if (Array.isArray(series.values)) {
+          values = series.values.map(toNumber);
+        } else if (Array.isArray(series.data)) {
+          values = series.data.map(toNumber);
+        }
+      }
+    }
+  }
+
+  if ((!labels || !values) && payload.x && payload.y) {
+    if (Array.isArray(payload.x)) labels = payload.x.map(String);
+    if (Array.isArray(payload.y)) values = payload.y.map(toNumber);
+  }
+
+  if (!labels?.length || !values?.length) return null;
+
+  const chartType = payload.type;
+  const type =
+    chartType === "line" || chartType === "pie" || chartType === "bar" ? chartType : "bar";
+
+  return {
+    type,
+    title: typeof payload.title === "string" ? payload.title : undefined,
+    labels,
+    values,
+    colors: Array.isArray(payload.colors) ? payload.colors.map(String) : undefined,
+  };
+}
+
+function normalizeStatsPayload(payload: StatsPayload & Record<string, unknown>): StatsPayload | null {
+  if (Array.isArray(payload.items)) {
+    return { type: "stats", items: payload.items as StatsPayload["items"] };
+  }
+  if (Array.isArray(payload.stats)) {
+    return { type: "stats", items: payload.stats as StatsPayload["items"] };
+  }
+  return null;
+}
+
+function normalizeComparePayload(
+  payload: ComparePayload & Record<string, unknown>,
+): ComparePayload | null {
+  if (Array.isArray(payload.items)) {
+    return { type: "compare", items: payload.items as ComparePayload["items"] };
+  }
+  if (Array.isArray(payload.cards)) {
+    return { type: "compare", items: payload.cards as ComparePayload["items"] };
+  }
+  if (Array.isArray(payload.policies)) {
+    return { type: "compare", items: payload.policies as ComparePayload["items"] };
+  }
+  return null;
 }
 
 function AssistantChartBlock({ payload }: { payload: ChartPayload }) {
@@ -67,7 +183,7 @@ function AssistantChartBlock({ payload }: { payload: ChartPayload }) {
   );
 
   return (
-    <div className="my-4 overflow-hidden rounded-xl border border-border/70 bg-card/80 p-3 shadow-sm">
+    <div className="my-4 overflow-hidden rounded-xl border border-border/70 bg-popover p-3 shadow-sm">
       {payload.title ? (
         <p className="mb-3 text-sm font-semibold text-foreground">{payload.title}</p>
       ) : null}
@@ -122,7 +238,7 @@ function AssistantStatsBlock({ payload }: { payload: StatsPayload }) {
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-xl border border-border/70 bg-gradient-to-br from-card to-muted/40 px-3 py-3 shadow-sm"
+          className="rounded-xl border border-border/70 bg-popover px-3 py-3 shadow-sm"
         >
           <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             {item.label}
@@ -144,7 +260,7 @@ function AssistantCompareBlock({ payload }: { payload: ComparePayload }) {
       {items.map((item) => (
         <div
           key={item.title}
-          className="rounded-xl border border-border/70 bg-card px-4 py-3 shadow-sm"
+          className="rounded-xl border border-border/70 bg-popover px-4 py-3 shadow-sm"
         >
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -186,16 +302,27 @@ export function AssistantRichCodeBlock({
   const parsed = parseJsonBlock(code);
 
   if (parsed && typeof parsed === "object") {
-    const payload = parsed as ChartPayload & StatsPayload & ComparePayload;
+    const payload = parsed as ChartPayload & StatsPayload & ComparePayload & Record<string, unknown>;
 
     if (lang === "stats" || payload.type === "stats") {
-      return <AssistantStatsBlock payload={payload as StatsPayload} />;
+      const stats = normalizeStatsPayload(payload);
+      if (stats) return <AssistantStatsBlock payload={stats} />;
     }
     if (lang === "compare" || payload.type === "compare") {
-      return <AssistantCompareBlock payload={payload as ComparePayload} />;
+      const compare = normalizeComparePayload(payload);
+      if (compare) return <AssistantCompareBlock payload={compare} />;
     }
-    if (lang === "chart" || payload.labels || payload.values) {
-      return <AssistantChartBlock payload={payload as ChartPayload} />;
+    if (lang === "chart" || lang === "json" || payload.type === "bar" || payload.type === "line" || payload.type === "pie") {
+      const chart = normalizeChartPayload(payload);
+      if (chart) return <AssistantChartBlock payload={chart} />;
+    }
+    if (payload.labels || payload.values || payload.data) {
+      const chart = normalizeChartPayload(payload);
+      if (chart) return <AssistantChartBlock payload={chart} />;
+    }
+    if (payload.items && payload.type !== "stats" && payload.type !== "compare") {
+      const compare = normalizeComparePayload(payload);
+      if (compare) return <AssistantCompareBlock payload={compare} />;
     }
   }
 

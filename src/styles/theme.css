@@ -260,7 +260,8 @@
 [data-slot="dialog-content"],
 [data-slot="alert-dialog-content"],
 [data-slot="sheet-content"],
-.modal-surface {
+.modal-surface,
+[data-assistant-panel] {
   background-color: var(--popover) !important;
   color: var(--popover-foreground) !important;
 }

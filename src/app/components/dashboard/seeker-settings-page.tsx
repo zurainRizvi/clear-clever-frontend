@@ -173,7 +173,7 @@ export function SeekerSettingsPage() {
           purchase a policy.
         </p>
         <CnicKycPanel
-          initialCnic=""
+          initialCnic={user?.cnicMasked ?? ""}
           cnicOnFile={Boolean(user?.hasCnic)}
           onCnicSaved={() => void refreshUser()}
           onKycUpdated={() => void refreshUser()}

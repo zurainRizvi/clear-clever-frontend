@@ -62,6 +62,36 @@ export function saveAssistantChatStore(
   window.localStorage.setItem(storageKey(userId, role), JSON.stringify(trimmed));
 }
 
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSave: { userId: string; role: string; store: AssistantChatStore } | null = null;
+
+/** Debounce localStorage writes to avoid jank during rapid chat turns. */
+export function scheduleSaveAssistantChatStore(
+  userId: string,
+  role: string,
+  store: AssistantChatStore,
+  delayMs = 300
+): void {
+  pendingSave = { userId, role, store };
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (pendingSave) {
+      saveAssistantChatStore(pendingSave.userId, pendingSave.role, pendingSave.store);
+      pendingSave = null;
+    }
+    saveTimer = null;
+  }, delayMs);
+}
+
+export function flushAssistantChatStore(): void {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  if (pendingSave) {
+    saveAssistantChatStore(pendingSave.userId, pendingSave.role, pendingSave.store);
+    pendingSave = null;
+  }
+}
+
 export function createAssistantThread(title = "New chat"): AssistantChatThread {
   const now = new Date().toISOString();
   return {

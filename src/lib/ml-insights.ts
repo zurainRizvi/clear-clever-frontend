@@ -109,21 +109,34 @@ const NUMERIC_FACTOR_COPY: Record<string, string> = {
   "related entity count": "The number of linked records raised the score",
 };
 
-export function buildClaimFactorChartData(factors: string[]): Array<{ label: string; weight: number }> {
+const FACTOR_RANK_LABELS = [
+  "Primary factor",
+  "Secondary factor",
+  "Supporting factor",
+  "Minor factor",
+  "Minor factor",
+];
+
+export function buildClaimFactorChartData(
+  factors: string[]
+): Array<{ label: string; weight: number; rankLabel: string }> {
   const items = factors.slice(0, 5).map((factor, index) => ({
-    label: humanizeClaimRiskFactor(factor).slice(0, 48),
-    weight: Math.max(20, 100 - index * 15),
+    label: humanizeClaimRiskFactor(factor),
+    weight: Math.max(35, 100 - index * 18),
+    rankLabel: FACTOR_RANK_LABELS[index] ?? "Supporting factor",
   }));
-  return items.length > 0 ? items : [{ label: "Standard review signals", weight: 40 }];
+  return items.length > 0
+    ? items
+    : [{ label: "Standard review signals", weight: 40, rankLabel: "Routine check" }];
 }
 
 export function humanizeClaimRiskFactor(factor: string): string {
-  const normalized = factor.trim().toLowerCase();
+  const normalized = factor.trim().toLowerCase().replace(/_/g, " ");
   if (normalized.includes(":")) {
     const [field, value] = factor.split(":");
-    if (field && value) return humanizeFieldValue(field, value);
+    if (field && value) return humanizeFieldValue(field.replace(/_/g, " "), value);
   }
-  return NUMERIC_FACTOR_COPY[normalized] ?? `Notable factor: ${titleCaseWords(factor)}`;
+  return NUMERIC_FACTOR_COPY[normalized] ?? titleCaseWords(factor.replace(/_/g, " "));
 }
 
 export function humanizeFraudFactor(factor: string): string {
@@ -132,7 +145,7 @@ export function humanizeFraudFactor(factor: string): string {
     const [field, value] = factor.split(":");
     if (field && value) return humanizeFieldValue(field, value);
   }
-  return NUMERIC_FACTOR_COPY[normalized] ?? `Notable factor: ${titleCaseWords(factor)}`;
+  return NUMERIC_FACTOR_COPY[normalized] ?? titleCaseWords(factor.replace(/_/g, " "));
 }
 
 export function summarizeClaimRiskQueue(claims: { mlRisk?: ClaimMlRisk }[]): {

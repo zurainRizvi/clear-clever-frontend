@@ -16,7 +16,6 @@ import {
   claimRiskPriorityLabel,
   fraudMlInsightCopy,
   fraudRulePriorityLabel,
-  humanizeClaimRiskFactor,
   humanizeFraudFactor,
 } from "@/lib/ml-insights";
 import {
@@ -475,11 +474,10 @@ export function ClaimRiskInsightCard({
             className="overflow-hidden space-y-3"
           >
             <p className="text-xs text-muted-foreground">
-              Relative influence of each signal on this review (hover a bar for details).
+              Key signals that shaped this review score (strongest first).
             </p>
             <div className="space-y-2.5">
               {chartData.map((item, index) => {
-                const label = humanizeClaimRiskFactor(String(item.label));
                 const barColor =
                   mlRisk.level === "high"
                     ? "bg-red-500"
@@ -490,14 +488,12 @@ export function ClaimRiskInsightCard({
                   <div
                     key={`${item.label}-${index}`}
                     className="group rounded-lg border border-border/60 bg-background/60 px-3 py-2"
-                    title={label}
-                    aria-label={`${label}: ${item.weight}% influence`}
+                    title={item.label}
+                    aria-label={`${item.rankLabel}: ${item.label}`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="text-xs font-medium text-foreground truncate">{label}</span>
-                      <span className="text-[11px] tabular-nums text-muted-foreground shrink-0">
-                        {item.weight}% influence
-                      </span>
+                      <span className="text-xs font-medium text-foreground line-clamp-2">{item.label}</span>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{item.rankLabel}</span>
                     </div>
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
                       <motion.div

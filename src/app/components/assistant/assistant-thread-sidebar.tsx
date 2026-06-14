@@ -15,7 +15,7 @@ export function AssistantThreadSidebar({
   onDeleteThread: (threadId: string) => void;
 }) {
   return (
-    <aside className="flex w-[148px] shrink-0 flex-col border-r border-border bg-muted/30">
+    <aside className="flex w-[148px] shrink-0 flex-col border-r border-border bg-muted">
       <div className="border-b border-border p-2">
         <button
           type="button"
@@ -49,8 +49,8 @@ export function AssistantThreadSidebar({
                   }}
                   className={`w-full rounded-xl px-3 py-2.5 text-left text-xs leading-snug transition-colors ${
                     active
-                      ? "bg-card text-foreground shadow-sm border border-border"
-                      : "text-muted-foreground hover:bg-card/80 hover:text-foreground"
+                      ? "bg-popover text-foreground shadow-sm border border-border"
+                      : "text-muted-foreground hover:bg-popover hover:text-foreground"
                   }`}
                   title={thread.title}
                 >

@@ -51,7 +51,7 @@ export async function deriveKycFromCnic(
 ): Promise<{ kyc: KycVerificationReport }> {
   return apiRequest("/api/kyc/derive", {
     method: "POST",
-    body: cnic ? { cnic } : {},
+    body: JSON.stringify(cnic ? { cnic } : {}),
     auth: true,
   });
 }
@@ -61,7 +61,7 @@ export async function verifyKycDocument(
 ): Promise<{ kyc: KycVerificationReport }> {
   return apiRequest("/api/kyc/verify", {
     method: "POST",
-    body: { attachment },
+    body: JSON.stringify({ attachment }),
     auth: true,
   });
 }

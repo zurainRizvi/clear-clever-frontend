@@ -18,11 +18,20 @@ const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 function friendlyKycError(err: unknown): string {
   if (err instanceof ApiError) {
     const detail = err.errors[0] ?? err.message;
+    if (/object object|invalid json|unexpected token|syntax error/i.test(detail)) {
+      return "Could not save CNIC right now. Please try again.";
+    }
+    if (/already registered|409/i.test(detail)) {
+      return "This CNIC is already linked to another account.";
+    }
     if (/high demand|busy|try again/i.test(detail)) {
       return "AI verification is busy — please wait a moment and try again.";
     }
     if (/not configured|unavailable/i.test(detail)) {
       return "AI verification is temporarily unavailable. Your CNIC is still saved.";
+    }
+    if (/validation failed|invalid/i.test(detail)) {
+      return "Enter a valid CNIC (13 digits, e.g. 42101-1234567-1).";
     }
     return detail;
   }
@@ -96,6 +105,7 @@ export function CnicKycPanel({
       return;
     }
     setSaving(true);
+    const wasVerified = report?.status === "verified";
     try {
       const normalized = normalizeCnicInput(cnic);
       const { user } = await updateMeProfile({ cnic: normalized });
@@ -106,9 +116,13 @@ export function CnicKycPanel({
       setSavedLocally(true);
       setEditingCnic(false);
       setCnic(user.cnicMasked ?? normalized);
-      toast.success("CNIC updated — demographics refreshed");
+      if (wasVerified) {
+        toast.success("CNIC updated — please upload your CNIC photo again to verify.");
+      } else {
+        toast.success("CNIC updated — demographics refreshed");
+      }
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not save CNIC");
+      toast.error(friendlyKycError(err));
     } finally {
       setSaving(false);
     }

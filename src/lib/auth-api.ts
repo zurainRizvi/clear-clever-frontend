@@ -149,6 +149,10 @@ export async function fetchRecommendations(body: {
   });
 }
 
+export async function fetchPublicPolicy(policyId: string): Promise<{ policy: PublicPolicy }> {
+  return apiRequest(`/api/policies/${policyId}`);
+}
+
 export async function trackComparePolicies(policyIds: string[]): Promise<{
   count: number;
   policies: ScoredRecommendation["policy"][];

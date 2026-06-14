@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
-import { fetchCategoryQuestions, fetchRecommendations, updateMeProfile } from "@/lib/auth-api";
+import { fetchCategoryQuestions, fetchPublicPolicy, fetchRecommendations, updateMeProfile } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import { formatCnicWhileTyping, isValidCnicInput, normalizeCnicInput } from "@/lib/cnic";
@@ -32,6 +32,7 @@ import { KycStatusBadge } from "./kyc-verification-ui";
 import { QuestionInput, otherDetailKey } from "./questionnaire-inputs";
 import {
   firstUnansweredQuestionIndex,
+  filterAnswersForQuestions,
   requiredQuestionsAnswered,
 } from "@/lib/questionnaire-utils";
 
@@ -72,9 +73,12 @@ export function PurchaseFlow() {
   const locationState = (location.state ?? {}) as PurchaseLocationState;
   const storedDraft = loadPurchaseDraft();
 
-  const policy = isPublicPolicy(locationState.policy)
-    ? locationState.policy
-    : storedDraft?.policy;
+  const [policy, setPolicy] = useState<PublicPolicy | null>(() =>
+    isPublicPolicy(locationState.policy)
+      ? locationState.policy
+      : storedDraft?.policy ?? null
+  );
+  const [policyLoading, setPolicyLoading] = useState(false);
 
   const category =
     locationState.category ?? policy?.category ?? storedDraft?.category ?? "";
@@ -122,6 +126,37 @@ export function PurchaseFlow() {
   }, [user?.id, user?.fullName, user?.email, user?.phone, user?.profile?.addressLine, user?.profile?.city, user?.profile?.postalCode, user?.cnicMasked]);
 
   useEffect(() => {
+    const statePolicy = isPublicPolicy(locationState.policy) ? locationState.policy : null;
+    const draft = loadPurchaseDraft();
+    const policyId = statePolicy?.id ?? draft?.policy?.id;
+    if (!policyId) return;
+
+    if (statePolicy) {
+      clearPurchaseDraft();
+    }
+
+    let cancelled = false;
+    setPolicyLoading(true);
+    fetchPublicPolicy(policyId)
+      .then(({ policy: fresh }) => {
+        if (!cancelled) setPolicy(fresh);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          if (statePolicy) setPolicy(statePolicy);
+          else if (draft?.policy) setPolicy(draft.policy);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPolicyLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locationState.policy?.id]);
+
+  useEffect(() => {
     if (!policy) return;
     savePurchaseDraft({
       policy,
@@ -140,10 +175,11 @@ export function PurchaseFlow() {
         if (cancelled) return;
         const nextQuestions = data.questions ?? [];
         const flowAnswers = locationState.answers ?? answers;
+        const scopedAnswers = filterAnswersForQuestions(flowAnswers, nextQuestions);
         setQuestions(nextQuestions);
-        setAnswers(flowAnswers);
-        setCurrentQuestion(firstUnansweredQuestionIndex(nextQuestions, flowAnswers));
-        const complete = requiredQuestionsAnswered(nextQuestions, flowAnswers);
+        setAnswers(scopedAnswers);
+        setCurrentQuestion(firstUnansweredQuestionIndex(nextQuestions, scopedAnswers));
+        const complete = requiredQuestionsAnswered(nextQuestions, scopedAnswers);
         setStep(complete ? "contact" : "questionnaire");
       })
       .catch(() => {
@@ -157,6 +193,11 @@ export function PurchaseFlow() {
       cancelled = true;
     };
   }, [policy?.id, category]);
+
+  const reviewAnswers = useMemo(
+    () => filterAnswersForQuestions(answers, questions),
+    [answers, questions]
+  );
 
   const currentQ = questions[currentQuestion];
   const questionnaireProgress =
@@ -186,7 +227,7 @@ export function PurchaseFlow() {
     );
   }
 
-  if (loadingQuestions && questions.length === 0) {
+  if (loadingQuestions || policyLoading) {
     return (
       <motion.div className="flex justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -648,11 +689,11 @@ export function PurchaseFlow() {
                 </p>
               </div>
 
-              {Object.keys(answers).length > 0 && (
+              {Object.keys(reviewAnswers).length > 0 && (
                 <div className="rounded-xl border border-border p-5">
                   <h3 className="font-semibold mb-3">Questionnaire answers</h3>
                   <ul className="space-y-1 text-sm">
-                    {Object.entries(answers).map(([key, value]) => (
+                    {Object.entries(reviewAnswers).map(([key, value]) => (
                       <li key={key}>
                         <span className="text-muted-foreground capitalize">
                           {key.replace(/_/g, " ")}:
