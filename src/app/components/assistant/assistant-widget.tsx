@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router";
 import {
   History,
   MessageCircle,
@@ -94,6 +95,7 @@ async function fileToAttachment(file: File): Promise<AssistantAttachmentPayload>
 
 export function AssistantWidget() {
   const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
   const {
     isOpen,
     category,
@@ -244,9 +246,12 @@ export function AssistantWidget() {
   }, [persistKey, activeThreadId, threads, persistStore]);
 
   useEffect(() => {
-    if (!persistKey) {
-      setThreads([]);
-      setActiveThreadId(null);
+    if (!persistKey || !isOpen) {
+      if (!isOpen) {
+        setThreads([]);
+        setActiveThreadId(null);
+        setMessages([]);
+      }
       return;
     }
     const store = loadAssistantChatStore(persistKey.userId, persistKey.role);
@@ -255,7 +260,7 @@ export function AssistantWidget() {
     setThreads(store.threads);
     setActiveThreadId(resolvedActiveId);
     setMessages(activeThread ? fromStoredMessages(activeThread.messages) : []);
-  }, [persistKey?.userId, persistKey?.role]);
+  }, [persistKey?.userId, persistKey?.role, isOpen]);
 
   useEffect(() => {
     if (prevSessionKeyRef.current === sessionKey) return;
@@ -281,9 +286,20 @@ export function AssistantWidget() {
 
   const showSuggestions = messages.length === 0 && !sending && !explaining;
 
+  const hideOnPublicSite =
+    isAuthenticated &&
+    user?.role === "superadmin" &&
+    !location.pathname.startsWith("/admin-dashboard");
+
   useEffect(() => {
+    if (hideOnPublicSite) return;
     refreshAssistantStatus();
-  }, [refreshAssistantStatus]);
+  }, [hideOnPublicSite, refreshAssistantStatus]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    refreshAssistantStatus();
+  }, [isOpen, refreshAssistantStatus]);
 
   useEffect(() => {
     return () => {
@@ -643,7 +659,7 @@ export function AssistantWidget() {
     [launcherOffset.x, launcherOffset.y, clampLauncher, toggleAssistant],
   );
 
-  if (availability === "unconfigured") {
+  if (availability === "unconfigured" || hideOnPublicSite) {
     return null;
   }
 

@@ -6,9 +6,28 @@ function fenceLangForVisualType(type: string): string {
   return "chart";
 }
 
+/** Repair Gemini fences like ```chart with JSON: {...}``` */
+export function repairMalformedVisualFences(text: string): string {
+  let repaired = text.replace(/\r\n/g, "\n");
+
+  repaired = repaired.replace(
+    /```(chart|stats|compare)\s+with\s+JSON:\s*(\{[\s\S]*?\})\s*(?:```|$)/gi,
+    (_match, kind: string, json: string) =>
+      `\`\`\`${kind.toLowerCase()}\n${json.trim()}\n\`\`\``,
+  );
+
+  repaired = repaired.replace(
+    /```(chart|stats|compare)[^\n`]*(\{[\s\S]*?\})\s*```/gi,
+    (_match, kind: string, json: string) =>
+      `\`\`\`${kind.toLowerCase()}\n${json.trim()}\n\`\`\``,
+  );
+
+  return repaired;
+}
+
 /** Wrap bare visual JSON objects so react-markdown can render charts/stats/cards. */
 export function wrapInlineVisualJson(text: string): string {
-  if (/```(?:chart|stats|compare|json)\b/i.test(text)) {
+  if (/```(?:chart|stats|compare)\s*\n/i.test(text)) {
     return text;
   }
 
@@ -59,7 +78,8 @@ export function normalizeAssistantMarkdown(text: string): string {
 
 /** Normalize Gemini markdown and ensure visual blocks stay parseable. */
 export function prepareAssistantMarkdown(text: string): string {
-  let prepared = wrapInlineVisualJson(text);
+  let prepared = repairMalformedVisualFences(text);
+  prepared = wrapInlineVisualJson(prepared);
 
   // Map ```json fences that contain visual payloads to typed fences.
   prepared = prepared.replace(

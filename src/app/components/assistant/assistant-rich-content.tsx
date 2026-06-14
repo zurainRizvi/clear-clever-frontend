@@ -299,20 +299,21 @@ export function AssistantRichCodeBlock({
   code: string;
 }) {
   const lang = (language ?? "").toLowerCase();
+  const visualLang = lang.match(/^(chart|stats|compare)/)?.[1] ?? lang;
   const parsed = parseJsonBlock(code);
 
   if (parsed && typeof parsed === "object") {
     const payload = parsed as ChartPayload & StatsPayload & ComparePayload & Record<string, unknown>;
 
-    if (lang === "stats" || payload.type === "stats") {
+    if (visualLang === "stats" || payload.type === "stats") {
       const stats = normalizeStatsPayload(payload);
       if (stats) return <AssistantStatsBlock payload={stats} />;
     }
-    if (lang === "compare" || payload.type === "compare") {
+    if (visualLang === "compare" || payload.type === "compare") {
       const compare = normalizeComparePayload(payload);
       if (compare) return <AssistantCompareBlock payload={compare} />;
     }
-    if (lang === "chart" || lang === "json" || payload.type === "bar" || payload.type === "line" || payload.type === "pie") {
+    if (visualLang === "chart" || visualLang === "json" || payload.type === "bar" || payload.type === "line" || payload.type === "pie") {
       const chart = normalizeChartPayload(payload);
       if (chart) return <AssistantChartBlock payload={chart} />;
     }

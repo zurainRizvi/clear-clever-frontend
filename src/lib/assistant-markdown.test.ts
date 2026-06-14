@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeAssistantMarkdown,
   prepareAssistantMarkdown,
+  repairMalformedVisualFences,
   wrapInlineVisualJson,
 } from "./assistant-markdown";
 
@@ -31,6 +32,14 @@ Done.`;
     expect(prepareAssistantMarkdown(input)).toContain("```chart");
   });
 
+  it("repairs chart with JSON inline fences from Gemini", () => {
+    const input = `\`\`\`chart with JSON: {"type":"bar","title":"Users by Role","labels":["Insurer","User"],"values":[9,29]}
+\`\`\``;
+    const prepared = prepareAssistantMarkdown(input);
+    expect(prepared).toContain("```chart\n");
+    expect(prepared).toContain('"Users by Role"');
+  });
+
   it("does not split fenced code blocks during normalization", () => {
     const longIntro = "A".repeat(300);
     const input = `${longIntro}
@@ -43,9 +52,11 @@ Done.`;
   });
 });
 
-describe("wrapInlineVisualJson", () => {
-  it("leaves existing fences unchanged", () => {
-    const input = "```chart\n{}\n```";
-    expect(wrapInlineVisualJson(input)).toBe(input);
+describe("repairMalformedVisualFences", () => {
+  it("normalizes chart with JSON opener", () => {
+    const input =
+      '```chart with JSON: {"type":"bar","labels":["A"],"values":[1]}';
+    const repaired = repairMalformedVisualFences(input);
+    expect(repaired).toContain("```chart\n");
   });
 });

@@ -390,6 +390,10 @@ export function ComparePolicies() {
     const nextAnswers = { ...answers, [currentQ.id]: value };
     setAnswers(nextAnswers);
 
+    if (currentQ.type === "multi") {
+      return;
+    }
+
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {

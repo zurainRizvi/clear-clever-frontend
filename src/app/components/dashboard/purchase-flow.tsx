@@ -31,6 +31,7 @@ import { InsurerLogo } from "./insurer-logo";
 import { KycStatusBadge } from "./kyc-verification-ui";
 import { QuestionInput, otherDetailKey } from "./questionnaire-inputs";
 import {
+  firstIncompleteQuestionIndex,
   firstUnansweredQuestionIndex,
   filterAnswersForQuestions,
   requiredQuestionsAnswered,
@@ -112,13 +113,21 @@ export function PurchaseFlow() {
   });
 
   useEffect(() => {
+    void refreshUser();
+  }, [refreshUser]);
+
+  useEffect(() => {
     if (!user) return;
+    const maskedCnic =
+      user.cnicMasked && user.cnicMasked.replace(/\D/g, "").length === 13
+        ? user.cnicMasked
+        : "";
     setContact((prev) => ({
       ...prev,
       fullName: prev.fullName || user.fullName || "",
       email: prev.email || user.email || "",
       phone: prev.phone || (user.phone ? toLocalPkPhoneDisplay(user.phone) : ""),
-      cnic: prev.cnic || user.cnicMasked?.replace(/-/g, "").length === 13 ? user.cnicMasked ?? "" : prev.cnic,
+      cnic: prev.cnic || maskedCnic,
       address: prev.address || user.profile?.addressLine || "",
       city: prev.city || user.profile?.city || "",
       postalCode: prev.postalCode || user.profile?.postalCode || "",
@@ -183,7 +192,9 @@ export function PurchaseFlow() {
         setStep(complete ? "contact" : "questionnaire");
       })
       .catch(() => {
-        if (!cancelled) setStep("contact");
+        if (!cancelled) {
+          toast.error("Could not load questionnaire for this category.");
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingQuestions(false);
@@ -275,6 +286,10 @@ export function PurchaseFlow() {
     const nextAnswers = { ...answers, [currentQ.id]: value };
     setAnswers(nextAnswers);
 
+    if (currentQ.type === "multi") {
+      return;
+    }
+
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion((prev) => prev + 1);
       return;
@@ -286,6 +301,7 @@ export function PurchaseFlow() {
         void fetchRecommendations({ category, answers: nextAnswers }).catch(() => undefined);
       }
     } else {
+      setCurrentQuestion(firstIncompleteQuestionIndex(questions, nextAnswers));
       toast.error("Please answer all required questions, including details for Other options.");
     }
   };
@@ -343,6 +359,7 @@ export function PurchaseFlow() {
     if (questions.length > 0 && !requiredQuestionsAnswered(questions, answers)) {
       toast.error("Please complete the insurance questionnaire first.");
       setStep("questionnaire");
+      setCurrentQuestion(firstIncompleteQuestionIndex(questions, answers));
       return;
     }
 
@@ -445,6 +462,7 @@ export function PurchaseFlow() {
               </div>
               <p className="text-lg font-medium">{currentQ.text}</p>
               <QuestionInput
+                key={currentQ.id}
                 question={currentQ}
                 value={answers[currentQ.id]}
                 otherDetail={String(answers[otherDetailKey(currentQ.id)] ?? "")}
@@ -595,7 +613,10 @@ export function PurchaseFlow() {
                 {questions.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setStep("questionnaire")}
+                    onClick={() => {
+                      setStep("questionnaire");
+                      setCurrentQuestion(firstIncompleteQuestionIndex(questions, answers));
+                    }}
                     className="flex-1 py-3 border border-border rounded-xl hover:bg-accent transition-all"
                   >
                     Back to questionnaire
@@ -604,7 +625,17 @@ export function PurchaseFlow() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (validateContact()) setStep("review");
+                    if (!validateContact()) return;
+                    if (
+                      questions.length > 0 &&
+                      !requiredQuestionsAnswered(questions, answers)
+                    ) {
+                      toast.error("Please complete the insurance questionnaire first.");
+                      setStep("questionnaire");
+                      setCurrentQuestion(firstIncompleteQuestionIndex(questions, answers));
+                      return;
+                    }
+                    setStep("review");
                   }}
                   className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all"
                 >

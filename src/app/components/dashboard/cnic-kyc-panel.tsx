@@ -109,9 +109,20 @@ export function CnicKycPanel({
     try {
       const normalized = normalizeCnicInput(cnic);
       const { user } = await updateMeProfile({ cnic: normalized });
-      const { kyc } = await deriveKycFromCnic(normalized);
-      setReport(kyc);
-      onKycUpdatedRef.current?.(kyc);
+      let kyc: KycVerificationReport | null = null;
+      try {
+        const derived = await deriveKycFromCnic(normalized);
+        kyc = derived.kyc;
+      } catch (deriveErr) {
+        toast.message("CNIC saved. Regional lookup was unavailable for this issuer code.");
+        if (deriveErr instanceof ApiError) {
+          console.warn("CNIC derive skipped:", deriveErr.message);
+        }
+      }
+      if (kyc) {
+        setReport(kyc);
+        onKycUpdatedRef.current?.(kyc);
+      }
       onCnicSavedRef.current?.();
       setSavedLocally(true);
       setEditingCnic(false);

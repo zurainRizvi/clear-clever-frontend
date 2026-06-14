@@ -7,6 +7,25 @@ export function isQuestionAnswered(value: unknown): boolean {
   return true;
 }
 
+export function questionIsComplete(
+  question: PolicyQuestion,
+  answers: Record<string, unknown>
+): boolean {
+  if (question.required === false) return true;
+  if (!isQuestionAnswered(answers[question.id])) return false;
+
+  const selected = answers[question.id];
+  if (Array.isArray(selected) && selected.some((opt) => isOtherOption(String(opt)))) {
+    const other = answers[`${question.id}_other`];
+    if (typeof other !== "string" || other.trim().length < 2) return false;
+  }
+  if (typeof selected === "string" && isOtherOption(selected)) {
+    const other = answers[`${question.id}_other`];
+    if (typeof other !== "string" || other.trim().length < 2) return false;
+  }
+  return true;
+}
+
 export function isOtherOption(option: string): boolean {
   return /^other(\s|$| pet| condition)/i.test(option.trim());
 }
@@ -39,30 +58,22 @@ export function requiredQuestionsAnswered(
 ): boolean {
   return questions
     .filter((q) => q.required !== false)
-    .every((q) => {
-      if (!isQuestionAnswered(answers[q.id])) return false;
-      const selected = answers[q.id];
-      if (Array.isArray(selected) && selected.some((opt) => isOtherOption(String(opt)))) {
-        const other = answers[`${q.id}_other`];
-        if (typeof other !== "string" || other.trim().length < 2) return false;
-      }
-      if (typeof selected === "string" && isOtherOption(selected)) {
-        const other = answers[`${q.id}_other`];
-        if (typeof other !== "string" || other.trim().length < 2) return false;
-      }
-      return true;
-    });
+    .every((q) => questionIsComplete(q, answers));
+}
+
+export function firstIncompleteQuestionIndex(
+  questions: PolicyQuestion[],
+  answers: Record<string, unknown>
+): number {
+  const index = questions.findIndex((question) => !questionIsComplete(question, answers));
+  return index === -1 ? Math.max(0, questions.length - 1) : index;
 }
 
 export function firstUnansweredQuestionIndex(
   questions: PolicyQuestion[],
   answers: Record<string, unknown>
 ): number {
-  const index = questions.findIndex((question) => {
-    if (question.required === false) return false;
-    return !isQuestionAnswered(answers[question.id]);
-  });
-  return index === -1 ? 0 : index;
+  return firstIncompleteQuestionIndex(questions, answers);
 }
 
 export function otherDetailKey(questionId: string): string {

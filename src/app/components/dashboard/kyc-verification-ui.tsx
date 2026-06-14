@@ -139,11 +139,15 @@ export function KycVerificationPanel({
   }
 
   const hasScore = report.kycScore !== undefined;
+  const displayScore =
+    report.status === "verified" && report.identityVerified
+      ? 100
+      : report.kycScore ?? 0;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start gap-4">
-        {hasScore && <KycScoreRing score={report.kycScore!} />}
+        {hasScore && <KycScoreRing score={displayScore} />}
         <div className="flex-1 min-w-[200px] space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <KycStatusBadge status={report.status} />

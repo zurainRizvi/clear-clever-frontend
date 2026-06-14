@@ -176,11 +176,7 @@ export function MultiQuestionInput({
     (question.required === false || selected.length > 0) && otherValid;
 
   const toggle = (option: string) => {
-    setSelected((current) => {
-      const next = toggleMultiSelection(current, option);
-      onAnswer(next);
-      return next;
-    });
+    setSelected((current) => toggleMultiSelection(current, option));
   };
 
   return (
