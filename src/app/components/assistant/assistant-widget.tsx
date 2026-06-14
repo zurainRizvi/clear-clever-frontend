@@ -36,6 +36,7 @@ import { getAssistantSuggestions } from "./assistant-suggestions";
 import { getAssistantSessionKey, getAssistantWelcomeMessage } from "./assistant-welcome";
 import { compactHistoryForApi } from "@/lib/assistant-history-trim";
 import { normalizeAssistantMarkdown } from "@/lib/assistant-markdown";
+import { SpeechInputButton } from "../ui/speech-input-button";
 
 type ChatMessage = {
   id: string;
@@ -981,6 +982,19 @@ export function AssistantWidget() {
                       >
                         <Paperclip className="h-5 w-5" />
                       </button>
+                      <SpeechInputButton
+                        disabled={
+                          sending ||
+                          availability === "unconfigured" ||
+                          availability === "quota_exhausted"
+                        }
+                        onTranscript={(text) =>
+                          setInput((prev) => {
+                            const merged = prev.trim() ? `${prev.trim()} ${text}` : text;
+                            return merged.slice(0, 2000);
+                          })
+                        }
+                      />
                       <button
                         type="submit"
                         disabled={

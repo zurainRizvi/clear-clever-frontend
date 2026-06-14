@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Building2, Loader2, MessageSquare, Send, User } from "lucide-react";
+import { SpeechInputButton } from "../ui/speech-input-button";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { useMessagesOptional } from "./messages-context";
@@ -328,6 +329,17 @@ export function AdminMessagesPage() {
                   }}
                   placeholder="Write a reply…"
                   className="flex-1 min-h-11 max-h-28 px-4 py-3 bg-input-background border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <SpeechInputButton
+                  size="sm"
+                  disabled={sending || !activeConversationId}
+                  className="self-end"
+                  onTranscript={(text) =>
+                    setDraft((prev) => {
+                      const merged = prev.trim() ? `${prev.trim()} ${text}` : text;
+                      return merged;
+                    })
+                  }
                 />
                 <button
                   type="button"
