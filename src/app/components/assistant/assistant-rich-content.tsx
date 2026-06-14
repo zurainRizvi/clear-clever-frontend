@@ -36,7 +36,25 @@ type ComparePayload = {
   }>;
 };
 
-const DEFAULT_COLORS = ["#2563EB", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981"];
+const DEFAULT_COLORS = [
+  "#2563EB",
+  "#06B6D4",
+  "#8B5CF6",
+  "#F59E0B",
+  "#10B981",
+  "#EC4899",
+  "#F97316",
+  "#14B8A6",
+];
+
+const STAT_ACCENT_COLORS = [
+  "from-blue-500/15 to-cyan-500/5 border-blue-200/60 dark:border-blue-900/40",
+  "from-violet-500/15 to-purple-500/5 border-violet-200/60 dark:border-violet-900/40",
+  "from-amber-500/15 to-orange-500/5 border-amber-200/60 dark:border-amber-900/40",
+  "from-emerald-500/15 to-teal-500/5 border-emerald-200/60 dark:border-emerald-900/40",
+];
+
+const COMPARE_ACCENT_COLORS = ["#2563EB", "#8B5CF6", "#F59E0B", "#10B981"];
 
 function sanitizeJsonText(raw: string): string {
   return raw
@@ -183,41 +201,52 @@ function AssistantChartBlock({ payload }: { payload: ChartPayload }) {
   );
 
   return (
-    <div className="my-4 overflow-hidden rounded-xl border border-border/70 bg-popover p-3 shadow-sm">
+    <div className="my-4 overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-popover via-popover to-primary/5 p-4 shadow-md">
       {payload.title ? (
-        <p className="mb-3 text-sm font-semibold text-foreground">{payload.title}</p>
+        <p className="mb-1 text-sm font-bold tracking-tight text-foreground">{payload.title}</p>
       ) : null}
-      <ChartContainer config={chartConfig} className="aspect-[16/9] min-h-[180px] w-full">
+      <p className="mb-3 text-[11px] text-muted-foreground">Interactive chart</p>
+      <ChartContainer config={chartConfig} className="aspect-[16/10] min-h-[200px] w-full">
         {chartType === "line" ? (
-          <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <LineChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/50" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-            <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+            <YAxis tickLine={false} axisLine={false} fontSize={11} width={44} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <Line
               type="monotone"
               dataKey="value"
               stroke={colors[0]}
-              strokeWidth={2}
-              dot={{ r: 3 }}
+              strokeWidth={3}
+              dot={{ r: 4, fill: colors[0], strokeWidth: 0 }}
+              activeDot={{ r: 6 }}
             />
           </LineChart>
         ) : chartType === "pie" ? (
           <PieChart>
             <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-            <Pie data={data} dataKey="value" nameKey="label" innerRadius={42} outerRadius={72}>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="label"
+              innerRadius={48}
+              outerRadius={80}
+              paddingAngle={3}
+              strokeWidth={2}
+              stroke="hsl(var(--popover))"
+            >
               {data.map((row, index) => (
                 <Cell key={row.label} fill={colors[index % colors.length]} />
               ))}
             </Pie>
           </PieChart>
         ) : (
-          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <BarChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/50" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-            <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+            <YAxis tickLine={false} axisLine={false} fontSize={11} width={44} />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+            <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={48}>
               {data.map((row, index) => (
                 <Cell key={row.label} fill={colors[index % colors.length]} />
               ))}
@@ -225,6 +254,21 @@ function AssistantChartBlock({ payload }: { payload: ChartPayload }) {
           </BarChart>
         )}
       </ChartContainer>
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 justify-center">
+        {data.map((row, index) => (
+          <span
+            key={row.label}
+            className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"
+          >
+            <span
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: colors[index % colors.length] }}
+            />
+            <span className="font-medium text-foreground">{row.label}</span>
+            <span className="tabular-nums">{row.value.toLocaleString()}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -234,17 +278,20 @@ function AssistantStatsBlock({ payload }: { payload: StatsPayload }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="my-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {items.map((item) => (
+    <div className="my-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      {items.map((item, index) => (
         <div
           key={item.label}
-          className="rounded-xl border border-border/70 bg-popover px-3 py-3 shadow-sm"
+          className={cn(
+            "rounded-2xl border bg-gradient-to-br px-3.5 py-3.5 shadow-sm",
+            STAT_ACCENT_COLORS[index % STAT_ACCENT_COLORS.length],
+          )}
         >
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {item.label}
           </p>
-          <p className="mt-1 text-lg font-bold text-foreground">{item.value}</p>
-          {item.hint ? <p className="text-xs text-muted-foreground">{item.hint}</p> : null}
+          <p className="mt-1.5 text-xl font-bold tabular-nums text-foreground">{item.value}</p>
+          {item.hint ? <p className="mt-1 text-xs text-muted-foreground leading-snug">{item.hint}</p> : null}
         </div>
       ))}
     </div>
@@ -256,35 +303,47 @@ function AssistantCompareBlock({ payload }: { payload: ComparePayload }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="my-4 grid gap-2 sm:grid-cols-2">
-      {items.map((item) => (
+    <div className="my-4 grid gap-3 sm:grid-cols-2">
+      {items.map((item, index) => (
         <div
           key={item.title}
-          className="rounded-xl border border-border/70 bg-popover px-4 py-3 shadow-sm"
+          className="overflow-hidden rounded-2xl border border-border/80 bg-popover shadow-md"
         >
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="font-semibold text-foreground">{item.title}</p>
-              {item.subtitle ? (
-                <p className="text-xs text-muted-foreground">{item.subtitle}</p>
+          <div
+            className="h-1"
+            style={{ backgroundColor: COMPARE_ACCENT_COLORS[index % COMPARE_ACCENT_COLORS.length] }}
+          />
+          <div className="px-4 py-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-bold text-foreground">{item.title}</p>
+                {item.subtitle ? (
+                  <p className="text-xs text-muted-foreground mt-0.5">{item.subtitle}</p>
+                ) : null}
+              </div>
+              {item.badge ? (
+                <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
+                  {item.badge}
+                </span>
               ) : null}
             </div>
-            {item.badge ? (
-              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                {item.badge}
-              </span>
+            {item.highlights && item.highlights.length > 0 ? (
+              <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                {item.highlights.map((line) => (
+                  <li key={line} className="flex items-center gap-2">
+                    <span
+                      className="h-1.5 w-1.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor:
+                          COMPARE_ACCENT_COLORS[index % COMPARE_ACCENT_COLORS.length],
+                      }}
+                    />
+                    {line}
+                  </li>
+                ))}
+              </ul>
             ) : null}
           </div>
-          {item.highlights && item.highlights.length > 0 ? (
-            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {item.highlights.map((line) => (
-                <li key={line} className="flex items-center gap-1.5">
-                  <span className="h-1 w-1 rounded-full bg-primary" />
-                  {line}
-                </li>
-              ))}
-            </ul>
-          ) : null}
         </div>
       ))}
     </div>

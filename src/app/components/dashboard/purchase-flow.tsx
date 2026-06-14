@@ -19,7 +19,7 @@ import { copy } from "@/lib/copy";
 import { formatCnicWhileTyping, isValidCnicInput, normalizeCnicInput } from "@/lib/cnic";
 import { formatPkr, formatPkrYearly } from "@/lib/format";
 import { isValidPkPhone, normalizePkPhone, toLocalPkPhoneDisplay } from "@/lib/phone";
-import { createPurchase } from "@/lib/purchase-api";
+import { createPurchase, fetchStoredQuestionnaireAnswers } from "@/lib/purchase-api";
 import {
   clearPurchaseDraft,
   loadPurchaseDraft,
@@ -179,11 +179,19 @@ export function PurchaseFlow() {
 
     let cancelled = false;
     setLoadingQuestions(true);
-    fetchCategoryQuestions(category)
-      .then((data) => {
+    Promise.all([
+      fetchCategoryQuestions(category),
+      fetchStoredQuestionnaireAnswers(category).catch(() => null),
+    ])
+      .then(([data, stored]) => {
         if (cancelled) return;
         const nextQuestions = data.questions ?? [];
-        const flowAnswers = locationState.answers ?? answers;
+        const storedAnswers = stored?.response?.answers;
+        const flowAnswers =
+          locationState.answers ??
+          (Object.keys(answers).length > 0 ? answers : undefined) ??
+          storedAnswers ??
+          {};
         const scopedAnswers = filterAnswersForQuestions(flowAnswers, nextQuestions);
         setQuestions(nextQuestions);
         setAnswers(scopedAnswers);
@@ -285,10 +293,6 @@ export function PurchaseFlow() {
     if (!currentQ) return;
     const nextAnswers = { ...answers, [currentQ.id]: value };
     setAnswers(nextAnswers);
-
-    if (currentQ.type === "multi") {
-      return;
-    }
 
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion((prev) => prev + 1);

@@ -161,13 +161,23 @@ export function AssistantWidget() {
 
   useEffect(() => {
     if (isOpen) return;
-    setLauncherOffset((current) => clampLauncher(current));
+    setLauncherOffset((current) => {
+      const clamped = clampLauncher(current);
+      if (clamped.x !== current.x || clamped.y !== current.y) {
+        saveLauncherOffset(clamped);
+      }
+      return clamped;
+    });
   }, [isOpen, clampLauncher]);
 
   useEffect(() => {
     const handleResize = () => {
       if (isOpen) return;
-      setLauncherOffset((current) => clampLauncher(current));
+      setLauncherOffset((current) => {
+        const clamped = clampLauncher(current);
+        saveLauncherOffset(clamped);
+        return clamped;
+      });
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);

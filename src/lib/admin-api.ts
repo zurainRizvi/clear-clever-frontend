@@ -171,6 +171,23 @@ export interface AssistantHealthReport {
   displayName?: string;
   modelAvailable: boolean;
   supportedGenerationMethods: string[];
+  speechToText?: {
+    provider: string;
+    surfaces: string[];
+    languages: string[];
+    note: string;
+  };
+  vision?: {
+    supportedMimeTypes: string[];
+    maxAttachmentsPerMessage: number;
+    maxBytesPerAttachment: number;
+    useCases: Array<{ route: string; label: string; description: string }>;
+    apiCallsSinceDeploy: {
+      chat: number;
+      kyc: number;
+      claimIntelligence: number;
+    };
+  };
   limits: {
     configuredMaxOutputTokens: number;
     configuredChatMaxOutputTokens?: number;
@@ -216,6 +233,7 @@ export interface HealthStatus {
     mongodb: InfrastructureServiceStatus;
     brevo: InfrastructureServiceStatus;
     gemini: InfrastructureServiceStatus;
+    speechToText?: InfrastructureServiceStatus;
     checkedAt: string;
     environment: string;
   };

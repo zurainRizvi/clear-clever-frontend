@@ -4,7 +4,9 @@ import {
   Bot,
   BrainCircuit,
   CheckCircle2,
+  Eye,
   Loader2,
+  Mic,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -294,6 +296,64 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
             <LiveSparkline seed={item.label} color={FB_BLUE} className="mt-3 h-8" height={32} />
           </div>
         ))}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-border bg-card p-5 text-sm space-y-2">
+          <p className="font-semibold text-foreground flex items-center gap-2">
+            <Eye className="w-4 h-4 text-violet-600" />
+            Gemini vision & attachments
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Multimodal prompts sent to {assistant.displayName ?? assistant.model} with images or PDFs.
+          </p>
+          {assistant.vision ? (
+            <ul className="space-y-2 text-muted-foreground">
+              {assistant.vision.useCases.map((item) => (
+                <li key={item.route}>
+                  <span className="font-medium text-foreground">{item.label}:</span> {item.description}
+                </li>
+              ))}
+              <li>
+                <span className="font-medium text-foreground">Allowed files:</span>{" "}
+                {assistant.vision.supportedMimeTypes.join(", ")} · max{" "}
+                {assistant.vision.maxAttachmentsPerMessage} per message ·{" "}
+                {formatBytes(assistant.vision.maxBytesPerAttachment)} each
+              </li>
+              <li>
+                <span className="font-medium text-foreground">Calls since deploy:</span>{" "}
+                {assistant.vision.apiCallsSinceDeploy.chat} chat ·{" "}
+                {assistant.vision.apiCallsSinceDeploy.kyc} KYC ·{" "}
+                {assistant.vision.apiCallsSinceDeploy.claimIntelligence} claim intelligence
+              </li>
+            </ul>
+          ) : null}
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 text-sm space-y-2">
+          <p className="font-semibold text-foreground flex items-center gap-2">
+            <Mic className="w-4 h-4 text-cyan-600" />
+            Speech-to-text
+          </p>
+          {assistant.speechToText ? (
+            <ul className="space-y-2 text-muted-foreground">
+              <li>
+                <span className="font-medium text-foreground">Provider:</span>{" "}
+                {assistant.speechToText.provider}
+              </li>
+              <li>
+                <span className="font-medium text-foreground">Surfaces:</span>{" "}
+                {assistant.speechToText.surfaces.join(" · ")}
+              </li>
+              <li>
+                <span className="font-medium text-foreground">Languages:</span>{" "}
+                {assistant.speechToText.languages.join(" · ")}
+              </li>
+              <li>{assistant.speechToText.note}</li>
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">Browser speech recognition for hands-free chat input.</p>
+          )}
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -658,6 +718,7 @@ export function AdminHealthPage() {
                 <ServiceRow service={infra.mongodb} />
                 <ServiceRow service={infra.brevo} />
                 <ServiceRow service={infra.gemini} />
+                {infra.speechToText ? <ServiceRow service={infra.speechToText} /> : null}
                 {assistant && !assistant.ok && assistant.configured ? (
                   <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
                     Gemini probe failed{assistant.detail ? `: ${assistant.detail}` : ""}. On localhost,

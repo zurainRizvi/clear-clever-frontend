@@ -48,6 +48,15 @@ const GENDER_COLORS: Record<string, string> = {
   "Not yet verified": "#64748B",
 };
 
+const AGE_BAND_COLORS: Record<string, string> = {
+  "Under 18": "#6366F1",
+  "18–25": "#8B5CF6",
+  "26–35": "#06B6D4",
+  "36–50": "#F59E0B",
+  "50+": "#10B981",
+  "Not yet verified": "#94A3B8",
+};
+
 function InsightNote({ children, tone = "muted" }: { children: React.ReactNode; tone?: "muted" | "success" }) {
   return (
     <p
@@ -185,18 +194,18 @@ export function CustomerDemographicsSection({
         {ageData.length > 0 && (
           <div className="space-y-3">
             <p className="text-sm font-medium text-slate-700 dark:text-foreground">Age bands</p>
-            <div className="h-52">
+            <div className="h-56 rounded-xl border border-slate-100 dark:border-border bg-gradient-to-br from-slate-50/80 to-white dark:from-muted/20 dark:to-card p-3">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={ageData}
                   layout="vertical"
-                  margin={{ top: 4, right: 48, left: 4, bottom: 0 }}
+                  margin={{ top: 4, right: 56, left: 4, bottom: 0 }}
                 >
                   <XAxis type="number" hide domain={[0, "dataMax"]} />
                   <YAxis
                     type="category"
                     dataKey="band"
-                    width={96}
+                    width={100}
                     tick={{ fontSize: 11, fill: "currentColor" }}
                     className="text-muted-foreground"
                     axisLine={false}
@@ -205,13 +214,15 @@ export function CustomerDemographicsSection({
                   <Tooltip
                     formatter={(value: number) => [`${value} purchasers`, "Count"]}
                     labelFormatter={(label) => String(label)}
+                    contentStyle={{ borderRadius: 12 }}
                   />
-                  <Bar
-                    dataKey="count"
-                    fill={PROVIDER_THEME.primary}
-                    radius={[0, 6, 6, 0]}
-                    barSize={18}
-                  >
+                  <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={20} maxBarSize={24}>
+                    {ageData.map((row) => (
+                      <Cell
+                        key={row.band}
+                        fill={AGE_BAND_COLORS[row.band] ?? PROVIDER_THEME.primary}
+                      />
+                    ))}
                     <LabelList
                       dataKey="label"
                       position="right"
@@ -221,6 +232,17 @@ export function CustomerDemographicsSection({
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5 justify-center text-xs text-slate-600 dark:text-muted-foreground">
+              {ageData.map((row) => (
+                <span key={row.band} className="inline-flex items-center gap-1.5">
+                  <span
+                    className="w-2.5 h-2.5 rounded-sm shrink-0"
+                    style={{ background: AGE_BAND_COLORS[row.band] ?? PROVIDER_THEME.primary }}
+                  />
+                  {row.band}
+                </span>
+              ))}
             </div>
             {data.ageBuckets.unknown > 0 ? (
               <InsightNote>

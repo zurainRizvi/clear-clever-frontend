@@ -390,19 +390,16 @@ export function ComparePolicies() {
     const nextAnswers = { ...answers, [currentQ.id]: value };
     setAnswers(nextAnswers);
 
-    if (currentQ.type === "multi") {
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
       return;
     }
 
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else {
-      if (!requiredQuestionsAnswered(questions, nextAnswers)) {
-        toast.error("Please answer all required questions before continuing.");
-        return;
-      }
-      void submitAnswers(nextAnswers);
+    if (!requiredQuestionsAnswered(questions, nextAnswers)) {
+      toast.error("Please answer all required questions before continuing.");
+      return;
     }
+    void submitAnswers(nextAnswers);
   };
 
   const handleOtherDetailChange = (detail: string) => {

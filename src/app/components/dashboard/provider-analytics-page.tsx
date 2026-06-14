@@ -24,6 +24,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -60,6 +61,8 @@ const METRIC_ICONS: Record<string, LucideIcon> = {
   "shopping-bag": ShoppingBag,
   wallet: Wallet,
 };
+
+const DEMAND_SOURCE_COLORS = ["#2563EB", "#8B5CF6", "#06B6D4", "#F59E0B", "#10B981", "#EC4899"];
 
 const INSIGHT_STYLES = {
   purple:
@@ -415,9 +418,10 @@ export function ProviderAnalyticsPage() {
               }
             />
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_180px] gap-4 min-w-0">
-              <div className="h-64 min-w-0 w-full">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                  <BarChart data={interestChartData} margin={{ top: 8, right: 12, left: 4, bottom: 16 }}>
+              <div className="min-w-0 w-full space-y-3">
+                <div className="h-64 min-w-0 w-full">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                    <BarChart data={interestChartData} margin={{ top: 8, right: 12, left: 4, bottom: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
                     <XAxis
                       dataKey="label"
@@ -465,6 +469,21 @@ export function ProviderAnalyticsPage() {
                     ))}
                   </BarChart>
                 </ResponsiveContainer>
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-2">
+                  {analytics.interestTrends.datasets.map((ds) => (
+                    <span
+                      key={ds.key}
+                      className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-muted-foreground"
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: ds.color }}
+                      />
+                      {ds.label}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="space-y-2.5 min-w-0">
                 {analytics.interestTrends.sideLegend.map((item) => (
@@ -552,24 +571,41 @@ export function ProviderAnalyticsPage() {
             {leadSourceChartData.length === 0 ? (
               <p className="text-sm text-slate-500 py-6 text-center">No lead activity in this period.</p>
             ) : (
-              <div className="h-48 min-w-0">
+              <div
+                className="min-w-0 rounded-xl border border-slate-100 dark:border-border bg-gradient-to-br from-slate-50/60 to-white dark:from-muted/15 dark:to-card p-3"
+                style={{ height: Math.min(280, Math.max(140, leadSourceChartData.length * 44 + 32)) }}
+              >
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={leadSourceChartData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <BarChart data={leadSourceChartData} layout="vertical" margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 10, fill: chartColors.axis }} allowDecimals={false} />
                     <YAxis
                       type="category"
                       dataKey="label"
-                      width={100}
+                      width={108}
                       tick={{ fontSize: 10, fill: chartColors.axis }}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <Tooltip
                       formatter={(value: number, _name, item) => [
                         `${value} (${item.payload.sharePct}%)`,
                         "Leads",
                       ]}
+                      contentStyle={{
+                        backgroundColor: chartColors.tooltipBg,
+                        borderColor: chartColors.tooltipBorder,
+                        borderRadius: 12,
+                      }}
                     />
-                    <Bar dataKey="count" fill="#2563EB" radius={[0, 4, 4, 0]} isAnimationActive={false} />
+                    <Bar dataKey="count" barSize={20} maxBarSize={24} radius={[0, 8, 8, 0]} isAnimationActive={false}>
+                      {leadSourceChartData.map((entry, index) => (
+                        <Cell
+                          key={entry.label}
+                          fill={DEMAND_SOURCE_COLORS[index % DEMAND_SOURCE_COLORS.length]}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
