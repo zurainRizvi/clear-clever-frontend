@@ -14,7 +14,8 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ClaimIntelligenceReport } from "@/lib/claim-intelligence-types";
 import type { ClaimMlRisk } from "@/lib/insurer-api";
@@ -221,6 +222,24 @@ function ReadinessCheckList({
   );
 }
 
+type ReportSurfaceVariant = "inline" | "modal";
+
+function reportSurfaceClasses(variant: ReportSurfaceVariant) {
+  return variant === "modal"
+    ? {
+        panel: "bg-muted",
+        panelSoft: "bg-muted",
+        gradientVia: "via-muted",
+        gradientTo: "to-muted",
+      }
+    : {
+        panel: "bg-card",
+        panelSoft: "bg-card/90",
+        gradientVia: "via-card",
+        gradientTo: "to-card",
+      };
+}
+
 function MetricTile({
   label,
   value,
@@ -228,6 +247,7 @@ function MetricTile({
   tone = "default",
   icon: Icon,
   index = 0,
+  surfaceClass = "bg-card/90",
 }: {
   label: string;
   value: string;
@@ -235,6 +255,7 @@ function MetricTile({
   tone?: "default" | "success" | "warning";
   icon?: LucideIcon;
   index?: number;
+  surfaceClass?: string;
 }) {
   const reducedMotion = useReducedMotion();
   const valueClass =
@@ -251,7 +272,10 @@ function MetricTile({
       animate="visible"
       transition={{ ...quickTransition, delay: staggerDelay(index, !!reducedMotion, 0.05) }}
       whileHover={reducedMotion ? undefined : { y: -2, transition: quickTransition }}
-      className="rounded-xl border border-border/80 bg-card/90 p-3.5 min-w-0 sm:min-w-[130px] flex-1 shadow-sm"
+      className={cn(
+        "rounded-xl border border-border/80 p-3.5 min-w-0 sm:min-w-[130px] flex-1 shadow-sm",
+        surfaceClass
+      )}
     >
       <div className="flex items-center gap-1.5">
         {Icon ? <Icon className="w-3.5 h-3.5 text-primary/70" aria-hidden /> : null}
@@ -606,15 +630,28 @@ function ChatAssistantRow({ children, delay = 0 }: { children: React.ReactNode; 
   );
 }
 
-export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntelligenceReport }) {
+export function ClaimIntelligenceChatReport({
+  report,
+  variant = "inline",
+}: {
+  report: ClaimIntelligenceReport;
+  variant?: ReportSurfaceVariant;
+}) {
   const readinessCopy = claimReadinessSeekerCopy(report.claimReadiness.score);
   const recommendationHint = insurerRecommendationSeekerHint(report.insurerRecommendation);
   const richCards = buildIntelligenceRichCards(report);
+  const surface = reportSurfaceClasses(variant);
 
   return (
     <div className="space-y-4" aria-label="AI Claims Intelligence Report">
       <ChatAssistantRow delay={0}>
-        <div className="relative overflow-hidden rounded-2xl rounded-tl-md border border-primary/20 bg-gradient-to-br from-primary/[0.07] via-card to-card shadow-md">
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-2xl rounded-tl-md border border-primary/20 bg-gradient-to-br from-primary/[0.07] shadow-md",
+            surface.gradientVia,
+            surface.gradientTo
+          )}
+        >
           <motion.div
             aria-hidden
             className="pointer-events-none absolute inset-0 bg-[length:200%_200%] bg-gradient-to-r from-primary/[0.05] via-transparent to-primary/[0.08] opacity-70"
@@ -657,6 +694,7 @@ export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntellige
                       : "default"
                 }
                 index={0}
+                surfaceClass={surface.panelSoft}
               />
             ) : null}
             <MetricTile
@@ -671,23 +709,25 @@ export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntellige
                     : "default"
               }
               index={report.vehicle ? 1 : 0}
+              surfaceClass={surface.panelSoft}
             />
             <MetricTile
               label="Documents"
               value={documentVerificationLabel(report)}
               icon={FileBadge}
               index={report.vehicle ? 2 : 1}
+              surfaceClass={surface.panelSoft}
             />
           </motion.div>
         </div>
       </ChatAssistantRow>
 
       <ChatAssistantRow delay={0.04}>
-        <ClaimRichCardRow cards={richCards} label="Report overview" />
+        <ClaimRichCardRow cards={richCards} label="Report overview" surface={variant} />
       </ChatAssistantRow>
 
       <ChatAssistantRow delay={0.06}>
-        <div className="rounded-2xl rounded-tl-md border border-border/70 bg-card shadow-sm p-4">
+        <div className={cn("rounded-2xl rounded-tl-md border border-border/70 shadow-sm p-4", surface.panel)}>
           <p className="text-sm font-semibold mb-3">Submission readiness</p>
           <ReadinessCheckList report={report} />
         </div>
@@ -695,7 +735,12 @@ export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntellige
 
       {(report.vehicle || report.identity || report.policyDoc || report.medical) && (
         <ChatAssistantRow delay={0.1}>
-          <div className="rounded-2xl rounded-tl-md border border-border/70 bg-card shadow-sm p-4 space-y-3 w-full">
+          <div
+            className={cn(
+              "rounded-2xl rounded-tl-md border border-border/70 shadow-sm p-4 space-y-3 w-full",
+              surface.panel
+            )}
+          >
             <p className="text-sm font-semibold">Evidence analysis</p>
             {report.vehicle ? <VehicleSection vehicle={report.vehicle} /> : null}
             {report.identity ? <IdentitySection identity={report.identity} /> : null}
@@ -762,7 +807,12 @@ export function ClaimIntelligenceChatReport({ report }: { report: ClaimIntellige
       ) : null}
 
       <ChatAssistantRow delay={0.18}>
-        <div className="rounded-2xl rounded-tl-md border border-border/70 bg-card shadow-sm overflow-hidden w-full">
+        <div
+          className={cn(
+            "rounded-2xl rounded-tl-md border border-border/70 shadow-sm overflow-hidden w-full",
+            surface.panel
+          )}
+        >
           <div className="px-4 py-3.5 border-b border-border/50 bg-gradient-to-r from-primary/[0.05] to-transparent">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Executive summary
@@ -790,25 +840,45 @@ export function ClaimIntelligenceFullReportDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
         aria-label="Close report"
         onClick={() => onOpenChange(false)}
       />
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative w-full sm:max-w-3xl max-h-[92vh] overflow-hidden rounded-t-3xl sm:rounded-3xl border border-border bg-card shadow-2xl flex flex-col"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="claim-intelligence-full-report-title"
+        className="relative z-[1] w-full sm:max-w-3xl max-h-[min(92vh,calc(100dvh-2rem))] overflow-hidden rounded-t-3xl sm:rounded-3xl border border-border bg-popover text-popover-foreground shadow-2xl flex flex-col"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 shrink-0">
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-popover px-4 py-3 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <Sparkles className="w-5 h-5 text-primary shrink-0" />
-            <h2 className="font-bold truncate">AI Claims Intelligence Report</h2>
+            <h2 id="claim-intelligence-full-report-title" className="font-bold truncate">
+              AI Claims Intelligence Report
+            </h2>
           </div>
           <button
             type="button"
@@ -819,11 +889,12 @@ export function ClaimIntelligenceFullReportDialog({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="overflow-y-auto p-4 sm:p-5">
-          <ClaimIntelligenceChatReport report={report} />
+        <div className="overflow-y-auto bg-popover p-4 sm:p-5">
+          <ClaimIntelligenceChatReport report={report} variant="modal" />
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

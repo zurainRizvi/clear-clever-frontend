@@ -183,9 +183,11 @@ const CARD_DESCRIPTION_COLLAPSE_CHARS = 120;
 export function ClaimRichCard({
   card,
   index = 0,
+  surface = "inline",
 }: {
   card: ClaimRichCardData;
   index?: number;
+  surface?: "inline" | "modal";
 }) {
   const reducedMotion = useReducedMotion();
   const [expanded, setExpanded] = useState(false);
@@ -197,6 +199,8 @@ export function ClaimRichCard({
         ? "ring-warning/40 text-warning"
         : "ring-primary/30 text-primary";
   const canExpand = card.description.length > CARD_DESCRIPTION_COLLAPSE_CHARS;
+  const cardSurface = surface === "modal" ? "bg-muted" : "bg-card";
+  const iconSurface = surface === "modal" ? "bg-muted" : "bg-card/95";
 
   return (
     <motion.article
@@ -204,11 +208,19 @@ export function ClaimRichCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...quickTransition, delay: staggerDelay(index, !!reducedMotion, 0.06) }}
       whileHover={reducedMotion ? undefined : { y: -4, transition: { type: "spring", stiffness: 400, damping: 28 } }}
-      className="group flex w-full max-w-[220px] sm:w-[220px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-md hover:shadow-lg transition-shadow"
+      className={cn(
+        "group flex w-full max-w-[220px] sm:w-[220px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border/80 shadow-md hover:shadow-lg transition-shadow",
+        cardSurface
+      )}
     >
       <div className={cn("relative h-28 overflow-hidden", card.gradient)}>
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden />
-        <div className="absolute bottom-3 left-3 flex h-9 w-9 items-center justify-center rounded-full bg-card/95 ring-2 shadow-sm backdrop-blur-sm">
+        <div
+          className={cn(
+            "absolute bottom-3 left-3 flex h-9 w-9 items-center justify-center rounded-full ring-2 shadow-sm backdrop-blur-sm",
+            iconSurface
+          )}
+        >
           <Icon className={cn("h-4 w-4", statusRing.split(" ")[1])} />
         </div>
       </div>
@@ -257,9 +269,11 @@ export function ClaimRichCard({
 export function ClaimRichCardRow({
   cards,
   label,
+  surface = "inline",
 }: {
   cards: ClaimRichCardData[];
   label?: string;
+  surface?: "inline" | "modal";
 }) {
   if (cards.length === 0) return null;
 
@@ -269,7 +283,7 @@ export function ClaimRichCardRow({
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-thin">
         {cards.map((card, index) => (
           <div key={card.id} className="snap-start">
-            <ClaimRichCard card={card} index={index} />
+            <ClaimRichCard card={card} index={index} surface={surface} />
           </div>
         ))}
       </div>
