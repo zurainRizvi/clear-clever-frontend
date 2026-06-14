@@ -40,6 +40,7 @@ import { prepareAssistantMarkdown } from "@/lib/assistant-markdown";
 import {
   clampLauncherOffset,
   loadLauncherOffset,
+  resetLauncherOffset,
   saveLauncherOffset,
 } from "@/lib/assistant-launcher-position";
 import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton, SpeechVoiceLanguageLink } from "../ui/speech-input-button";
@@ -140,6 +141,7 @@ export function AssistantWidget() {
   const lastUserMessageIdRef = useRef<string | null>(null);
   const shouldScrollToBottomRef = useRef(false);
   const [launcherOffset, setLauncherOffset] = useState(loadLauncherOffset);
+  const prevPathRef = useRef(location.pathname);
   const panelRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
@@ -158,6 +160,12 @@ export function AssistantWidget() {
   const clampLauncher = useCallback((offset: { x: number; y: number }) => {
     return clampLauncherOffset(offset, launcherRef.current);
   }, []);
+
+  useEffect(() => {
+    if (prevPathRef.current === location.pathname) return;
+    prevPathRef.current = location.pathname;
+    setLauncherOffset(resetLauncherOffset());
+  }, [location.pathname]);
 
   useEffect(() => {
     if (isOpen) return;

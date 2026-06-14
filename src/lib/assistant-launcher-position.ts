@@ -25,6 +25,14 @@ export function saveLauncherOffset(offset: LauncherOffset) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(offset));
 }
 
+/** Default bottom-right position — used when navigating to a new page. */
+export function resetLauncherOffset(): LauncherOffset {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+  return { x: 0, y: 0 };
+}
+
 function offsetBounds(element: HTMLElement | null): { minX: number; maxX: number; minY: number; maxY: number } {
   if (typeof window === "undefined") {
     return { minX: 0, maxX: 0, minY: 0, maxY: 0 };

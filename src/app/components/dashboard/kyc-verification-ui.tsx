@@ -164,6 +164,19 @@ export function KycVerificationPanel({
         </div>
       </div>
 
+      {report.documentPreviewDataUrl && (
+        <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Verified CNIC upload
+          </p>
+          <img
+            src={report.documentPreviewDataUrl}
+            alt="Verified CNIC document"
+            className="max-h-44 rounded-lg border border-border object-contain mx-auto bg-background"
+          />
+        </div>
+      )}
+
       {(report.province || report.district || report.genderPredicted) && (
         <div className="rounded-xl bg-muted/40 border border-border p-3 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">

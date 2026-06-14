@@ -34,6 +34,8 @@ export interface KycVerificationReport {
   linkedPolicyCount?: number;
   linkedPolicyNames?: string[];
   policyLinkageNote?: string;
+  documentPreviewMimeType?: string;
+  documentPreviewDataUrl?: string;
 }
 
 export interface KycAttachmentPayload {

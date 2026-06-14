@@ -706,36 +706,52 @@ export function ComparePolicies() {
                       <PolicyMatchInsight rec={rec} className="mb-4" />
 
                       <div className="flex flex-col lg:flex-row gap-6">
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <h3 className="text-xl font-bold mb-1">{rec.policy.name}</h3>
-                          <div className="mb-3 flex items-center gap-2">
+                          <div className="mb-4 flex items-center gap-2">
                             <span className="text-muted-foreground text-sm">{rec.policy.insurer.companyName}</span>
                             <InsurerLogo companyName={rec.policy.insurer.companyName} />
                           </div>
-                          {rec.matchReasons.length > 0 && (
-                            <ul className="mb-4 space-y-1">
-                              {rec.matchReasons.map((reason) => (
-                                <li
-                                  key={reason}
-                                  className="text-sm text-muted-foreground flex items-start gap-2"
-                                >
-                                  <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
-                                  {reason}
-                                </li>
-                              ))}
-                            </ul>
+                          {rec.answerHighlights && rec.answerHighlights.length > 0 && (
+                            <div className="mb-4">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                                Matched to your answers
+                              </p>
+                              <ul className="space-y-1.5">
+                                {rec.answerHighlights.map((highlight) => (
+                                  <li
+                                    key={`${highlight.questionText}-${highlight.userAnswer}`}
+                                    className="text-sm text-muted-foreground flex items-start gap-2"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                                    <span>
+                                      <span className="font-medium text-foreground">{highlight.userAnswer}</span>
+                                      {" — "}
+                                      {highlight.policyAlignment}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           )}
-                          <ul className="space-y-1">
-                            {rec.policy.features.slice(0, 6).map((feature) => (
-                              <li
-                                key={feature}
-                                className="text-sm flex items-start gap-2"
-                              >
-                                <CheckCircle2 className="w-4 h-4 text-success/80 mt-0.5 shrink-0" />
-                                {feature}
-                              </li>
-                            ))}
-                          </ul>
+                          {rec.policy.features.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                                What&apos;s included
+                              </p>
+                              <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                                {rec.policy.features.map((feature) => (
+                                  <li
+                                    key={feature}
+                                    className="text-sm flex items-start gap-2"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4 text-success/80 mt-0.5 shrink-0" />
+                                    {feature}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
 
                         <div className="lg:w-64 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
