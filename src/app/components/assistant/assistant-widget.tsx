@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCheck,
   History,
-  Loader2,
   MessageCircle,
   Paperclip,
   Send,
@@ -36,7 +35,12 @@ import { getAssistantSuggestions } from "./assistant-suggestions";
 import { getAssistantSessionKey, getAssistantWelcomeMessage } from "./assistant-welcome";
 import { compactHistoryForApi } from "@/lib/assistant-history-trim";
 import { normalizeAssistantMarkdown } from "@/lib/assistant-markdown";
-import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton } from "../ui/speech-input-button";
+import {
+  clampLauncherOffset,
+  loadLauncherOffset,
+  saveLauncherOffset,
+} from "@/lib/assistant-launcher-position";
+import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton, SpeechVoiceLanguageLink } from "../ui/speech-input-button";
 
 type ChatMessage = {
   id: string;
@@ -62,33 +66,6 @@ const ALLOWED_TYPES = [
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_FILES = 3;
 const DRAG_CLICK_THRESHOLD_PX = 6;
-const VIEWPORT_PADDING_PX = 12;
-
-function clampPanelOffset(
-  offset: { x: number; y: number },
-  element: HTMLElement | null
-): { x: number; y: number } {
-  if (!element) return offset;
-
-  let { x, y } = offset;
-  const rect = element.getBoundingClientRect();
-  const pad = VIEWPORT_PADDING_PX;
-
-  if (rect.left < pad) {
-    x += rect.left - pad;
-  }
-  if (rect.right > window.innerWidth - pad) {
-    x += rect.right - (window.innerWidth - pad);
-  }
-  if (rect.top < pad) {
-    y += rect.top - pad;
-  }
-  if (rect.bottom > window.innerHeight - pad) {
-    y += rect.bottom - (window.innerHeight - pad);
-  }
-
-  return { x, y };
-}
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -163,27 +140,28 @@ export function AssistantWidget() {
   const chatInFlightRef = useRef(false);
   const lastUserMessageIdRef = useRef<string | null>(null);
   const shouldScrollToBottomRef = useRef(false);
-  const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 });
+  const [launcherOffset, setLauncherOffset] = useState(loadLauncherOffset);
   const panelRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
 
-  const clampToViewport = useCallback((offset: { x: number; y: number }) => {
-    const element = isOpen ? panelRef.current : launcherRef.current;
-    return clampPanelOffset(offset, element);
-  }, [isOpen]);
+  const clampLauncher = useCallback((offset: { x: number; y: number }) => {
+    return clampLauncherOffset(offset, launcherRef.current);
+  }, []);
 
   useEffect(() => {
-    setPanelOffset((current) => clampToViewport(current));
-  }, [isOpen, clampToViewport]);
+    if (isOpen) return;
+    setLauncherOffset((current) => clampLauncher(current));
+  }, [isOpen, clampLauncher]);
 
   useEffect(() => {
     const handleResize = () => {
-      setPanelOffset((current) => clampToViewport(current));
+      if (isOpen) return;
+      setLauncherOffset((current) => clampLauncher(current));
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [clampToViewport]);
+  }, [isOpen, clampLauncher]);
 
   const persistKey = useMemo(() => {
     if (!isAuthenticated || !user?.id || !user.role) return null;
@@ -611,30 +589,17 @@ export function AssistantWidget() {
     ? "w-[min(100vw-1.5rem,680px)]"
     : "w-[min(100vw-1.5rem,440px)]";
 
-  const startWindowDrag = useCallback(
-    (
-      event: React.PointerEvent<HTMLElement>,
-      options?: {
-        skipInteractiveTargets?: boolean;
-        onPointerUp?: (moved: boolean) => void;
-      }
-    ) => {
-      if (event.button !== 0) return false;
-      const target = event.target as HTMLElement;
-      if (
-        options?.skipInteractiveTargets &&
-        target.closest("button, a, input, textarea, [data-no-drag]")
-      ) {
-        return false;
-      }
+  const startLauncherDrag = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.button !== 0) return;
 
       event.preventDefault();
       dragCleanupRef.current?.();
 
       const startX = event.clientX;
       const startY = event.clientY;
-      const originX = panelOffset.x;
-      const originY = panelOffset.y;
+      const originX = launcherOffset.x;
+      const originY = launcherOffset.y;
       let moved = false;
 
       const onPointerMove = (moveEvent: PointerEvent) => {
@@ -642,11 +607,11 @@ export function AssistantWidget() {
         const dy = moveEvent.clientY - startY;
         if (!moved && Math.hypot(dx, dy) < DRAG_CLICK_THRESHOLD_PX) return;
         moved = true;
-        setPanelOffset((current) =>
-          clampToViewport({
+        setLauncherOffset((current) =>
+          clampLauncher({
             x: originX + dx,
             y: originY + dy,
-          })
+          }),
         );
       };
 
@@ -655,35 +620,20 @@ export function AssistantWidget() {
         window.removeEventListener("pointerup", endDrag);
         window.removeEventListener("pointercancel", endDrag);
         dragCleanupRef.current = null;
-        setPanelOffset((current) => clampToViewport(current));
-        options?.onPointerUp?.(moved);
+        setLauncherOffset((current) => {
+          const clamped = clampLauncher(current);
+          saveLauncherOffset(clamped);
+          return clamped;
+        });
+        if (!moved) toggleAssistant();
       };
 
       dragCleanupRef.current = endDrag;
       window.addEventListener("pointermove", onPointerMove);
       window.addEventListener("pointerup", endDrag);
       window.addEventListener("pointercancel", endDrag);
-      return true;
     },
-    [panelOffset.x, panelOffset.y, clampToViewport]
-  );
-
-  const handleDragPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLElement>) => {
-      startWindowDrag(event, { skipInteractiveTargets: true });
-    },
-    [startWindowDrag]
-  );
-
-  const handleLauncherPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLButtonElement>) => {
-      startWindowDrag(event, {
-        onPointerUp: (moved) => {
-          if (!moved) toggleAssistant();
-        },
-      });
-    },
-    [startWindowDrag, toggleAssistant]
+    [launcherOffset.x, launcherOffset.y, clampLauncher, toggleAssistant],
   );
 
   if (availability === "unconfigured") {
@@ -696,9 +646,12 @@ export function AssistantWidget() {
         <button
           ref={launcherRef}
           type="button"
-          onPointerDown={handleLauncherPointerDown}
-          className="fixed bottom-6 right-6 z-50 flex cursor-grab active:cursor-grabbing touch-none select-none items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-semibold text-sm shadow-lg hover:opacity-95 transition-opacity"
-          style={{ transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)`, transformOrigin: "bottom right" }}
+          onPointerDown={startLauncherDrag}
+          className="fixed bottom-6 right-6 z-50 flex cursor-grab active:cursor-grabbing touch-none select-none items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/25 hover:opacity-95 transition-opacity"
+          style={{
+            transform: `translate(${launcherOffset.x}px, ${launcherOffset.y}px)`,
+            transformOrigin: "bottom right",
+          }}
           aria-label="Open AI assistant"
         >
           <MessageCircle className="h-5 w-5" />
@@ -716,26 +669,16 @@ export function AssistantWidget() {
           />
           <div
             ref={panelRef}
-            className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-border bg-card shadow-2xl sm:bottom-6 sm:right-6`}
+            className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-border/80 bg-card shadow-2xl sm:bottom-6 sm:right-6`}
             style={{
               borderRadius: "24px",
               maxHeight: "min(90vh, 720px)",
               height: "min(90vh, 720px)",
-              transform: `translate(${panelOffset.x}px, ${panelOffset.y}px)`,
-              transformOrigin: "bottom right",
             }}
             role="dialog"
             aria-modal="true"
             aria-label="ClearClever AI Assistant"
           >
-            <div
-              className="flex h-9 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center border-b border-border/70 bg-muted/40 touch-none select-none"
-              onPointerDown={handleDragPointerDown}
-              aria-label="Drag assistant panel"
-            >
-              <span className="h-1.5 w-12 rounded-full bg-border" />
-            </div>
-
             <div className="flex min-h-0 flex-1">
               {persistKey && (
                 <AssistantThreadSidebar
@@ -748,9 +691,9 @@ export function AssistantWidget() {
               )}
 
               <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex shrink-0 items-center justify-between border-b border-border bg-card px-5 py-4">
+                <header className="flex shrink-0 items-center justify-between border-b border-border/80 bg-gradient-to-r from-card via-card to-primary/5 px-5 py-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-primary">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
                       <MessageCircle className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
@@ -886,9 +829,13 @@ export function AssistantWidget() {
                   )}
 
                   {(sending || explaining) && (
-                    <div className="flex gap-3 items-center text-muted-foreground text-sm">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      Thinking…
+                    <div className="flex gap-3 items-center rounded-2xl border border-border/60 bg-card/80 px-4 py-3 text-sm text-muted-foreground shadow-sm">
+                      <span className="flex gap-1" aria-hidden>
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+                      </span>
+                      ClearClever is composing a response…
                     </div>
                   )}
 
@@ -1011,6 +958,7 @@ export function AssistantWidget() {
                         <Send className="h-5 w-5" />
                       </button>
                     </div>
+                    <SpeechVoiceLanguageLink />
                   </SpeechInputProvider>
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Shield className="h-3.5 w-3.5 shrink-0" />

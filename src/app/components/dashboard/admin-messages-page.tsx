@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Building2, Loader2, MessageSquare, Send, User } from "lucide-react";
-import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton } from "../ui/speech-input-button";
+import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton, SpeechVoiceLanguageLink } from "../ui/speech-input-button";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { useMessagesOptional } from "./messages-context";
@@ -352,6 +352,7 @@ export function AdminMessagesPage() {
                         <Send className="w-5 h-5" />
                       </button>
                     </div>
+                    <SpeechVoiceLanguageLink />
                   </div>
                 </SpeechInputProvider>
               </div>

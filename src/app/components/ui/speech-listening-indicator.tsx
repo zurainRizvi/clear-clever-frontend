@@ -1,13 +1,14 @@
+import type { ReactNode } from "react";
 import { cn } from "./utils";
 
 export function SpeechWaveBars({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex items-end gap-0.5 h-4", className)} aria-hidden>
-      {[0, 1, 2, 3, 4].map((i) => (
+    <span className={cn("inline-flex items-center gap-[3px] h-3.5", className)} aria-hidden>
+      {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className="w-0.5 rounded-full bg-current speech-wave-bar"
-          style={{ animationDelay: `${i * 0.12}s` }}
+          className="w-[3px] rounded-full bg-primary/70 speech-wave-bar-pro"
+          style={{ animationDelay: `${i * 0.18}s` }}
         />
       ))}
     </span>
@@ -17,33 +18,35 @@ export function SpeechWaveBars({ className }: { className?: string }) {
 type SpeechListeningBarProps = {
   interimPreview?: string | null;
   languageLabel?: string;
+  languageControl?: ReactNode;
   className?: string;
 };
 
 export function SpeechListeningBar({
   interimPreview,
   languageLabel,
+  languageControl,
   className,
 }: SpeechListeningBarProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive animate-in fade-in slide-in-from-bottom-1 duration-200",
+        "flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/[0.04] px-3 py-2.5 text-sm text-foreground",
         className,
       )}
       role="status"
       aria-live="polite"
     >
       <SpeechWaveBars />
-      <span className="font-medium shrink-0">Listening…</span>
-      {languageLabel ? (
-        <span className="text-xs text-destructive/70 shrink-0">({languageLabel})</span>
-      ) : null}
-      {interimPreview ? (
-        <span className="truncate text-destructive/80 italic">&ldquo;{interimPreview}&rdquo;</span>
-      ) : (
-        <span className="truncate text-destructive/60">Speak clearly, then click stop when done</span>
-      )}
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-foreground">Voice input active</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {interimPreview
+            ? interimPreview
+            : `Speak in ${languageLabel ?? "your selected language"}, then tap stop`}
+        </p>
+      </div>
+      {languageControl ? <div className="shrink-0">{languageControl}</div> : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { ArrowLeft, Building2, MessageSquare, Paperclip, Send, Shield, User } from "lucide-react";
-import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton } from "../ui/speech-input-button";
+import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton, SpeechVoiceLanguageLink } from "../ui/speech-input-button";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
 import { useProviderOptional } from "./provider-context";
@@ -619,6 +619,7 @@ export function MessagesPanel({
                       <Send className="w-5 h-5" />
                     </button>
                   </div>
+                  <SpeechVoiceLanguageLink />
                 </SpeechInputProvider>
               </div>
             </>
