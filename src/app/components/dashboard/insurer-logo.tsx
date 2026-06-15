@@ -16,6 +16,11 @@ const LOGO_MAP: Record<string, string> = {
   tpl: logoTpl,
 };
 
+export function insurerLogoSrc(companyName?: string): string | undefined {
+  const key = (companyName ?? "").toLowerCase();
+  return Object.entries(LOGO_MAP).find(([name]) => key.includes(name))?.[1];
+}
+
 export function InsurerLogo({
   companyName,
   className = "h-7 w-auto max-w-[110px]",
@@ -23,8 +28,7 @@ export function InsurerLogo({
   companyName?: string;
   className?: string;
 }) {
-  const key = (companyName ?? "").toLowerCase();
-  const src = Object.entries(LOGO_MAP).find(([name]) => key.includes(name))?.[1];
+  const src = insurerLogoSrc(companyName);
 
   if (!src) {
     return (

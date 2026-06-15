@@ -36,7 +36,7 @@ import {
 import { PolicyMatchInsight } from "./policy-match-insight";
 import { matchTierFromScore, matchTierLabel, recommendationSummaryLabel } from "@/lib/policy-match";
 import { cardLiftHover, fadeUpItem, fadeUpStagger, staggerDelay } from "@/lib/motion-presets";
-import type { CategoryItem, PolicyQuestion, RankingMethod, ScoredRecommendation } from "@/lib/types";
+import type { CategoryItem, PolicyQuestion, PublicPolicy, RankingMethod, ScoredRecommendation } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
 import { InsurerLogo } from "./insurer-logo";
 import { useAssistantWidget } from "../assistant/assistant-widget-context";
@@ -63,13 +63,14 @@ import {
 import { mergePresetAnswers, resolveCategoryNav } from "@/lib/category-nav";
 import { PolicyResultsToolbar } from "./policy-results-toolbar";
 import { PolicyCompareBar } from "./policy-compare-bar";
+import { ClearCleverDisclaimers } from "./clearclever-disclaimers";
 import { PolicyFeatureHighlights } from "./policy-feature-highlights";
 import {
   DEFAULT_COMPARE_FILTERS,
   filterRecommendations,
   sortRecommendations,
 } from "@/lib/compare-results-utils";
-import type { CompareResultsFilters, CompareSortOption, PublicPolicy } from "@/lib/types";
+import { getCompareCategoryConflict, policiesShareCategory } from "@/lib/compare-utils";
 
 const MAX_COMPARE_POLICIES = 4;
 
@@ -499,6 +500,16 @@ export function ComparePolicies() {
         toast.message(copy.compare.compareLimit);
         return prev;
       }
+      const candidate = recommendations.find((rec) => rec.policy.id === policyId)?.policy;
+      if (!candidate) return prev;
+      const selectedPolicies = prev
+        .map((id) => recommendations.find((rec) => rec.policy.id === id)?.policy)
+        .filter((policy): policy is PublicPolicy => Boolean(policy));
+      const conflict = getCompareCategoryConflict(selectedPolicies, candidate);
+      if (conflict) {
+        toast.error(conflict);
+        return prev;
+      }
       return [...prev, policyId];
     });
   };
@@ -506,6 +517,12 @@ export function ComparePolicies() {
   const handleOpenCompareView = () => {
     if (comparePolicyIds.length < 2) {
       toast.error("Select at least two policies to compare");
+      return;
+    }
+    if (!policiesShareCategory(compareSelectedPolicies)) {
+      toast.error(
+        "Select policies from the same category to compare — for example, all home or all pet plans."
+      );
       return;
     }
     navigate(`/dashboard/compare/view?ids=${comparePolicyIds.join(",")}`);
@@ -954,6 +971,12 @@ export function ComparePolicies() {
         onClear={() => setComparePolicyIds([])}
         onCompare={handleOpenCompareView}
       />
+
+      {step === "results" ? (
+        <div className="mt-8">
+          <ClearCleverDisclaimers compact />
+        </div>
+      ) : null}
     </AnimatedPage>
   );
 }

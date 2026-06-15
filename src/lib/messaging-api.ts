@@ -12,6 +12,7 @@ export interface ConversationParticipant {
   fullName: string;
   email: string;
   role: UserRole;
+  profilePhotoDataUrl?: string;
 }
 
 export interface ConversationSummary {

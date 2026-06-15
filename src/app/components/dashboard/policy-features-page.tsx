@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowLeft, Check, Loader2, Minus, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { fetchPublicPolicy } from "@/lib/auth-api";
@@ -12,46 +12,17 @@ import {
 } from "@/lib/policy-feature-utils";
 import type { PublicPolicy } from "@/lib/types";
 import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
-import { InsurerLogo } from "./insurer-logo";
+import { InsurerAvatar } from "./insurer-avatar";
 import { PolicyInsurerTrustCard } from "./policy-insurer-trust-card";
 import { iconForSection } from "./policy-feature-highlights";
 import { loadCompareFlowDraft } from "@/lib/compare-flow-draft";
 import { clearPurchaseDraft } from "@/lib/purchase-draft";
-
-function CoverageChart({ included, excluded, valued }: { included: number; excluded: number; valued: number }) {
-  const total = Math.max(included + excluded + valued, 1);
-  const segments = [
-    { label: "Included", count: included, color: "bg-success" },
-    { label: "Limits & values", count: valued, color: "bg-primary" },
-    { label: "Not included", count: excluded, color: "bg-muted-foreground/30" },
-  ].filter((s) => s.count > 0);
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="text-sm font-semibold mb-4">Coverage at a glance</p>
-      <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-4">
-        {segments.map((segment) => (
-          <motion.div
-            key={segment.label}
-            initial={{ width: 0 }}
-            animate={{ width: `${(segment.count / total) * 100}%` }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className={`${segment.color} min-w-[4px]`}
-            title={`${segment.label}: ${segment.count}`}
-          />
-        ))}
-      </div>
-      <div className="grid grid-cols-3 gap-2 text-center">
-        {segments.map((segment) => (
-          <div key={segment.label} className="rounded-lg bg-muted/30 p-2">
-            <p className="text-lg font-bold">{segment.count}</p>
-            <p className="text-[11px] text-muted-foreground">{segment.label}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { CoverageBreakdownChart } from "./coverage-breakdown-chart";
+import { ClearCleverDisclaimers } from "./clearclever-disclaimers";
+import {
+  AnimatedFeatureExcluded,
+  AnimatedFeatureIncluded,
+} from "./animated-feature-indicator";
 
 export function PolicyFeaturesPage() {
   const [searchParams] = useSearchParams();
@@ -133,9 +104,9 @@ export function PolicyFeaturesPage() {
               Full policy breakdown
             </p>
             <h1 className="text-3xl font-bold">{policy.name}</h1>
-            <div className="flex items-center gap-2">
-              <InsurerLogo companyName={policy.insurer.companyName} />
-              <span className="text-muted-foreground">{policy.insurer.companyName}</span>
+            <div className="flex items-center gap-3">
+              <InsurerAvatar companyName={policy.insurer.companyName} size="md" />
+              <span className="text-muted-foreground font-medium">{policy.insurer.companyName}</span>
             </div>
             <p className="text-muted-foreground max-w-2xl leading-relaxed">{policy.coverageSummary}</p>
             <p className="text-sm text-muted-foreground">{policy.description}</p>
@@ -162,7 +133,7 @@ export function PolicyFeaturesPage() {
       </div>
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-6 mb-8">
-        <CoverageChart {...stats} />
+        <CoverageBreakdownChart {...stats} />
         <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-center">
           <div className="flex items-center gap-2 text-primary mb-2">
             <Sparkles className="w-4 h-4" />
@@ -210,13 +181,13 @@ export function PolicyFeaturesPage() {
                     <span className="text-sm font-medium">{row.label}</span>
                     <span className="text-sm sm:text-right">
                       {row.included === true ? (
-                        <span className="inline-flex items-center gap-1.5 text-success font-medium">
-                          <Check className="w-4 h-4" />
+                        <span className="inline-flex items-center gap-2 text-success font-medium">
+                          <AnimatedFeatureIncluded size={20} />
                           Included
                         </span>
                       ) : row.included === false ? (
-                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                          <Minus className="w-4 h-4" />
+                        <span className="inline-flex items-center gap-2 text-muted-foreground">
+                          <AnimatedFeatureExcluded size={20} />
                           Not included
                         </span>
                       ) : (
@@ -231,7 +202,10 @@ export function PolicyFeaturesPage() {
         })}
       </div>
 
-      <PolicyInsurerTrustCard insurer={policy.insurer} />
+      <div className="space-y-6 mb-8">
+        <PolicyInsurerTrustCard insurer={policy.insurer} />
+        <ClearCleverDisclaimers />
+      </div>
     </div>
   );
 }

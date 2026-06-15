@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { ArrowLeft, Building2, MessageSquare, Paperclip, Send, Shield, User } from "lucide-react";
+import { ArrowLeft, MessageSquare, Paperclip, Send } from "lucide-react";
 import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton, SpeechVoiceLanguageLink } from "../ui/speech-input-button";
 import { toast } from "sonner";
 import { useAuth } from "../auth-context";
@@ -24,6 +24,10 @@ import { ConversationActionsMenu } from "./conversation-actions-menu";
 import { SupportChatCta } from "./support-chat-cta";
 import { AnimatedPillTabs } from "../ui/animated-pill-tabs";
 import { useIsMobile } from "../ui/use-mobile";
+import {
+  ConversationListAvatar,
+  MessageSenderAvatar,
+} from "./message-participant-avatar";
 
 const SUPPORT_WELCOME_MESSAGE = "Hi ClearClever support, I need help with a query.";
 
@@ -414,13 +418,7 @@ export function MessagesPanel({
                       className="flex-1 min-w-0 text-left p-4"
                     >
                       <div className="flex gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                          {conversation.type.includes("support") ? (
-                            <Shield className="w-5 h-5" />
-                          ) : (
-                            <User className="w-5 h-5" />
-                          )}
-                        </div>
+                        <ConversationListAvatar conversation={conversation} viewerRole={user?.role} />
                         <div className="min-w-0 flex-1">
                           <div className="font-medium truncate flex items-center gap-2">
                             <span className="truncate">
@@ -517,7 +515,14 @@ export function MessagesPanel({
                           senderParticipant?.email?.split("@")[0] ??
                           "User");
                     return (
-                      <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                      <div key={message.id} className={`flex gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+                        {!mine ? (
+                          <MessageSenderAvatar
+                            senderParticipant={senderParticipant}
+                            conversation={activeConversation}
+                            mine={false}
+                          />
+                        ) : null}
                         <div
                           className={`max-w-[min(75%,100%)] sm:max-w-[75%] rounded-2xl px-4 py-3 ${
                             mine
@@ -553,6 +558,13 @@ export function MessagesPanel({
                             {new Date(message.createdAt).toLocaleString()}
                           </div>
                         </div>
+                        {mine ? (
+                          <MessageSenderAvatar
+                            senderParticipant={senderParticipant}
+                            conversation={activeConversation}
+                            mine
+                          />
+                        ) : null}
                       </div>
                     );
                   })

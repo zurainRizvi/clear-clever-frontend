@@ -105,6 +105,14 @@ function HealthTabs({
   );
 }
 
+function latencyCaption(service: InfrastructureServiceStatus): string {
+  if (service.latencyMs > 0) return `${service.latencyMs}ms response`;
+  if (!service.ok) return "Unavailable";
+  if (/speech/i.test(service.label)) return "Client-side";
+  if (/gemini/i.test(service.label)) return "Configured";
+  return "Active";
+}
+
 function ServiceRow({ service }: { service: InfrastructureServiceStatus }) {
   const sparkSeed = `${service.label}-${service.ok ? "ok" : "bad"}`;
   return (
@@ -126,7 +134,7 @@ function ServiceRow({ service }: { service: InfrastructureServiceStatus }) {
           </div>
         ) : null}
       </div>
-      <div className="text-right flex flex-col items-end justify-center min-h-[52px] gap-1">
+      <div className="text-right flex flex-col items-end justify-center min-h-[52px] gap-1 shrink-0">
         <span
           className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full border ${
             service.ok
@@ -139,8 +147,8 @@ function ServiceRow({ service }: { service: InfrastructureServiceStatus }) {
           ) : null}
           {service.ok ? "Operational" : "Needs attention"}
         </span>
-        <p className="text-[10px] text-muted-foreground tabular-nums min-w-[72px] text-right">
-          {service.latencyMs > 0 ? `${service.latencyMs}ms response` : "—"}
+        <p className="text-[10px] text-muted-foreground tabular-nums min-w-[88px] text-center">
+          {latencyCaption(service)}
         </p>
       </div>
     </div>

@@ -123,7 +123,7 @@ function ClaimIncompleteApplicationNotice({
 
 function ReadinessRing({ score, size = 72 }: { score: number; size?: number }) {
   const reducedMotion = useReducedMotion();
-  const stroke = 6;
+  const stroke = size <= 48 ? 4 : 6;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
@@ -135,6 +135,11 @@ function ReadinessRing({ score, size = 72 }: { score: number; size?: number }) {
       : score >= 60
         ? "stroke-primary"
         : "stroke-warning";
+  const scoreClass =
+    size <= 48 ? "text-[11px]" : size <= 64 ? "text-sm" : size <= 80 ? "text-lg" : "text-xl";
+  const labelClass =
+    size <= 48 ? "text-[7px] tracking-tight" : size <= 64 ? "text-[8px]" : "text-[10px]";
+  const showLabel = size >= 52;
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -161,18 +166,16 @@ function ReadinessRing({ score, size = 72 }: { score: number; size?: number }) {
           transition={{ duration: reducedMotion ? 0 : 0.9, ease: [0.22, 1, 0.36, 1] }}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-1 text-center leading-none">
         <AnimatedNumber
           value={score}
-          className={cn(
-            size >= 72 ? "text-xl" : "text-base",
-            "font-bold tabular-nums leading-none",
-            tone
-          )}
+          className={cn("font-bold tabular-nums", scoreClass, tone)}
         />
-        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-          Ready
-        </span>
+        {showLabel ? (
+          <span className={`${labelClass} font-medium text-muted-foreground uppercase mt-0.5`}>
+            Ready
+          </span>
+        ) : null}
       </div>
     </div>
   );

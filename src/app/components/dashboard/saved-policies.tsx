@@ -19,10 +19,11 @@ import { ApiError } from "@/lib/api";
 import { InsurerLogo } from "./insurer-logo";
 import { PolicyFeatureHighlights } from "./policy-feature-highlights";
 import { PolicyCompareBar } from "./policy-compare-bar";
+import { ClearCleverDisclaimers } from "./clearclever-disclaimers";
 import { useAssistantWidget } from "../assistant/assistant-widget-context";
 import { explainRecommendation } from "@/lib/assistant-api";
 import { useAuth } from "../auth-context";
-import type { PublicPolicy } from "@/lib/types";
+import { getCompareCategoryConflict, policiesShareCategory } from "@/lib/compare-utils";
 
 const MAX_COMPARE = 4;
 
@@ -51,6 +52,14 @@ export function SavedPolicies() {
         toast.message(copy.compare.compareLimit);
         return prev;
       }
+      const candidate = savedPolicies.find((policy) => policy.id === policyId);
+      if (!candidate) return prev;
+      const selectedPolicies = savedPolicies.filter((policy) => prev.includes(policy.id));
+      const conflict = getCompareCategoryConflict(selectedPolicies, candidate);
+      if (conflict) {
+        toast.error(conflict);
+        return prev;
+      }
       return [...prev, policyId];
     });
   };
@@ -58,6 +67,13 @@ export function SavedPolicies() {
   const openCompareView = () => {
     if (compareIds.length < 2) {
       toast.error("Select at least two saved policies to compare");
+      return;
+    }
+    const selected = savedPolicies.filter((policy) => compareIds.includes(policy.id));
+    if (!policiesShareCategory(selected)) {
+      toast.error(
+        "Select policies from the same category to compare — for example, all home or all pet plans."
+      );
       return;
     }
     navigate(`/dashboard/compare/view?ids=${compareIds.join(",")}`);
@@ -217,6 +233,10 @@ export function SavedPolicies() {
             </motion.div>
           );
         })}
+      </div>
+
+      <div className="mt-8">
+        <ClearCleverDisclaimers compact />
       </div>
 
       <PolicyCompareBar

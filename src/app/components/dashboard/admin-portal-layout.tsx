@@ -241,12 +241,22 @@ export function AdminPortalLayout({ variant }: AdminPortalLayoutProps) {
                 </Link>
               ) : null}
               <DarkModeToggle />
-              <Link
-                to="/"
-                className="px-4 py-2 text-sm border border-border rounded-xl hover:bg-accent hidden sm:inline-flex"
-              >
-                Exit dashboard
-              </Link>
+              {variant === "superadmin" ? (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-sm border border-border rounded-xl hover:bg-accent hidden sm:inline-flex"
+                >
+                  Exit dashboard
+                </button>
+              ) : (
+                <Link
+                  to="/"
+                  className="px-4 py-2 text-sm border border-border rounded-xl hover:bg-accent hidden sm:inline-flex"
+                >
+                  Exit dashboard
+                </Link>
+              )}
             </div>
           </div>
         </header>

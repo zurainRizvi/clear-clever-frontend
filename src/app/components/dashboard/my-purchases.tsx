@@ -22,7 +22,7 @@ import {
   rescheduleAgentCall,
   type PurchaseSummary,
 } from "@/lib/purchase-api";
-import { InsurerLogo } from "./insurer-logo";
+import { InsurerAvatar } from "./insurer-avatar";
 import { PolicyPurchaseBenefits } from "./policy-purchase-benefits";
 import { PREFERRED_TIME_SLOTS, preferredSlotToScheduledTime } from "@/lib/scheduling";
 
@@ -32,6 +32,7 @@ export function MyPurchases() {
   const [purchases, setPurchases] = useState<PurchaseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(searchParams.get("focus"));
+  const [detailTab, setDetailTab] = useState<"benefits" | "insurer">("benefits");
   const [rescheduleTarget, setRescheduleTarget] = useState<PurchaseSummary | null>(null);
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledSlot, setScheduledSlot] = useState<string>(PREFERRED_TIME_SLOTS[2]);
@@ -67,6 +68,7 @@ export function MyPurchases() {
   useEffect(() => {
     if (!focusId || loading) return;
     setExpandedId(focusId);
+    setDetailTab("benefits");
     requestAnimationFrame(() => {
       window.setTimeout(() => {
         document.getElementById(`purchase-${focusId}`)?.scrollIntoView({
@@ -173,21 +175,25 @@ export function MyPurchases() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-5">
             <button
               type="button"
-              onClick={() => setExpandedId(expanded ? null : purchase.id)}
+              onClick={() => {
+                const nextExpanded = expanded ? null : purchase.id;
+                setExpandedId(nextExpanded);
+                if (nextExpanded) setDetailTab("benefits");
+              }}
               className="text-left flex-1"
             >
               <h2 className="text-xl font-bold">{purchase.policy?.name ?? "Policy"}</h2>
-              <p className="text-sm text-muted-foreground">
-                {purchase.insurer?.companyName} · {purchase.policy?.category}
-              </p>
+              <div className="flex items-center gap-3 mt-2">
+                <InsurerAvatar companyName={purchase.insurer?.companyName} size="sm" />
+                <p className="text-sm text-muted-foreground">
+                  {purchase.insurer?.companyName} · {purchase.policy?.category}
+                </p>
+              </div>
               {purchase.status === "terminated" ? (
                 <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
                   This policy is no longer being served by the insurer.
                 </p>
               ) : null}
-              <div className="mt-2">
-                <InsurerLogo companyName={purchase.insurer?.companyName} />
-              </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {purchase.policy?.coverageSummary}
               </p>
@@ -288,49 +294,93 @@ export function MyPurchases() {
           />
 
           {expanded && (
-            <div className="mt-6 grid lg:grid-cols-2 gap-4 border-t border-border pt-5">
-              <div className="rounded-xl bg-muted/30 p-4">
-                <h3 className="font-semibold mb-3">Benefits and documents</h3>
-                <PolicyPurchaseBenefits
-                  featureSections={purchase.policy?.featureSections}
-                  features={purchase.policy?.features}
-                  insurer={
-                    purchase.insurer
-                      ? {
-                          id: purchase.insurer.id,
-                          slug: purchase.insurer.slug,
-                          companyName: purchase.insurer.companyName,
-                          pacraRating: purchase.insurer.pacraRating,
-                          jcrVisRating: purchase.insurer.jcrVisRating,
-                          operationalSince: purchase.insurer.operationalSince,
-                          policyType: purchase.insurer.policyType,
-                        }
-                      : undefined
-                  }
-                  documentSummary={purchase.policy?.documentSummary}
-                  deductiblePkr={purchase.policy?.deductiblePkr}
-                />
+            <div className="mt-6 border-t border-border pt-5">
+              <div className="inline-flex gap-1 rounded-xl bg-muted/40 p-1 border border-border mb-4">
+                <button
+                  type="button"
+                  onClick={() => setDetailTab("benefits")}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    detailTab === "benefits"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Benefits and documents
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailTab("insurer")}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    detailTab === "insurer"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Insurer details
+                </button>
               </div>
-              <div className="rounded-xl bg-muted/30 p-4 space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Company and agent</h3>
-                  <p className="text-sm">{purchase.insurer?.companyName}</p>
-                  <p className="text-sm text-muted-foreground">{purchase.insurer?.contactEmail}</p>
-                  <p className="text-sm text-muted-foreground">{purchase.insurer?.contactPhone}</p>
-                  <p className="text-sm mt-2">
-                    Agent: {purchase.timeline.callScheduled?.agentLabel ?? "ClearClever agent"}
-                  </p>
+
+              {detailTab === "benefits" ? (
+                <div className="rounded-xl bg-muted/30 p-4">
+                  <PolicyPurchaseBenefits
+                    featureSections={purchase.policy?.featureSections}
+                    features={purchase.policy?.features}
+                    insurer={
+                      purchase.insurer
+                        ? {
+                            id: purchase.insurer.id,
+                            slug: purchase.insurer.slug,
+                            companyName: purchase.insurer.companyName,
+                            pacraRating: purchase.insurer.pacraRating,
+                            jcrVisRating: purchase.insurer.jcrVisRating,
+                            operationalSince: purchase.insurer.operationalSince,
+                            policyType: purchase.insurer.policyType,
+                          }
+                        : undefined
+                    }
+                    documentSummary={purchase.policy?.documentSummary}
+                    deductiblePkr={purchase.policy?.deductiblePkr}
+                  />
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  Premium:{" "}
-                  {purchase.policy?.premiumYearlyPkr
-                    ? formatPkrYearly(
-                        purchase.policy.premiumMonthlyPkr,
-                        purchase.policy.premiumYearlyPkr
-                      )
-                    : `${formatPkr(purchase.policy?.premiumMonthlyPkr ?? 0)}/mo`}
+              ) : (
+                <div className="rounded-xl bg-muted/30 p-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <InsurerAvatar companyName={purchase.insurer?.companyName} size="md" />
+                    <div>
+                      <h3 className="font-semibold">Company and agent</h3>
+                      <p className="text-sm text-muted-foreground">{purchase.insurer?.companyName}</p>
+                    </div>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                        Contact
+                      </p>
+                      <p>{purchase.insurer?.contactEmail}</p>
+                      <p className="text-muted-foreground">{purchase.insurer?.contactPhone}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                        Your agent
+                      </p>
+                      <p>{purchase.timeline.callScheduled?.agentLabel ?? "ClearClever agent"}</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                        Premium
+                      </p>
+                      <p className="font-semibold">
+                        {purchase.policy?.premiumYearlyPkr
+                          ? formatPkrYearly(
+                              purchase.policy.premiumMonthlyPkr,
+                              purchase.policy.premiumYearlyPkr
+                            )
+                          : `${formatPkr(purchase.policy?.premiumMonthlyPkr ?? 0)}/mo`}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </motion.article>

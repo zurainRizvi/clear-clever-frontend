@@ -43,7 +43,7 @@ import {
   vehicleValuesToAnswers,
   type SchedulingValues,
 } from "./scheduling-fields";
-import { PolicyFeatureSections } from "./policy-feature-sections";
+import { ClearCleverDisclaimers } from "./clearclever-disclaimers";
 import {
   firstIncompleteQuestionIndex,
   firstUnansweredQuestionIndex,
@@ -949,6 +949,10 @@ export function PurchaseFlow() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      <div className="mt-6">
+        <ClearCleverDisclaimers compact />
       </div>
     </div>
   );
