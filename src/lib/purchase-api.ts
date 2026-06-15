@@ -39,6 +39,10 @@ export interface PurchaseSummary {
     companyName: string;
     contactEmail?: string;
     contactPhone?: string;
+    pacraRating?: string;
+    jcrVisRating?: string;
+    operationalSince?: number;
+    policyType?: "conventional" | "islamic" | "both";
   };
   claims?: ClaimSummary[];
   timeline: {

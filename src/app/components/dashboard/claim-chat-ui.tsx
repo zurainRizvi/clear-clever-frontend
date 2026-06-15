@@ -332,10 +332,12 @@ export function ClaimFileChip({
   name,
   previewUrl,
   onRemove,
+  onPreview,
 }: {
   name: string;
   previewUrl?: string;
   onRemove: () => void;
+  onPreview?: () => void;
 }) {
   return (
     <motion.span
@@ -347,7 +349,14 @@ export function ClaimFileChip({
       className="inline-flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-2 py-1.5 text-xs text-foreground"
     >
       {previewUrl ? (
-        <img src={previewUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
+        <button
+          type="button"
+          onClick={onPreview}
+          className="shrink-0 rounded-lg overflow-hidden hover:ring-2 hover:ring-primary/40"
+          aria-label={`Preview ${name}`}
+        >
+          <img src={previewUrl} alt="" className="h-12 w-12 object-cover" />
+        </button>
       ) : (
         <Paperclip className="h-4 w-4 text-primary" />
       )}

@@ -23,7 +23,7 @@ import {
   type PurchaseSummary,
 } from "@/lib/purchase-api";
 import { InsurerLogo } from "./insurer-logo";
-import { PolicyFeatureSections } from "./policy-feature-sections";
+import { PolicyPurchaseBenefits } from "./policy-purchase-benefits";
 import { PREFERRED_TIME_SLOTS, preferredSlotToScheduledTime } from "@/lib/scheduling";
 
 export function MyPurchases() {
@@ -219,19 +219,13 @@ export function MyPurchases() {
               title="Insurer confirmation email"
               detail={
                 purchase.timeline.email
-                  ? `${purchase.timeline.email.subject} · ${new Date(purchase.timeline.email.sentAt).toLocaleString()}`
-                  : "Sent after purchase completion"
+                  ? `Received ${new Date(purchase.timeline.email.sentAt).toLocaleString()}`
+                  : purchase.status === "completed"
+                    ? "Confirmation email will arrive shortly"
+                    : "Sent after purchase completion"
               }
             />
-            {purchase.timeline.email?.body && (
-              <div className="ml-11 mb-4 rounded-xl border border-border bg-card p-4 text-sm whitespace-pre-wrap">
-                <p className="font-semibold mb-2">
-                  From {purchase.timeline.email.fromInsurer ?? purchase.insurer?.companyName ?? "Insurer"}
-                </p>
-                <p className="text-muted-foreground mb-2">{purchase.timeline.email.subject}</p>
-                <p>{purchase.timeline.email.body}</p>
-              </div>
-            )}
+            <PurchaseEmailCard email={purchase.timeline.email} insurerName={purchase.insurer?.companyName} />
             <TimelineItem
               done={Boolean(purchase.timeline.callScheduled)}
               icon={Calendar}
@@ -261,29 +255,61 @@ export function MyPurchases() {
               }
             />
           </ol>
+
+          <PurchaseActionBar
+            purchase={purchase}
+            onReschedule={() => {
+              setRescheduleTarget(purchase);
+              const scheduled = purchase.timeline.callScheduled?.scheduledAt;
+              if (scheduled) {
+                const pkt = new Date(new Date(scheduled).getTime() + 5 * 60 * 60 * 1000);
+                setScheduledDate(pkt.toISOString().slice(0, 10));
+                setScheduledSlot(PREFERRED_TIME_SLOTS[2]);
+              }
+            }}
+            onMessage={() => {
+              if (!purchase.insurer?.id) {
+                toast.error("Insurer contact is not available for this purchase yet.");
+                return;
+              }
+              navigate("/dashboard/messages", {
+                state: {
+                  defaultConversation: {
+                    type: "user_insurer",
+                    insurerProfileId: purchase.insurer.id,
+                    purchaseId: purchase.id,
+                    subject: `Purchase support: ${purchase.policy?.name ?? "policy"}`,
+                    initialMessage: `Hi ${purchase.insurer.companyName}, I have a question about my ${purchase.policy?.name ?? "policy"} purchase.`,
+                  },
+                },
+              });
+            }}
+            onStartClaim={() => navigate(`/dashboard/claims?purchaseId=${purchase.id}`)}
+          />
+
           {expanded && (
             <div className="mt-6 grid lg:grid-cols-2 gap-4 border-t border-border pt-5">
               <div className="rounded-xl bg-muted/30 p-4">
                 <h3 className="font-semibold mb-3">Benefits and documents</h3>
-                {purchase.policy?.featureSections && purchase.policy.featureSections.length > 0 ? (
-                  <PolicyFeatureSections sections={purchase.policy.featureSections} compact />
-                ) : (
-                  <ul className="space-y-2 text-sm">
-                    {(purchase.policy?.features ?? []).map((feature) => (
-                      <li key={feature} className="flex gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {purchase.policy?.documentSummary && (
-                  <div className="mt-4 text-sm text-muted-foreground">
-                    <p>Policy no: {purchase.policy.documentSummary.policyNumber}</p>
-                    <p>Issued: {new Date(purchase.policy.documentSummary.issuedAt).toLocaleDateString()}</p>
-                    <p>Deductible: {formatPkr(purchase.policy.deductiblePkr ?? 0)}</p>
-                  </div>
-                )}
+                <PolicyPurchaseBenefits
+                  featureSections={purchase.policy?.featureSections}
+                  features={purchase.policy?.features}
+                  insurer={
+                    purchase.insurer
+                      ? {
+                          id: purchase.insurer.id,
+                          slug: purchase.insurer.slug,
+                          companyName: purchase.insurer.companyName,
+                          pacraRating: purchase.insurer.pacraRating,
+                          jcrVisRating: purchase.insurer.jcrVisRating,
+                          operationalSince: purchase.insurer.operationalSince,
+                          policyType: purchase.insurer.policyType,
+                        }
+                      : undefined
+                  }
+                  documentSummary={purchase.policy?.documentSummary}
+                  deductiblePkr={purchase.policy?.deductiblePkr}
+                />
               </div>
               <div className="rounded-xl bg-muted/30 p-4 space-y-4">
                 <div>
@@ -294,64 +320,6 @@ export function MyPurchases() {
                   <p className="text-sm mt-2">
                     Agent: {purchase.timeline.callScheduled?.agentLabel ?? "ClearClever agent"}
                   </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {purchase.status === "completed" ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRescheduleTarget(purchase);
-                          const scheduled = purchase.timeline.callScheduled?.scheduledAt;
-                          if (scheduled) {
-                            const pkt = new Date(new Date(scheduled).getTime() + 5 * 60 * 60 * 1000);
-                            setScheduledDate(pkt.toISOString().slice(0, 10));
-                            setScheduledSlot(PREFERRED_TIME_SLOTS[2]);
-                          }
-                        }}
-                        className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
-                      >
-                        <Phone className="w-4 h-4" />
-                        Reschedule agent
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!purchase.insurer?.id) {
-                            toast.error("Insurer contact is not available for this purchase yet.");
-                            return;
-                          }
-                          navigate("/dashboard/messages", {
-                            state: {
-                              defaultConversation: {
-                                type: "user_insurer",
-                                insurerProfileId: purchase.insurer.id,
-                                purchaseId: purchase.id,
-                                subject: `Purchase support: ${purchase.policy?.name ?? "policy"}`,
-                                initialMessage: `Hi ${purchase.insurer.companyName}, I have a question about my ${purchase.policy?.name ?? "policy"} purchase.`,
-                              },
-                            },
-                          });
-                        }}
-                        className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        Message agent
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/dashboard/claims?purchaseId=${purchase.id}`)}
-                        className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm inline-flex items-center gap-2"
-                      >
-                        <FileText className="w-4 h-4" />
-                        Start claim
-                      </button>
-                    </>
-                  ) : purchase.status === "terminated" ? (
-                    <p className="text-sm text-muted-foreground">
-                      Contact the insurer through Messages if you need support about this policy.
-                    </p>
-                  ) : null}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Premium:{" "}
@@ -447,6 +415,105 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium capitalize ${styles}`}>
       {status.replace(/_/g, " ")}
     </span>
+  );
+}
+
+function PurchaseEmailCard({
+  email,
+  insurerName,
+}: {
+  email?: PurchaseSummary["timeline"]["email"];
+  insurerName?: string;
+}) {
+  if (!email?.body) return null;
+
+  return (
+    <li className="ml-11 mb-4 list-none">
+      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30">
+          <Mail className="w-4 h-4 text-primary shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">
+              {email.fromInsurer ?? insurerName ?? "Insurer"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(email.sentAt).toLocaleString()}
+            </p>
+          </div>
+        </div>
+        <div className="p-4 text-sm">
+          <p className="font-medium mb-2">{email.subject}</p>
+          <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{email.body}</p>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function PurchaseActionBar({
+  purchase,
+  onReschedule,
+  onMessage,
+  onStartClaim,
+}: {
+  purchase: PurchaseSummary;
+  onReschedule: () => void;
+  onMessage: () => void;
+  onStartClaim: () => void;
+}) {
+  if (purchase.status === "terminated") {
+    return (
+      <div className="mt-5 pt-5 border-t border-border">
+        <p className="text-sm text-muted-foreground mb-3">
+          This policy is no longer active. You can still message the insurer for support.
+        </p>
+        <button
+          type="button"
+          onClick={onMessage}
+          className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
+        >
+          <MessageSquare className="w-4 h-4" />
+          Message insurer
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-5 pt-5 border-t border-border flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={onMessage}
+        className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
+      >
+        <MessageSquare className="w-4 h-4" />
+        Message agent
+      </button>
+      {purchase.status === "completed" ? (
+        <>
+          <button
+            type="button"
+            onClick={onReschedule}
+            className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
+          >
+            <Phone className="w-4 h-4" />
+            Reschedule agent
+          </button>
+          <button
+            type="button"
+            onClick={onStartClaim}
+            className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm inline-flex items-center gap-2"
+          >
+            <FileText className="w-4 h-4" />
+            Start claim
+          </button>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground self-center">
+          Reschedule and claims unlock after purchase completion.
+        </p>
+      )}
+    </div>
   );
 }
 

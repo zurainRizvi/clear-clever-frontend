@@ -16,7 +16,6 @@ import {
   Loader2,
   MessageSquare,
   GitCompare,
-  ListChecks,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
@@ -64,7 +63,7 @@ import {
 import { mergePresetAnswers, resolveCategoryNav } from "@/lib/category-nav";
 import { PolicyResultsToolbar } from "./policy-results-toolbar";
 import { PolicyCompareBar } from "./policy-compare-bar";
-import { PolicyFeaturesDrawer } from "./policy-features-drawer";
+import { PolicyFeatureHighlights } from "./policy-feature-highlights";
 import {
   DEFAULT_COMPARE_FILTERS,
   filterRecommendations,
@@ -115,7 +114,6 @@ export function ComparePolicies() {
   const [resultsFilters, setResultsFilters] = useState<CompareResultsFilters>(DEFAULT_COMPARE_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [comparePolicyIds, setComparePolicyIds] = useState<string[]>([]);
-  const [featuresPolicy, setFeaturesPolicy] = useState<PublicPolicy | null>(null);
 
   const [step, setStep] = useState<Step>("category");
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -490,7 +488,6 @@ export function ComparePolicies() {
     setSortOption("best_match");
     setResultsFilters(DEFAULT_COMPARE_FILTERS);
     setComparePolicyIds([]);
-    setFeaturesPolicy(null);
   };
 
   const toggleComparePolicy = (policyId: string) => {
@@ -547,7 +544,7 @@ export function ComparePolicies() {
   const handleSavePolicy = async (rec: ScoredRecommendation) => {
     if (!isAuthenticated || user?.role !== "user") {
       toast.error(copy.errors.unauthorized);
-      navigate("/login", { state: { returnTo: "/dashboard/compare" } });
+      navigate("/signin", { state: { returnTo: "/dashboard/compare" } });
       return;
     }
     try {
@@ -838,32 +835,13 @@ export function ComparePolicies() {
                               </ul>
                             </div>
                           )}
-                          {rec.policy.features.length > 0 && (
-                            <div>
-                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                                What&apos;s included
-                              </p>
-                              <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                                {rec.policy.features.slice(0, 4).map((feature) => (
-                                  <li
-                                    key={feature}
-                                    className="text-sm flex items-start gap-2"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4 text-success/80 mt-0.5 shrink-0" />
-                                    {feature}
-                                  </li>
-                                ))}
-                              </ul>
-                              <button
-                                type="button"
-                                onClick={() => setFeaturesPolicy(rec.policy)}
-                                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                              >
-                                <ListChecks className="w-4 h-4" />
-                                View all features
-                              </button>
-                            </div>
-                          )}
+                          <PolicyFeatureHighlights
+                            sections={rec.policy.featureSections}
+                            features={rec.policy.features}
+                            onViewAll={() =>
+                              navigate(`/dashboard/compare/features?policyId=${rec.policy.id}`)
+                            }
+                          />
                         </div>
 
                         <div className="lg:w-64 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
@@ -967,27 +945,6 @@ export function ComparePolicies() {
         title={drawerTitle}
         description={drawerDescription}
         request={drawerRequest}
-      />
-
-      <PolicyFeaturesDrawer
-        policy={featuresPolicy}
-        open={Boolean(featuresPolicy)}
-        onClose={() => setFeaturesPolicy(null)}
-        onBuy={
-          featuresPolicy
-            ? () => {
-                clearPurchaseDraft();
-                navigate("/dashboard/purchase", {
-                  state: {
-                    policy: featuresPolicy,
-                    answers: filterAnswersForQuestions(answers, questions),
-                    category: selectedCategory?.slug,
-                    returnTo: "/dashboard/compare",
-                  },
-                });
-              }
-            : undefined
-        }
       />
 
       <PolicyCompareBar

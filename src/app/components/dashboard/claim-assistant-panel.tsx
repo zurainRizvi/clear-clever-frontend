@@ -45,6 +45,7 @@ import {
   ClaimIntelligenceFullReportDialog,
   ClaimIntelligenceSubmitCard,
 } from "./claim-intelligence-ui";
+import { ClaimAttachmentViewer } from "./claim-attachment-viewer";
 
 export type PendingClaimFile = {
   id: string;
@@ -180,6 +181,18 @@ export function ClaimAssistantPanel({
   const [stepTimestamp, setStepTimestamp] = useState<Date | null>(null);
   const [reportViewOpen, setReportViewOpen] = useState(false);
   const [fullReportOpen, setFullReportOpen] = useState(false);
+  const [previewFileId, setPreviewFileId] = useState<string | null>(null);
+
+  const previewFile = pendingFiles.find((pf) => pf.id === previewFileId);
+  const previewAttachment = previewFile
+    ? {
+        fileName: previewFile.file.name,
+        mimeType: previewFile.file.type,
+        dataBase64: "",
+        uploadedAt: new Date().toISOString(),
+        ...(previewFile.previewUrl ? { dataUrl: previewFile.previewUrl } : {}),
+      }
+    : null;
 
   const confirmedPurchase = purchases.find((p) => p.id === confirmedPolicyId);
   const activePolicyCategory =
@@ -726,6 +739,9 @@ export function ClaimAssistantPanel({
                             name={pf.file.name}
                             previewUrl={pf.previewUrl}
                             onRemove={() => onRemoveFile(pf.id)}
+                            onPreview={
+                              pf.previewUrl ? () => setPreviewFileId(pf.id) : undefined
+                            }
                           />
                         ))}
                       </div>
@@ -890,6 +906,12 @@ export function ClaimAssistantPanel({
           }
         />
       ) : null}
+
+      <ClaimAttachmentViewer
+        attachment={previewAttachment}
+        open={Boolean(previewAttachment)}
+        onClose={() => setPreviewFileId(null)}
+      />
     </section>
   );
 }

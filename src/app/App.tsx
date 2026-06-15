@@ -16,6 +16,7 @@ import { PolicySeekerDashboard } from "./components/dashboard/policy-seeker-dash
 import { SeekerDashboardHome } from "./components/dashboard/seeker-dashboard-home";
 import { ComparePolicies } from "./components/dashboard/compare-policies";
 import { PolicyCompareView } from "./components/dashboard/policy-compare-view";
+import { PolicyFeaturesPage } from "./components/dashboard/policy-features-page";
 import { PurchaseFlow } from "./components/dashboard/purchase-flow";
 import { SavedPolicies } from "./components/dashboard/saved-policies";
 import { MyPurchases } from "./components/dashboard/my-purchases";
@@ -96,6 +97,7 @@ export default function App() {
                 <Route index element={<SeekerDashboardHome />} />
                 <Route path="compare" element={<ComparePolicies />} />
                 <Route path="compare/view" element={<PolicyCompareView />} />
+                <Route path="compare/features" element={<PolicyFeaturesPage />} />
                 <Route path="purchase" element={<PurchaseFlow />} />
                 <Route path="saved" element={<SavedPolicies />} />
                 <Route path="purchases" element={<MyPurchases />} />

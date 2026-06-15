@@ -34,6 +34,7 @@ import {
 import { ClaimDetailPanel } from "./claim-detail-panel";
 import { UserCnicGate } from "./user-cnic-gate";
 import { ClaimIntelligenceHistoryBadge } from "./claim-intelligence-ui";
+import { resolveAttachmentUrl, isImageAttachment } from "./claim-attachment-viewer";
 
 const ALLOWED_TYPES = [
   "image/jpeg",
@@ -429,6 +430,34 @@ export function ClaimsPage() {
                         </>
                       ) : null}
                     </div>
+                    {claim.attachments?.length ? (
+                      <div className="flex items-center gap-2 mt-3">
+                        <div className="flex -space-x-2">
+                          {claim.attachments.slice(0, 3).map((attachment) => {
+                            const url = resolveAttachmentUrl(attachment);
+                            return isImageAttachment(attachment) && url ? (
+                              <img
+                                key={`${attachment.fileName}-${attachment.uploadedAt}`}
+                                src={url}
+                                alt=""
+                                className="w-10 h-10 rounded-lg border-2 border-background object-cover"
+                              />
+                            ) : (
+                              <div
+                                key={`${attachment.fileName}-${attachment.uploadedAt}`}
+                                className="w-10 h-10 rounded-lg border-2 border-background bg-muted flex items-center justify-center"
+                              >
+                                <FileText className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {claim.attachments.length} evidence file
+                          {claim.attachments.length === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                    ) : null}
                     {claim.intelligenceReport ? (
                       <div
                         onClick={(e) => e.stopPropagation()}
