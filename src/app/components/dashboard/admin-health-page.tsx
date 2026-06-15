@@ -31,7 +31,11 @@ import { layoutSpring } from "@/lib/motion-presets";
 import {
   fetchHealth,
   fetchMlOverview,
+  fetchMlRetrainReport,
+  keepMlRetrainModel,
+  promoteMlRetrainModel,
   type AdminMlOverview,
+  type MlRetrainReport,
   type AssistantHealthReport,
   type HealthStatus,
   type InfrastructureServiceStatus,
@@ -415,7 +419,124 @@ function AssistantPanel({ assistant }: { assistant: AssistantHealthReport }) {
   );
 }
 
-function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
+function formatMetricPct(value?: number): string {
+  if (value == null) return "—";
+  return `${Math.round(value * 1000) / 10}%`;
+}
+
+function MlRetrainReviewPanel({
+  report,
+  loading,
+  onPromote,
+  onKeep,
+  onRefresh,
+}: {
+  report: MlRetrainReport | null;
+  loading: boolean;
+  onPromote: (modelId: string) => Promise<void>;
+  onKeep: (modelId: string) => Promise<void>;
+  onRefresh: () => Promise<void>;
+}) {
+  const candidates = report?.models.filter((model) => model.hasCandidate) ?? [];
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="font-bold text-foreground">Model retrain review</h4>
+          <p className="text-xs text-muted-foreground mt-1">
+            Monthly jobs upload candidate models here. Review offline holdout metrics before promoting live
+            scores.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void onRefresh()}
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-muted/50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          Refresh report
+        </button>
+      </div>
+
+      {loading && !report ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : candidates.length === 0 ? (
+        <p className="text-sm text-muted-foreground rounded-xl bg-muted/30 border border-border p-4">
+          No candidate models are waiting for review. Active production versions continue serving live scores.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {candidates.map((model) => (
+            <div key={model.modelId} className="rounded-xl border border-border p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-foreground">{model.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Active {model.activeVersion}
+                    {model.candidateVersion ? ` · Candidate ${model.candidateVersion}` : ""}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void onKeep(model.modelId)}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/50"
+                  >
+                    Keep current
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onPromote(model.modelId)}
+                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-white"
+                    style={{ backgroundColor: FB_BLUE }}
+                  >
+                    Promote candidate
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                <div className="rounded-lg bg-muted/30 p-3">
+                  <p className="font-semibold text-foreground mb-2">Active metrics</p>
+                  <p>Accuracy: {formatMetricPct(model.activeMetrics?.accuracy)}</p>
+                  <p>ROC-AUC: {formatMetricPct(model.activeMetrics?.roc_auc)}</p>
+                </div>
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3">
+                  <p className="font-semibold text-foreground mb-2">Candidate metrics</p>
+                  <p>Accuracy: {formatMetricPct(model.candidateReport?.metrics.accuracy)}</p>
+                  <p>ROC-AUC: {formatMetricPct(model.candidateReport?.metrics.roc_auc)}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Real data: {model.candidateReport?.realRowPct ?? 0}% · Synthetic:{" "}
+                    {model.candidateReport?.syntheticRowPct ?? 0}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MlIntelligencePanel({
+  ml,
+  retrainReport,
+  retrainLoading,
+  onPromoteModel,
+  onKeepModel,
+  onRefreshRetrain,
+}: {
+  ml: AdminMlOverview;
+  retrainReport: MlRetrainReport | null;
+  retrainLoading: boolean;
+  onPromoteModel: (modelId: string) => Promise<void>;
+  onKeepModel: (modelId: string) => Promise<void>;
+  onRefreshRetrain: () => Promise<void>;
+}) {
   const trendData = ml.trends.labels.map((label, index) => ({
     label,
     claims: ml.trends.claimsSubmitted[index] ?? 0,
@@ -565,6 +686,46 @@ function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
         </section>
       </div>
 
+      {ml.calibration ? (
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-bold text-foreground mb-1">Claim risk calibration (30 days)</h4>
+          <p className="text-xs text-muted-foreground mb-4">
+            Compares predicted high-risk rate with actual insurer rejections from production outcomes.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-xl bg-muted/30 border border-border p-4">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Sample size</p>
+              <p className="text-2xl font-bold mt-1">{ml.calibration.sampleSize}</p>
+            </div>
+            <div className="rounded-xl bg-muted/30 border border-border p-4">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Predicted high risk</p>
+              <p className="text-2xl font-bold mt-1">{ml.calibration.predictedHighRiskRatePct}%</p>
+            </div>
+            <div className="rounded-xl bg-muted/30 border border-border p-4">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Actual rejections</p>
+              <p className="text-2xl font-bold mt-1">{ml.calibration.actualRejectionRatePct}%</p>
+            </div>
+          </div>
+          {ml.retrain ? (
+            <p className="text-xs text-muted-foreground mt-3">
+              Last retrain:{" "}
+              {ml.retrain.lastRetrainAt
+                ? new Date(ml.retrain.lastRetrainAt).toLocaleString()
+                : "Not yet recorded"}{" "}
+              · Pending candidates: {ml.retrain.pendingCandidates}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      <MlRetrainReviewPanel
+        report={retrainReport}
+        loading={retrainLoading}
+        onPromote={onPromoteModel}
+        onKeep={onKeepModel}
+        onRefresh={onRefreshRetrain}
+      />
+
       <div className="grid sm:grid-cols-2 gap-3">
         {ml.insights.map((insight) => (
           <InsightBanner key={insight.title} {...insight} />
@@ -606,9 +767,23 @@ function MlIntelligencePanel({ ml }: { ml: AdminMlOverview }) {
 export function AdminHealthPage() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [mlOverview, setMlOverview] = useState<AdminMlOverview | null>(null);
+  const [retrainReport, setRetrainReport] = useState<MlRetrainReport | null>(null);
+  const [retrainLoading, setRetrainLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<HealthTab>("infrastructure");
+
+  const loadRetrainReport = useCallback(async () => {
+    setRetrainLoading(true);
+    try {
+      const report = await fetchMlRetrainReport();
+      setRetrainReport(report);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not load ML retrain report");
+    } finally {
+      setRetrainLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -617,19 +792,55 @@ export function AdminHealthPage() {
       const [data, ml] = await Promise.all([fetchHealth(), fetchMlOverview()]);
       setHealth(data);
       setMlOverview(ml);
+      if (tab === "ml") {
+        await loadRetrainReport();
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not load system health");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [loadRetrainReport, tab]);
+
+  const handlePromoteModel = useCallback(
+    async (modelId: string) => {
+      try {
+        const result = await promoteMlRetrainModel(modelId);
+        setRetrainReport(result.report);
+        toast.success("Candidate model promoted");
+        await load(true);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : "Could not promote model");
+      }
+    },
+    [load]
+  );
+
+  const handleKeepModel = useCallback(
+    async (modelId: string) => {
+      try {
+        const result = await keepMlRetrainModel(modelId);
+        setRetrainReport(result.report);
+        toast.success("Kept current production model");
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : "Could not dismiss candidate");
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     void load();
     const interval = window.setInterval(() => void load(true), REFRESH_MS);
     return () => window.clearInterval(interval);
   }, [load]);
+
+  useEffect(() => {
+    if (tab === "ml") {
+      void loadRetrainReport();
+    }
+  }, [tab, loadRetrainReport]);
 
   if (loading && !health) {
     return (
@@ -767,7 +978,16 @@ export function AdminHealthPage() {
 
       {tab === "assistant" && assistant ? <AssistantPanel assistant={assistant} /> : null}
 
-      {tab === "ml" && mlOverview ? <MlIntelligencePanel ml={mlOverview} /> : null}
+      {tab === "ml" && mlOverview ? (
+        <MlIntelligencePanel
+          ml={mlOverview}
+          retrainReport={retrainReport}
+          retrainLoading={retrainLoading}
+          onPromoteModel={handlePromoteModel}
+          onKeepModel={handleKeepModel}
+          onRefreshRetrain={loadRetrainReport}
+        />
+      ) : null}
     </div>
   );
 }

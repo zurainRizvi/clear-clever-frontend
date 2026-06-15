@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useOutletContext } from "react-router";
 import type { ProviderOutletContext } from "./provider-dashboard";
 import { CheckCircle2, Eye, Loader2, Plus, Trash2 } from "lucide-react";
+import { PolicyFeatureSections } from "./policy-feature-sections";
 import { deleteInsurerPolicy, fetchInsurerPolicy, type InsurerPolicyDetail } from "@/lib/insurer-api";
 import { ActionConfirmDialog } from "./action-confirm-dialog";
 import { hasStarterPolicySet, statusClass } from "@/lib/provider-utils";
@@ -157,14 +158,20 @@ export function ProviderPoliciesPage() {
             <h2 className="text-xl font-bold mb-2">{viewing.name}</h2>
             <p className="text-sm text-muted-foreground mb-4">{viewing.coverageSummary}</p>
             <p className="text-sm mb-4">{viewing.description}</p>
-            <ul className="space-y-1 mb-4">
-              {viewing.features.map((feature) => (
-                <li key={feature} className="text-sm flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
+            <div className="mb-4">
+              {viewing.featureSections && viewing.featureSections.length > 0 ? (
+                <PolicyFeatureSections sections={viewing.featureSections} compact />
+              ) : (
+                <ul className="space-y-1">
+                  {viewing.features.map((feature) => (
+                    <li key={feature} className="text-sm flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setViewing(null)}

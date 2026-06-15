@@ -1,6 +1,6 @@
 import { apiRequest } from "./api";
 import type { ClaimIntelligenceReport } from "./claim-intelligence-types";
-import type { CategorySlug, PolicyQuestion } from "./types";
+import type { CategorySlug, PolicyQuestion, PolicyFeatureSection } from "./types";
 
 export type InsurerPolicyStatus = "pending" | "approved" | "rejected";
 export type InsurerPolicyCategory = Exclude<CategorySlug, "others">;
@@ -34,6 +34,7 @@ export interface InsurerPolicyDetail extends InsurerPolicySummary {
   description: string;
   coverageSummary: string;
   features: string[];
+  featureSections?: PolicyFeatureSection[];
   deductiblePkr: number;
   questions: PolicyQuestion[];
 }

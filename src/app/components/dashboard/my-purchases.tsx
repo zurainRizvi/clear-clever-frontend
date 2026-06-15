@@ -23,6 +23,8 @@ import {
   type PurchaseSummary,
 } from "@/lib/purchase-api";
 import { InsurerLogo } from "./insurer-logo";
+import { PolicyFeatureSections } from "./policy-feature-sections";
+import { PREFERRED_TIME_SLOTS, preferredSlotToScheduledTime } from "@/lib/scheduling";
 
 export function MyPurchases() {
   const navigate = useNavigate();
@@ -32,7 +34,7 @@ export function MyPurchases() {
   const [expandedId, setExpandedId] = useState<string | null>(searchParams.get("focus"));
   const [rescheduleTarget, setRescheduleTarget] = useState<PurchaseSummary | null>(null);
   const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("14:30");
+  const [scheduledSlot, setScheduledSlot] = useState<string>(PREFERRED_TIME_SLOTS[2]);
   const focusId = searchParams.get("focus");
 
   const load = async () => {
@@ -83,9 +85,9 @@ export function MyPurchases() {
   const submitReschedule = async () => {
     if (!rescheduleTarget) return;
     try {
-      const data = await rescheduleAgentCall(rescheduleTarget.id, {
+      const data =       await rescheduleAgentCall(rescheduleTarget.id, {
         scheduledDate,
-        scheduledTime,
+        scheduledTime: preferredSlotToScheduledTime(scheduledSlot),
       });
       setPurchases((prev) =>
         prev.map((purchase) =>
@@ -240,6 +242,14 @@ export function MyPurchases() {
                   : "Scheduled after purchase completion"
               }
             />
+            {purchase.timeline.surveyScheduled ? (
+              <TimelineItem
+                done={Boolean(purchase.timeline.surveyScheduled)}
+                icon={Calendar}
+                title="Vehicle survey scheduled"
+                detail={`${new Date(purchase.timeline.surveyScheduled.scheduledAt).toLocaleString()} · ${purchase.timeline.surveyScheduled.status}`}
+              />
+            ) : null}
             <TimelineItem
               done={purchase.timeline.completed}
               icon={CheckCircle2}
@@ -255,14 +265,18 @@ export function MyPurchases() {
             <div className="mt-6 grid lg:grid-cols-2 gap-4 border-t border-border pt-5">
               <div className="rounded-xl bg-muted/30 p-4">
                 <h3 className="font-semibold mb-3">Benefits and documents</h3>
-                <ul className="space-y-2 text-sm">
-                  {(purchase.policy?.features ?? []).map((feature) => (
-                    <li key={feature} className="flex gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                {purchase.policy?.featureSections && purchase.policy.featureSections.length > 0 ? (
+                  <PolicyFeatureSections sections={purchase.policy.featureSections} compact />
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {(purchase.policy?.features ?? []).map((feature) => (
+                      <li key={feature} className="flex gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {purchase.policy?.documentSummary && (
                   <div className="mt-4 text-sm text-muted-foreground">
                     <p>Policy no: {purchase.policy.documentSummary.policyNumber}</p>
@@ -292,7 +306,7 @@ export function MyPurchases() {
                           if (scheduled) {
                             const pkt = new Date(new Date(scheduled).getTime() + 5 * 60 * 60 * 1000);
                             setScheduledDate(pkt.toISOString().slice(0, 10));
-                            setScheduledTime(pkt.toISOString().slice(11, 16));
+                            setScheduledSlot(PREFERRED_TIME_SLOTS[2]);
                           }
                         }}
                         className="px-3 py-2 border border-border rounded-lg text-sm inline-flex items-center gap-2 hover:bg-accent"
@@ -372,14 +386,19 @@ export function MyPurchases() {
                   className="mt-1 w-full px-3 py-2 bg-input-background border border-border rounded-lg"
                 />
               </label>
-              <label className="text-sm">
-                Time (PKT)
-                <input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
+              <label className="text-sm col-span-2 sm:col-span-1">
+                Time slot (PKT)
+                <select
+                  value={scheduledSlot}
+                  onChange={(e) => setScheduledSlot(e.target.value)}
                   className="mt-1 w-full px-3 py-2 bg-input-background border border-border rounded-lg"
-                />
+                >
+                  {PREFERRED_TIME_SLOTS.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slot}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
             <div className="flex gap-3 mt-5">

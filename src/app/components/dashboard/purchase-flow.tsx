@@ -31,13 +31,31 @@ import { InsurerLogo } from "./insurer-logo";
 import { KycStatusBadge } from "./kyc-verification-ui";
 import { QuestionInput, otherDetailKey } from "./questionnaire-inputs";
 import {
+  VehicleRegistrationFields,
+  validateVehicleRegistration,
+  type VehicleRegistrationValues,
+} from "./vehicle-registration-fields";
+import {
+  SchedulingFields,
+  defaultSchedulingValues,
+  schedulingValuesToAnswers,
+  validateSchedulingValues,
+  vehicleValuesToAnswers,
+  type SchedulingValues,
+} from "./scheduling-fields";
+import { PolicyFeatureSections } from "./policy-feature-sections";
+import {
   firstIncompleteQuestionIndex,
   firstUnansweredQuestionIndex,
   filterAnswersForQuestions,
   requiredQuestionsAnswered,
 } from "@/lib/questionnaire-utils";
 
-type Step = "questionnaire" | "contact" | "review";
+type Step = "questionnaire" | "vehicle" | "scheduling" | "contact" | "review";
+
+function stepAfterQuestionnaire(category: string): Step {
+  return category === "auto" ? "vehicle" : "scheduling";
+}
 
 interface PurchaseLocationState {
   policy?: PublicPolicy;
@@ -102,6 +120,12 @@ export function PurchaseFlow() {
   );
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [vehicleDetails, setVehicleDetails] = useState<VehicleRegistrationValues>({
+    registrationNumber: "",
+    registrationCity: "",
+    brandNewNoPlate: false,
+  });
+  const [scheduling, setScheduling] = useState<SchedulingValues>(defaultSchedulingValues());
   const [contact, setContact] = useState<ContactForm>({
     fullName: "",
     email: "",
@@ -197,7 +221,11 @@ export function PurchaseFlow() {
         setAnswers(scopedAnswers);
         setCurrentQuestion(firstUnansweredQuestionIndex(nextQuestions, scopedAnswers));
         const complete = requiredQuestionsAnswered(nextQuestions, scopedAnswers);
-        setStep(complete ? "contact" : "questionnaire");
+        const regCity = String(scopedAnswers.registration_city ?? "");
+        if (regCity) {
+          setVehicleDetails((prev) => ({ ...prev, registrationCity: regCity }));
+        }
+        setStep(complete ? stepAfterQuestionnaire(category) : "questionnaire");
       })
       .catch(() => {
         if (!cancelled) {
@@ -223,10 +251,14 @@ export function PurchaseFlow() {
     questions.length > 0 ? ((currentQuestion + 1) / questions.length) * 100 : 0;
 
   const stepProgress = useMemo(() => {
-    if (step === "questionnaire") return Math.max(20, questionnaireProgress * 0.4);
-    if (step === "contact") return 60;
-    return 90;
+    if (step === "questionnaire") return Math.max(15, questionnaireProgress * 0.25);
+    if (step === "vehicle") return 40;
+    if (step === "scheduling") return 55;
+    if (step === "contact") return 75;
+    return 95;
   }, [step, questionnaireProgress]);
+
+  const isAutoPolicy = policy?.category === "auto";
 
   if (!policy) {
     return (
@@ -300,7 +332,7 @@ export function PurchaseFlow() {
     }
 
     if (requiredQuestionsAnswered(questions, nextAnswers)) {
-      setStep("contact");
+      setStep(stepAfterQuestionnaire(category || policy.category));
       if (category && category !== "others") {
         void fetchRecommendations({ category, answers: nextAnswers }).catch(() => undefined);
       }
@@ -343,6 +375,8 @@ export function PurchaseFlow() {
 
   const buildPurchaseAnswers = (): Record<string, unknown> => ({
     ...answers,
+    ...vehicleValuesToAnswers(vehicleDetails),
+    ...schedulingValuesToAnswers(scheduling),
     contact_full_name: contact.fullName.trim(),
     contact_email: contact.email.trim(),
     contact_phone: normalizePkPhone(contact.phone),
@@ -354,6 +388,25 @@ export function PurchaseFlow() {
     contact_postal_code: contact.postalCode.trim() || undefined,
   });
 
+  const validateVehicleStep = (): boolean => {
+    const errors = validateVehicleRegistration(vehicleDetails);
+    const mapped: Record<string, string> = {};
+    if (errors.registrationNumber) mapped.registrationNumber = errors.registrationNumber;
+    if (errors.registrationCity) mapped.registrationCity = errors.registrationCity;
+    setFieldErrors(mapped);
+    return Object.keys(mapped).length === 0;
+  };
+
+  const validateSchedulingStep = (): boolean => {
+    const errors = validateSchedulingValues(scheduling, { requireSurveyPair: true });
+    const mapped: Record<string, string> = {};
+    if (errors.preferredCallDate) mapped.preferredCallDate = errors.preferredCallDate;
+    if (errors.preferredCallTimeSlot) mapped.preferredCallTimeSlot = errors.preferredCallTimeSlot;
+    if (errors.preferredSurveyDate) mapped.preferredSurveyDate = errors.preferredSurveyDate;
+    setFieldErrors(mapped);
+    return Object.keys(mapped).length === 0;
+  };
+
   const startInsurerCheckout = async () => {
     if (!validateContact()) {
       toast.error("Please fix the highlighted fields before continuing.");
@@ -364,6 +417,18 @@ export function PurchaseFlow() {
       toast.error("Please complete the insurance questionnaire first.");
       setStep("questionnaire");
       setCurrentQuestion(firstIncompleteQuestionIndex(questions, answers));
+      return;
+    }
+
+    if (isAutoPolicy && !validateVehicleRegistration(vehicleDetails)) {
+      toast.error("Please complete vehicle registration details.");
+      setStep("vehicle");
+      return;
+    }
+
+    if (!validateSchedulingValues(scheduling, { requireSurveyPair: true })) {
+      toast.error("Please choose your preferred call schedule.");
+      setStep("scheduling");
       return;
     }
 
@@ -482,6 +547,90 @@ export function PurchaseFlow() {
                   ← Previous question
                 </button>
               )}
+            </motion.div>
+          )}
+
+          {step === "vehicle" && isAutoPolicy && (
+            <motion.div
+              key="vehicle"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <VehicleRegistrationFields
+                values={vehicleDetails}
+                onChange={setVehicleDetails}
+                errors={{
+                  registrationNumber: fieldErrors.registrationNumber,
+                  registrationCity: fieldErrors.registrationCity,
+                }}
+              />
+              <div className="flex gap-4">
+                {questions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("questionnaire");
+                      setCurrentQuestion(firstIncompleteQuestionIndex(questions, answers));
+                    }}
+                    className="flex-1 py-3 border border-border rounded-xl hover:bg-accent transition-all"
+                  >
+                    Back
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!validateVehicleStep()) return;
+                    setStep("scheduling");
+                  }}
+                  className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all"
+                >
+                  Continue
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === "scheduling" && (
+            <motion.div
+              key="scheduling"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <SchedulingFields
+                values={scheduling}
+                onChange={setScheduling}
+                showSurvey={isAutoPolicy}
+                errors={{
+                  preferredCallDate: fieldErrors.preferredCallDate,
+                  preferredCallTimeSlot: fieldErrors.preferredCallTimeSlot,
+                  preferredSurveyDate: fieldErrors.preferredSurveyDate,
+                }}
+              />
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setStep(isAutoPolicy ? "vehicle" : "questionnaire")}
+                  className="flex-1 py-3 border border-border rounded-xl hover:bg-accent transition-all"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!validateSchedulingStep()) return;
+                    setFieldErrors({});
+                    setStep("contact");
+                  }}
+                  className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all"
+                >
+                  Continue
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -614,18 +763,13 @@ export function PurchaseFlow() {
               </div>
 
               <div className="flex gap-4">
-                {questions.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep("questionnaire");
-                      setCurrentQuestion(firstIncompleteQuestionIndex(questions, answers));
-                    }}
-                    className="flex-1 py-3 border border-border rounded-xl hover:bg-accent transition-all"
-                  >
-                    Back to questionnaire
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setStep("scheduling")}
+                  className="flex-1 py-3 border border-border rounded-xl hover:bg-accent transition-all"
+                >
+                  Back
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -688,7 +832,9 @@ export function PurchaseFlow() {
                     </p>
                   </div>
                 </div>
-                {policy.features.length > 0 && (
+                {policy.featureSections && policy.featureSections.length > 0 ? (
+                  <PolicyFeatureSections sections={policy.featureSections} compact />
+                ) : policy.features.length > 0 ? (
                   <div>
                     <h4 className="font-medium text-sm mb-2">What&apos;s covered</h4>
                     <ul className="grid sm:grid-cols-2 gap-2 text-sm">
@@ -700,7 +846,7 @@ export function PurchaseFlow() {
                       ))}
                     </ul>
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div className="rounded-xl border border-border p-5 space-y-2 text-sm">
@@ -722,6 +868,30 @@ export function PurchaseFlow() {
                   <span className="text-muted-foreground">Address:</span> {contact.address},{" "}
                   {contact.city}
                 </p>
+                {isAutoPolicy ? (
+                  <>
+                    <p>
+                      <span className="text-muted-foreground">Registration:</span>{" "}
+                      {vehicleDetails.brandNewNoPlate
+                        ? "Brand new (no plate yet)"
+                        : vehicleDetails.registrationNumber}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Registration city:</span>{" "}
+                      {vehicleDetails.registrationCity}
+                    </p>
+                  </>
+                ) : null}
+                <p>
+                  <span className="text-muted-foreground">Call schedule:</span>{" "}
+                  {scheduling.preferredCallDate} · {scheduling.preferredCallTimeSlot}
+                </p>
+                {isAutoPolicy && scheduling.preferredSurveyDate && scheduling.preferredSurveyTimeSlot ? (
+                  <p>
+                    <span className="text-muted-foreground">Survey visit:</span>{" "}
+                    {scheduling.preferredSurveyDate} · {scheduling.preferredSurveyTimeSlot}
+                  </p>
+                ) : null}
               </div>
 
               {Object.keys(reviewAnswers).length > 0 && (

@@ -15,6 +15,7 @@ import { ProviderPending } from "./components/auth/provider-pending";
 import { PolicySeekerDashboard } from "./components/dashboard/policy-seeker-dashboard";
 import { SeekerDashboardHome } from "./components/dashboard/seeker-dashboard-home";
 import { ComparePolicies } from "./components/dashboard/compare-policies";
+import { PolicyCompareView } from "./components/dashboard/policy-compare-view";
 import { PurchaseFlow } from "./components/dashboard/purchase-flow";
 import { SavedPolicies } from "./components/dashboard/saved-policies";
 import { MyPurchases } from "./components/dashboard/my-purchases";
@@ -94,6 +95,7 @@ export default function App() {
               >
                 <Route index element={<SeekerDashboardHome />} />
                 <Route path="compare" element={<ComparePolicies />} />
+                <Route path="compare/view" element={<PolicyCompareView />} />
                 <Route path="purchase" element={<PurchaseFlow />} />
                 <Route path="saved" element={<SavedPolicies />} />
                 <Route path="purchases" element={<MyPurchases />} />

@@ -1,4 +1,4 @@
-import type { ScoredRecommendation } from "./types";
+import type { ScoredRecommendation, CompareSortOption, CompareResultsFilters } from "./types";
 
 const STORAGE_KEY = "clearclever:compare-flow-draft";
 
@@ -10,6 +10,9 @@ export type CompareFlowDraft = {
   answers: Record<string, unknown>;
   recommendations: ScoredRecommendation[];
   currentQuestion: number;
+  sort?: CompareSortOption;
+  filters?: CompareResultsFilters;
+  comparePolicyIds?: string[];
 };
 
 export function saveCompareFlowDraft(draft: CompareFlowDraft): void {

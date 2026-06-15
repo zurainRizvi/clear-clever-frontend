@@ -15,6 +15,8 @@ import {
   Headphones,
   Loader2,
   MessageSquare,
+  GitCompare,
+  ListChecks,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { SEEKER_PAGE_CLASS } from "./seeker-portal-theme";
@@ -60,6 +62,17 @@ import {
   type CrossCategorySuggestion,
 } from "@/lib/cross-category-suggestions";
 import { mergePresetAnswers, resolveCategoryNav } from "@/lib/category-nav";
+import { PolicyResultsToolbar } from "./policy-results-toolbar";
+import { PolicyCompareBar } from "./policy-compare-bar";
+import { PolicyFeaturesDrawer } from "./policy-features-drawer";
+import {
+  DEFAULT_COMPARE_FILTERS,
+  filterRecommendations,
+  sortRecommendations,
+} from "@/lib/compare-results-utils";
+import type { CompareResultsFilters, CompareSortOption, PublicPolicy } from "@/lib/types";
+
+const MAX_COMPARE_POLICIES = 4;
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   home: Home,
@@ -98,6 +111,11 @@ export function ComparePolicies() {
   const { openAssistant, setAssistantCategory } = useAssistantWidget();
   const { isAuthenticated, user } = useAuth();
   const [explainingPolicyId, setExplainingPolicyId] = useState<string | null>(null);
+  const [sortOption, setSortOption] = useState<CompareSortOption>("best_match");
+  const [resultsFilters, setResultsFilters] = useState<CompareResultsFilters>(DEFAULT_COMPARE_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [comparePolicyIds, setComparePolicyIds] = useState<string[]>([]);
+  const [featuresPolicy, setFeaturesPolicy] = useState<PublicPolicy | null>(null);
 
   const [step, setStep] = useState<Step>("category");
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -139,6 +157,9 @@ export function ComparePolicies() {
     setAnswers(draft.answers);
     setRecommendations(draft.recommendations);
     setCurrentQuestion(draft.currentQuestion);
+    setSortOption(draft.sort ?? "best_match");
+    setResultsFilters(draft.filters ?? DEFAULT_COMPARE_FILTERS);
+    setComparePolicyIds(draft.comparePolicyIds ?? []);
     setStep("results");
     setAssistantCategory(draft.selectedCategorySlug);
   }, [loadingCategories, setAssistantCategory]);
@@ -153,8 +174,20 @@ export function ComparePolicies() {
       answers,
       recommendations,
       currentQuestion,
+      sort: sortOption,
+      filters: resultsFilters,
+      comparePolicyIds,
     });
-  }, [step, selectedCategory, answers, recommendations, currentQuestion]);
+  }, [
+    step,
+    selectedCategory,
+    answers,
+    recommendations,
+    currentQuestion,
+    sortOption,
+    resultsFilters,
+    comparePolicyIds,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -167,14 +200,41 @@ export function ComparePolicies() {
           answers,
           recommendations,
           currentQuestion,
+          sort: sortOption,
+          filters: resultsFilters,
+          comparePolicyIds,
         });
       }
     };
-  }, [step, selectedCategory, answers, recommendations, currentQuestion]);
+  }, [
+    step,
+    selectedCategory,
+    answers,
+    recommendations,
+    currentQuestion,
+    sortOption,
+    resultsFilters,
+    comparePolicyIds,
+  ]);
 
   const badgeMap = useMemo(
     () => assignRecommendationBadges(recommendations, rankingMethod),
     [recommendations, rankingMethod]
+  );
+  const filteredRecommendations = useMemo(() => {
+    const filtered = filterRecommendations(
+      recommendations,
+      resultsFilters,
+      selectedCategory?.slug
+    );
+    return sortRecommendations(filtered, sortOption);
+  }, [recommendations, resultsFilters, selectedCategory?.slug, sortOption]);
+  const compareSelectedPolicies = useMemo(
+    () =>
+      comparePolicyIds
+        .map((id) => recommendations.find((rec) => rec.policy.id === id)?.policy)
+        .filter((policy): policy is PublicPolicy => Boolean(policy)),
+    [comparePolicyIds, recommendations]
   );
   const crossCategorySuggestions = useMemo(
     () => buildCrossCategorySuggestions(answers, selectedCategory?.slug),
@@ -427,6 +487,31 @@ export function ComparePolicies() {
     setCurrentQuestion(0);
     setRecommendations([]);
     setRankingMethod(undefined);
+    setSortOption("best_match");
+    setResultsFilters(DEFAULT_COMPARE_FILTERS);
+    setComparePolicyIds([]);
+    setFeaturesPolicy(null);
+  };
+
+  const toggleComparePolicy = (policyId: string) => {
+    setComparePolicyIds((prev) => {
+      if (prev.includes(policyId)) {
+        return prev.filter((id) => id !== policyId);
+      }
+      if (prev.length >= MAX_COMPARE_POLICIES) {
+        toast.message(copy.compare.compareLimit);
+        return prev;
+      }
+      return [...prev, policyId];
+    });
+  };
+
+  const handleOpenCompareView = () => {
+    if (comparePolicyIds.length < 2) {
+      toast.error("Select at least two policies to compare");
+      return;
+    }
+    navigate(`/dashboard/compare/view?ids=${comparePolicyIds.join(",")}`);
   };
 
   const openInquiryDrawer = (
@@ -661,7 +746,25 @@ export function ComparePolicies() {
               recommendations={recommendations}
             />
 
-            {recommendations.length === 0 ? (
+            {recommendations.length > 0 ? (
+              <PolicyResultsToolbar
+                recommendations={recommendations}
+                sort={sortOption}
+                filters={resultsFilters}
+                categorySlug={selectedCategory?.slug}
+                filtersOpen={filtersOpen}
+                onSortChange={setSortOption}
+                onFiltersChange={setResultsFilters}
+                onToggleFilters={() => setFiltersOpen((open) => !open)}
+                filteredCount={filteredRecommendations.length}
+              />
+            ) : null}
+
+            {filteredRecommendations.length === 0 && recommendations.length > 0 ? (
+              <div className="text-center py-16 bg-card border border-border rounded-xl">
+                <p className="text-muted-foreground">No policies match your filters.</p>
+              </div>
+            ) : filteredRecommendations.length === 0 ? (
               <div className="text-center py-16 bg-card border border-border rounded-xl">
                 <p className="text-muted-foreground">{copy.compare.emptyRecommendations}</p>
               </div>
@@ -672,9 +775,10 @@ export function ComparePolicies() {
                 variants={fadeUpStagger}
                 className="space-y-5"
               >
-                {recommendations.map((rec, index) => {
+                {filteredRecommendations.map((rec, index) => {
                   const badges = badgeMap.get(rec.policy.id) ?? [];
-                  const isTop = index === 0;
+                  const isTop = recommendations[0]?.policy.id === rec.policy.id;
+                  const isCompared = comparePolicyIds.includes(rec.policy.id);
                   return (
                     <motion.article
                       key={rec.policy.id}
@@ -740,7 +844,7 @@ export function ComparePolicies() {
                                 What&apos;s included
                               </p>
                               <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                                {rec.policy.features.map((feature) => (
+                                {rec.policy.features.slice(0, 4).map((feature) => (
                                   <li
                                     key={feature}
                                     className="text-sm flex items-start gap-2"
@@ -750,6 +854,14 @@ export function ComparePolicies() {
                                   </li>
                                 ))}
                               </ul>
+                              <button
+                                type="button"
+                                onClick={() => setFeaturesPolicy(rec.policy)}
+                                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                              >
+                                <ListChecks className="w-4 h-4" />
+                                View all features
+                              </button>
                             </div>
                           )}
                         </div>
@@ -766,6 +878,18 @@ export function ComparePolicies() {
                             <p className="text-xs text-muted-foreground mt-2 mb-1">Coverage</p>
                             <p className="text-sm font-medium">{rec.policy.coverageSummary}</p>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleComparePolicy(rec.policy.id)}
+                            className={`w-full py-2.5 border rounded-lg transition-all text-sm font-medium inline-flex items-center justify-center gap-2 ${
+                              isCompared
+                                ? "border-primary text-primary bg-primary/5"
+                                : "border-border hover:bg-accent"
+                            }`}
+                          >
+                            <GitCompare className="w-4 h-4" />
+                            {isCompared ? "In compare" : "Compare"}
+                          </button>
                           <button
                             type="button"
                             onClick={() => void handleExplainPolicy(rec.policy.id, rec.policy.name)}
@@ -843,6 +967,35 @@ export function ComparePolicies() {
         title={drawerTitle}
         description={drawerDescription}
         request={drawerRequest}
+      />
+
+      <PolicyFeaturesDrawer
+        policy={featuresPolicy}
+        open={Boolean(featuresPolicy)}
+        onClose={() => setFeaturesPolicy(null)}
+        onBuy={
+          featuresPolicy
+            ? () => {
+                clearPurchaseDraft();
+                navigate("/dashboard/purchase", {
+                  state: {
+                    policy: featuresPolicy,
+                    answers: filterAnswersForQuestions(answers, questions),
+                    category: selectedCategory?.slug,
+                    returnTo: "/dashboard/compare",
+                  },
+                });
+              }
+            : undefined
+        }
+      />
+
+      <PolicyCompareBar
+        selected={compareSelectedPolicies}
+        maxCount={MAX_COMPARE_POLICIES}
+        onRemove={toggleComparePolicy}
+        onClear={() => setComparePolicyIds([])}
+        onCompare={handleOpenCompareView}
       />
     </AnimatedPage>
   );

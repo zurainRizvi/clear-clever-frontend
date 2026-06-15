@@ -72,6 +72,23 @@ export interface PublicInsurerSummary {
   id: string;
   slug: string;
   companyName: string;
+  pacraRating?: string;
+  jcrVisRating?: string;
+  operationalSince?: number;
+  policyType?: "conventional" | "islamic" | "both";
+}
+
+export interface PolicyFeatureRow {
+  key: string;
+  label: string;
+  value?: string;
+  included?: boolean;
+}
+
+export interface PolicyFeatureSection {
+  id: string;
+  title: string;
+  rows: PolicyFeatureRow[];
 }
 
 export interface PublicPolicy {
@@ -84,9 +101,18 @@ export interface PublicPolicy {
   premiumYearlyPkr: number;
   coverageSummary: string;
   features: string[];
+  featureSections?: PolicyFeatureSection[];
   deductiblePkr: number;
   status: string;
   insurer: PublicInsurerSummary;
+}
+
+export type CompareSortOption = "best_match" | "economical" | "premium";
+
+export interface CompareResultsFilters {
+  insurerIds: string[];
+  policyTypes: Array<"conventional" | "islamic">;
+  trackerFilter: "all" | "mandatory" | "optional" | "none";
 }
 
 export type RankingMethod = "rules" | "hybrid";

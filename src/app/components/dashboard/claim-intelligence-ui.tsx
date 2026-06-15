@@ -55,6 +55,17 @@ function applicationLooksComplete(report: ClaimIntelligenceReport): boolean {
   return report.submissionChecklist?.readyToSubmit !== false;
 }
 
+function DemoReportBadge({ modelVersion }: { modelVersion?: string }) {
+  if (modelVersion !== "gemini-demo-seed") {
+    return null;
+  }
+  return (
+    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+      Demo report
+    </span>
+  );
+}
+
 function ClaimIncompleteApplicationNotice({
   report,
   audience,
@@ -664,9 +675,10 @@ export function ClaimIntelligenceChatReport({
                 AI Claims Intelligence Report
               </p>
               <h3 className="font-bold text-lg tracking-tight mt-0.5">{readinessCopy.headline}</h3>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                {readinessCopy.subtitle}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <p className="text-sm text-muted-foreground leading-relaxed">{readinessCopy.subtitle}</p>
+                <DemoReportBadge modelVersion={report.modelVersion} />
+              </div>
               <p className="text-xs text-muted-foreground mt-2">
                 Generated {new Date(report.analyzedAt).toLocaleString()}
               </p>

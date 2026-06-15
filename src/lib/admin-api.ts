@@ -322,10 +322,88 @@ export interface AdminMlOverview {
     badge: string;
     theme: "blue" | "green" | "purple" | "amber";
   }>;
+  retrain?: {
+    lastRetrainAt: string | null;
+    pendingCandidates: number;
+  };
+  calibration?: {
+    windowDays: number;
+    sampleSize: number;
+    predictedHighRiskRatePct: number;
+    actualRejectionRatePct: number;
+    calibrationGapPct: number;
+    trend: Array<{
+      date: string;
+      predictedHighRiskRatePct: number;
+      actualRejectionRatePct: number;
+    }>;
+  };
 }
 
 export async function fetchMlOverview(): Promise<AdminMlOverview> {
   return apiRequest("/api/admin/ml-overview", { auth: true });
+}
+
+export interface MlRetrainMetrics {
+  accuracy?: number;
+  roc_auc?: number;
+  precision?: number;
+  recall?: number;
+  f1?: number;
+  train_rows?: number;
+  test_rows?: number;
+  confusion_matrix?: number[][];
+}
+
+export interface MlRetrainModelReport {
+  modelId: string;
+  title: string;
+  activeVersion: string;
+  candidateVersion?: string;
+  activeMetrics?: MlRetrainMetrics;
+  candidateReport?: {
+    trainedAt: string;
+    metrics: MlRetrainMetrics;
+    activeMetrics?: MlRetrainMetrics;
+    delta?: Partial<MlRetrainMetrics>;
+    realRowPct?: number;
+    syntheticRowPct?: number;
+    totalRows?: number;
+    driftNotes?: string[];
+  };
+  hasCandidate: boolean;
+}
+
+export interface MlRetrainReport {
+  generatedAt: string;
+  models: MlRetrainModelReport[];
+}
+
+export async function fetchMlRetrainReport(): Promise<MlRetrainReport> {
+  return apiRequest("/api/admin/ml-retrain/report", { auth: true });
+}
+
+export async function promoteMlRetrainModel(modelId: string): Promise<{ report: MlRetrainReport }> {
+  return apiRequest("/api/admin/ml-retrain/promote", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ modelId }),
+  });
+}
+
+export async function keepMlRetrainModel(modelId: string): Promise<{ report: MlRetrainReport }> {
+  return apiRequest("/api/admin/ml-retrain/keep", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ modelId }),
+  });
+}
+
+export async function triggerMlRetrain(): Promise<{ workflow: string; message: string }> {
+  return apiRequest("/api/admin/ml-retrain/trigger", {
+    method: "POST",
+    auth: true,
+  });
 }
 
 export async function fetchAdminInsurers(): Promise<{

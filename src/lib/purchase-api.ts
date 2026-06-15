@@ -3,7 +3,7 @@ import type {
   ClaimAttachmentPayload,
   ClaimIntelligenceReport,
 } from "./claim-intelligence-types";
-import type { PublicPolicy } from "./types";
+import type { PublicPolicy, PolicyFeatureSection } from "./types";
 
 export type { ClaimAttachmentPayload, ClaimIntelligenceReport } from "./claim-intelligence-types";
 
@@ -25,6 +25,7 @@ export interface PurchaseSummary {
     premiumYearlyPkr?: number;
     coverageSummary?: string;
     features?: string[];
+    featureSections?: PolicyFeatureSection[];
     deductiblePkr?: number;
     documentSummary?: {
       policyNumber: string;
@@ -61,11 +62,28 @@ export interface PurchaseSummary {
     };
     callScheduled?: {
       id: string;
+      scheduleType?: "agent_call" | "survey_visit";
       scheduledAt: string;
       status: string;
       notes?: string;
       agentLabel?: string;
     };
+    surveyScheduled?: {
+      id: string;
+      scheduleType?: "agent_call" | "survey_visit";
+      scheduledAt: string;
+      status: string;
+      notes?: string;
+      agentLabel?: string;
+    };
+    schedules?: Array<{
+      id: string;
+      scheduleType?: "agent_call" | "survey_visit";
+      scheduledAt: string;
+      status: string;
+      notes?: string;
+      agentLabel?: string;
+    }>;
   };
 }
 
