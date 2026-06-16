@@ -21,6 +21,7 @@ type MockRecognition = {
 };
 
 function createMockRecognition(): MockRecognition {
+  let hasDeliveredResult = false;
   return {
     lang: "",
     continuous: false,
@@ -30,6 +31,8 @@ function createMockRecognition(): MockRecognition {
     onerror: null,
     onend: null,
     start: vi.fn(function start(this: MockRecognition) {
+      if (hasDeliveredResult) return;
+      hasDeliveredResult = true;
       this.onresult?.({
         resultIndex: 0,
         results: [
@@ -92,6 +95,10 @@ describe("useSpeechToText", () => {
 
     await act(async () => {
       await result.current.startListening();
+    });
+
+    await act(async () => {
+      result.current.stopListening();
     });
 
     await waitFor(() => {

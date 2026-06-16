@@ -44,6 +44,7 @@ import {
   saveLauncherOffset,
 } from "@/lib/assistant-launcher-position";
 import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton, SpeechVoiceLanguageLink } from "../ui/speech-input-button";
+import { SpeechLiveTextarea } from "../ui/speech-live-textarea";
 
 type ChatMessage = {
   id: string;
@@ -929,9 +930,9 @@ export function AssistantWidget() {
                   >
                     <SpeechListeningBanner />
                     <div className="flex items-end gap-2 rounded-2xl border border-border bg-muted/30 px-3 py-2">
-                      <textarea
+                      <SpeechLiveTextarea
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={setInput}
                         placeholder="Ask ClearClever anything..."
                         disabled={sending || availability === "unconfigured" || availability === "quota_exhausted"}
                         rows={1}

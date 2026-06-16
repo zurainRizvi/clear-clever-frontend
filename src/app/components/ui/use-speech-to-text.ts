@@ -64,7 +64,7 @@ export function useSpeechToText({ onTranscript, disabled = false }: UseSpeechToT
       {
         onStatusChange: setStatus,
         onInterimTranscript: (text) => {
-          setInterimPreview(text.trim() || null);
+          setInterimPreview(text.trim() ? text.trim() : null);
         },
         onFinalTranscript: (text) => {
           const trimmed = text.trim();

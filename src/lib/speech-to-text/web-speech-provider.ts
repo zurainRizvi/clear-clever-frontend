@@ -24,8 +24,6 @@ type SpeechRecognitionInstance = {
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
 
-const MIN_INTERIM_CONFIDENCE = 0.35;
-
 function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
   if (typeof window === "undefined") return null;
   const w = window as Window & {
@@ -39,7 +37,7 @@ function mapSpeechError(error: string): string {
   switch (error) {
     case "not-allowed":
     case "service-not-allowed":
-      return "Microphone permission denied.";
+      return "Microphone permission denied. Allow mic access for this site in your browser settings.";
     case "no-speech":
       return "No speech detected. Try again.";
     case "network":
@@ -55,33 +53,113 @@ function getResultText(result: SpeechRecognitionResult): string {
   return result[0]?.transcript?.trim() ?? "";
 }
 
-function getResultConfidence(result: SpeechRecognitionResult): number {
-  const confidence = result[0]?.confidence;
-  return typeof confidence === "number" && confidence > 0 ? confidence : 1;
-}
-
 export function createWebSpeechProvider(): SpeechToTextProvider {
   let recognition: SpeechRecognitionInstance | null = null;
   let callbacksRef: SpeechToTextCallbacks | null = null;
   let finalTranscript = "";
   let keepListening = false;
   let activeLanguage = getStoredSpeechLanguage();
+  let sessionOpen = false;
 
   const cleanup = () => {
     recognition = null;
     callbacksRef = null;
     finalTranscript = "";
     keepListening = false;
+    sessionOpen = false;
   };
 
   const finalizeSession = () => {
+    if (!sessionOpen) return;
+    sessionOpen = false;
     keepListening = false;
     const text = finalTranscript.trim();
     if (text) {
       callbacksRef?.onFinalTranscript?.(text);
     }
+    callbacksRef?.onInterimTranscript?.("");
     callbacksRef?.onStatusChange?.("idle");
     cleanup();
+  };
+
+  const buildPreview = (interim: string) => `${finalTranscript} ${interim}`.trim();
+
+  const attachHandlers = (instance: SpeechRecognitionInstance) => {
+    instance.onresult = (event: SpeechRecognitionEvent) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const text = getResultText(result);
+        if (!text) continue;
+
+        if (result.isFinal) {
+          finalTranscript = `${finalTranscript} ${text}`.trim();
+          continue;
+        }
+
+        interim = `${interim} ${text}`.trim();
+      }
+
+      callbacksRef?.onInterimTranscript?.(buildPreview(interim));
+    };
+
+    instance.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error === "aborted") {
+        keepListening = false;
+        callbacksRef?.onStatusChange?.("idle");
+        cleanup();
+        return;
+      }
+      if (event.error === "no-speech") {
+        if (keepListening && recognition) {
+          try {
+            recognition.start();
+            return;
+          } catch {
+            // fall through to finalize
+          }
+        }
+        finalizeSession();
+        return;
+      }
+      keepListening = false;
+      callbacksRef?.onError?.(mapSpeechError(event.error));
+      callbacksRef?.onStatusChange?.("error");
+      cleanup();
+    };
+
+    instance.onend = () => {
+      if (keepListening && sessionOpen && recognition) {
+        try {
+          recognition?.start();
+          callbacksRef?.onStatusChange?.("listening");
+          return;
+        } catch {
+          // Browser may reject immediate restart; brief delay then retry once.
+          window.setTimeout(() => {
+            if (!keepListening || !recognition) return;
+            try {
+              recognition.start();
+              callbacksRef?.onStatusChange?.("listening");
+            } catch {
+              finalizeSession();
+            }
+          }, 120);
+          return;
+        }
+      }
+      finalizeSession();
+    };
+  };
+
+  const createRecognition = (Ctor: SpeechRecognitionConstructor) => {
+    const instance = new Ctor();
+    instance.lang = activeLanguage;
+    instance.continuous = true;
+    instance.interimResults = true;
+    instance.maxAlternatives = 1;
+    attachHandlers(instance);
+    return instance;
   };
 
   return {
@@ -100,61 +178,11 @@ export function createWebSpeechProvider(): SpeechToTextProvider {
       callbacksRef = callbacks;
       finalTranscript = "";
       keepListening = true;
+      sessionOpen = true;
       activeLanguage = options?.language ?? getStoredSpeechLanguage();
       callbacks.onStatusChange?.("loading");
 
-      const attachHandlers = (instance: SpeechRecognitionInstance) => {
-        instance.onresult = (event: SpeechRecognitionEvent) => {
-          let interim = "";
-          for (let i = event.resultIndex; i < event.results.length; i += 1) {
-            const result = event.results[i];
-            const text = getResultText(result);
-            if (!text) continue;
-
-            if (result.isFinal) {
-              finalTranscript = `${finalTranscript} ${text}`.trim();
-              continue;
-            }
-
-            const confidence = getResultConfidence(result);
-            if (confidence >= MIN_INTERIM_CONFIDENCE) {
-              interim = `${interim} ${text}`.trim();
-            }
-          }
-
-          const preview = `${finalTranscript} ${interim}`.trim();
-          if (preview) {
-            callbacksRef?.onInterimTranscript?.(preview);
-          }
-        };
-
-        instance.onerror = (event: SpeechRecognitionErrorEvent) => {
-          keepListening = false;
-          if (event.error === "aborted") {
-            callbacksRef?.onStatusChange?.("idle");
-            cleanup();
-            return;
-          }
-          if (event.error === "no-speech") {
-            finalizeSession();
-            return;
-          }
-          callbacksRef?.onError?.(mapSpeechError(event.error));
-          callbacksRef?.onStatusChange?.("error");
-          cleanup();
-        };
-
-        instance.onend = () => {
-          finalizeSession();
-        };
-      };
-
-      recognition = new Ctor();
-      recognition.lang = activeLanguage;
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
-      attachHandlers(recognition);
+      recognition = createRecognition(Ctor);
 
       try {
         callbacks.onStatusChange?.("listening");

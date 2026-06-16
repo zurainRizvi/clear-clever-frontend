@@ -28,6 +28,7 @@ import {
   ConversationListAvatar,
   MessageSenderAvatar,
 } from "./message-participant-avatar";
+import { SpeechLiveTextarea } from "../ui/speech-live-textarea";
 
 const SUPPORT_WELCOME_MESSAGE = "Hi ClearClever support, I need help with a query.";
 
@@ -596,9 +597,9 @@ export function MessagesPanel({
                 >
                   <SpeechListeningBanner />
                   <div className="flex gap-3">
-                    <textarea
+                    <SpeechLiveTextarea
                       value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
+                      onChange={setDraft}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" && !event.shiftKey) {
                           event.preventDefault();
