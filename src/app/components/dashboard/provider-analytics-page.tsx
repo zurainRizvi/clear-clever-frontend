@@ -26,7 +26,7 @@ import {
   CartesianGrid,
   Cell,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -440,7 +440,7 @@ export function ProviderAnalyticsPage() {
                       allowDecimals={false}
                       domain={[0, interestYMax]}
                     />
-                    <Tooltip
+                    <RechartsTooltip
                       contentStyle={{
                         backgroundColor: chartColors.tooltipBg,
                         borderColor: chartColors.tooltipBorder,
@@ -587,7 +587,7 @@ export function ProviderAnalyticsPage() {
                       axisLine={false}
                       tickLine={false}
                     />
-                    <Tooltip
+                    <RechartsTooltip
                       formatter={(value: number, _name, item) => [
                         `${value} (${item.payload.sharePct}%)`,
                         "Leads",
@@ -775,7 +775,7 @@ export function ProviderAnalyticsPage() {
                     allowDecimals={false}
                     domain={[0, revenueYMax]}
                   />
-                  <Tooltip formatter={(v: number) => [`Rs ${(v * 1000).toLocaleString()}`, "Premium"]} />
+                  <RechartsTooltip formatter={(v: number) => [`Rs ${(v * 1000).toLocaleString()}`, "Premium"]} />
                   <Area
                     type="monotone"
                     dataKey="revenue"

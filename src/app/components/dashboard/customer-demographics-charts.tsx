@@ -6,7 +6,7 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -146,7 +146,7 @@ export function CustomerDemographicsSection({
                       <Cell key={entry.name} fill={GENDER_COLORS[entry.name] ?? "#94A3B8"} />
                     ))}
                   </Pie>
-                  <Tooltip
+                  <RechartsTooltip
                     formatter={(value: number, name: string) => [
                       `${value} (${genderTotal > 0 ? Math.round((value / genderTotal) * 100) : 0}%)`,
                       name,
@@ -211,7 +211,7 @@ export function CustomerDemographicsSection({
                     axisLine={false}
                     tickLine={false}
                   />
-                  <Tooltip
+                  <RechartsTooltip
                     formatter={(value: number) => [`${value} purchasers`, "Count"]}
                     labelFormatter={(label) => String(label)}
                     contentStyle={{ borderRadius: 12 }}
