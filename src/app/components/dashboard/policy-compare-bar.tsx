@@ -28,7 +28,10 @@ export function PolicyCompareBar({
               key={policy.id}
               className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm"
             >
-              <InsurerLogo companyName={policy.insurer.companyName} />
+              <InsurerLogo
+                insurer={policy.insurer}
+                className="h-10 w-14 rounded-md border border-border bg-background p-1"
+              />
               <div className="min-w-0">
                 <p className="font-medium truncate max-w-[140px]">{policy.name}</p>
                 <p className="text-xs text-muted-foreground truncate max-w-[140px]">

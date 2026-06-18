@@ -485,7 +485,10 @@ export function PurchaseFlow() {
         <div className="mb-8 p-6 bg-accent/50 rounded-xl">
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-background/80 px-4 py-3">
             <ClearCleverLogo linkToHome={false} />
-            <InsurerLogo companyName={policy.insurer.companyName} className="h-8 w-auto max-w-[140px]" />
+            <InsurerLogo
+              insurer={policy.insurer}
+              className="h-12 w-28 rounded-lg border border-border bg-background p-1.5"
+            />
           </div>
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -813,7 +816,10 @@ export function PurchaseFlow() {
 
               <div className="rounded-xl border border-border p-5 space-y-4">
                 <div className="flex items-start gap-4">
-                  <InsurerLogo insurer={policy.insurer} className="w-14 h-14 rounded-lg shrink-0" />
+                  <InsurerLogo
+                    insurer={policy.insurer}
+                    className="w-16 h-16 rounded-lg border border-border bg-background p-1.5 shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     <h3 className="text-lg font-semibold">{policy.name}</h3>
                     <p className="text-sm text-muted-foreground">{policy.insurer.companyName}</p>

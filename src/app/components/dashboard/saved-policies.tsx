@@ -153,9 +153,12 @@ export function SavedPolicies() {
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xl font-bold mb-1">{policy.name}</h3>
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-3 mb-3">
+                    <InsurerLogo
+                      insurer={policy.insurer}
+                      className="h-12 w-20 rounded-lg border border-border bg-background p-1.5"
+                    />
                     <span className="text-muted-foreground text-sm">{policy.insurer.companyName}</span>
-                    <InsurerLogo companyName={policy.insurer.companyName} />
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">{policy.coverageSummary}</p>
                   <PolicyFeatureHighlights

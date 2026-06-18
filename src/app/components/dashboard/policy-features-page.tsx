@@ -105,7 +105,7 @@ export function PolicyFeaturesPage() {
             </p>
             <h1 className="text-3xl font-bold">{policy.name}</h1>
             <div className="flex items-center gap-3">
-              <InsurerAvatar companyName={policy.insurer.companyName} size="md" />
+              <InsurerAvatar insurer={policy.insurer} size="md" />
               <span className="text-muted-foreground font-medium">{policy.insurer.companyName}</span>
             </div>
             <p className="text-muted-foreground max-w-2xl leading-relaxed">{policy.coverageSummary}</p>

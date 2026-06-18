@@ -72,6 +72,7 @@ export interface PublicInsurerSummary {
   id: string;
   slug: string;
   companyName: string;
+  profilePhotoDataUrl?: string;
   pacraRating?: string;
   jcrVisRating?: string;
   operationalSince?: number;

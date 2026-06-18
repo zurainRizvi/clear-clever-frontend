@@ -27,6 +27,7 @@ export interface ConversationSummary {
     id: string;
     slug: string;
     companyName: string;
+    profilePhotoDataUrl?: string;
   };
   purchaseId?: string;
   lastMessagePreview?: string;

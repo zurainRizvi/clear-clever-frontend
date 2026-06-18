@@ -11,6 +11,7 @@ export interface InsurerProfile {
   slug: string;
   contactEmail: string;
   contactPhone: string;
+  profilePhotoDataUrl?: string;
   description?: string;
   createdAt: string;
   updatedAt: string;
@@ -364,6 +365,7 @@ export async function updateInsurerProfile(body: {
   contactEmail?: string;
   contactPhone?: string;
   description?: string;
+  profilePhotoDataUrl?: string | null;
 }): Promise<{ profile: InsurerProfile }> {
   return apiRequest("/api/insurer/profile", {
     method: "PATCH",
@@ -484,6 +486,7 @@ export interface InsurerClaimSummary {
   insurer?: {
     id: string;
     companyName: string;
+    profilePhotoDataUrl?: string;
     contactPhone?: string;
   };
   seeker?: {

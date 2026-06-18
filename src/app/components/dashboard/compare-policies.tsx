@@ -826,9 +826,12 @@ export function ComparePolicies() {
                       <div className="flex flex-col lg:flex-row gap-6">
                         <div className="flex-1 min-w-0">
                           <h3 className="text-xl font-bold mb-1">{rec.policy.name}</h3>
-                          <div className="mb-4 flex items-center gap-2">
+                          <div className="mb-4 flex items-center gap-3">
+                            <InsurerLogo
+                              insurer={rec.policy.insurer}
+                              className="h-12 w-20 rounded-lg border border-border bg-background p-1.5"
+                            />
                             <span className="text-muted-foreground text-sm">{rec.policy.insurer.companyName}</span>
-                            <InsurerLogo companyName={rec.policy.insurer.companyName} />
                           </div>
                           {rec.answerHighlights && rec.answerHighlights.length > 0 && (
                             <div className="mb-4">
@@ -980,4 +983,3 @@ export function ComparePolicies() {
     </AnimatedPage>
   );
 }
-

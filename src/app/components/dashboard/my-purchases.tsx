@@ -184,7 +184,7 @@ export function MyPurchases() {
             >
               <h2 className="text-xl font-bold">{purchase.policy?.name ?? "Policy"}</h2>
               <div className="flex items-center gap-3 mt-2">
-                <InsurerAvatar companyName={purchase.insurer?.companyName} size="sm" />
+                <InsurerAvatar insurer={purchase.insurer} size="sm" />
                 <p className="text-sm text-muted-foreground">
                   {purchase.insurer?.companyName} · {purchase.policy?.category}
                 </p>
@@ -331,6 +331,7 @@ export function MyPurchases() {
                             id: purchase.insurer.id,
                             slug: purchase.insurer.slug,
                             companyName: purchase.insurer.companyName,
+                            profilePhotoDataUrl: purchase.insurer.profilePhotoDataUrl,
                             pacraRating: purchase.insurer.pacraRating,
                             jcrVisRating: purchase.insurer.jcrVisRating,
                             operationalSince: purchase.insurer.operationalSince,
@@ -345,7 +346,7 @@ export function MyPurchases() {
               ) : (
                 <div className="rounded-xl bg-muted/30 p-4 space-y-4">
                   <div className="flex items-center gap-3">
-                    <InsurerAvatar companyName={purchase.insurer?.companyName} size="md" />
+                    <InsurerAvatar insurer={purchase.insurer} size="md" />
                     <div>
                       <h3 className="font-semibold">Company and agent</h3>
                       <p className="text-sm text-muted-foreground">{purchase.insurer?.companyName}</p>

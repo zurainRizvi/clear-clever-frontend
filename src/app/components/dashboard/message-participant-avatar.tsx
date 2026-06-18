@@ -47,7 +47,7 @@ export function ConversationListAvatar({
   }
 
   if (conversation.insurer?.companyName) {
-    return <InsurerAvatar companyName={conversation.insurer.companyName} size={size === "sm" ? "sm" : "md"} />;
+    return <InsurerAvatar insurer={conversation.insurer} size={size === "sm" ? "sm" : "md"} />;
   }
 
   const peer = conversation.participants.find((participant) => participant.role === "user");
@@ -82,9 +82,12 @@ export function MessageSenderAvatar({
   if (senderParticipant?.role === "insurer" || conversation?.insurer?.companyName) {
     return (
       <InsurerAvatar
-        companyName={conversation?.insurer?.companyName ?? senderParticipant?.fullName}
+        insurer={
+          conversation?.insurer ?? {
+            companyName: senderParticipant?.fullName,
+          }
+        }
         size="sm"
-        className="w-8 h-8"
       />
     );
   }

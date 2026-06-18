@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Building2, HelpCircle, Loader2, Mail, Phone } from "lucide-react";
+import { Building2, HelpCircle, ImageIcon, Loader2, Mail, Phone } from "lucide-react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import { updateInsurerProfile } from "@/lib/insurer-api";
 import { useProvider } from "./provider-context";
 import { useAuth, useLogout } from "../auth-context";
+import { InsurerAvatar } from "./insurer-avatar";
 
 export function ProviderSettingsPage() {
   const { profile, loading, setProfile } = useProvider();
@@ -14,6 +15,7 @@ export function ProviderSettingsPage() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [description, setDescription] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -21,6 +23,7 @@ export function ProviderSettingsPage() {
     setContactEmail(profile.contactEmail);
     setContactPhone(profile.contactPhone);
     setDescription(profile.description ?? "");
+    setProfilePhoto(profile.profilePhotoDataUrl ?? null);
   }, [profile]);
 
   const save = async () => {
@@ -37,6 +40,44 @@ export function ProviderSettingsPage() {
       toast.error(err instanceof ApiError ? err.message : "Could not save profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePhotoUpload = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Profile photo must be under 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const nextPhoto = String(reader.result);
+      setProfilePhoto(nextPhoto);
+      try {
+        const data = await updateInsurerProfile({ profilePhotoDataUrl: nextPhoto });
+        setProfile(data.profile);
+        toast.success("Company profile photo updated");
+      } catch (err) {
+        setProfilePhoto(profile?.profilePhotoDataUrl ?? null);
+        toast.error(err instanceof ApiError ? err.message : "Could not save profile photo");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = async () => {
+    setProfilePhoto(null);
+    try {
+      const data = await updateInsurerProfile({ profilePhotoDataUrl: null });
+      setProfile(data.profile);
+      toast.success("Company profile photo removed");
+    } catch (err) {
+      setProfilePhoto(profile?.profilePhotoDataUrl ?? null);
+      toast.error(err instanceof ApiError ? err.message : "Could not remove profile photo");
     }
   };
 
@@ -60,6 +101,36 @@ export function ProviderSettingsPage() {
           <Building2 className="w-5 h-5 text-primary" />
           Company information
         </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <InsurerAvatar
+            insurer={{
+              companyName: profile?.companyName,
+              profilePhotoDataUrl: profilePhoto,
+            }}
+            size="lg"
+          />
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg cursor-pointer hover:bg-primary/90">
+              <ImageIcon className="w-4 h-4" />
+              Upload photo
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
+              />
+            </label>
+            {profilePhoto ? (
+              <button
+                type="button"
+                onClick={() => void removePhoto()}
+                className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent"
+              >
+                Remove photo
+              </button>
+            ) : null}
+          </div>
+        </div>
         <div>
           <label className="block text-sm mb-2">Company name</label>
           <input

@@ -17,7 +17,7 @@ export function PolicyInsurerTrustCard({
     return (
       <div className={`rounded-xl border border-border bg-card ${compact ? "p-3" : "p-4"}`}>
         <div className="flex items-center gap-3 mb-2">
-          <InsurerAvatar companyName={insurer.companyName} size="sm" />
+          <InsurerAvatar insurer={insurer} size="sm" />
           <p className="text-sm font-semibold">{insurer.companyName}</p>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -35,7 +35,7 @@ export function PolicyInsurerTrustCard({
         }`}
       >
         <div className="flex items-center gap-3 mb-3">
-          <InsurerAvatar companyName={insurer.companyName} size={compact ? "sm" : "md"} />
+          <InsurerAvatar insurer={insurer} size={compact ? "sm" : "md"} />
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Why trust this insurer

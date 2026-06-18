@@ -117,7 +117,12 @@ export function PolicyCompareMatrix({
                       transition={{ delay: index * 0.05 }}
                       className="space-y-3 rounded-xl border border-border bg-card p-4"
                     >
-                      <InsurerLogo companyName={policy.insurer.companyName} />
+                      <div className="flex justify-center">
+                        <InsurerLogo
+                          insurer={policy.insurer}
+                          className="h-14 w-28 rounded-lg border border-border bg-background p-1.5"
+                        />
+                      </div>
                       <p className="font-bold text-base leading-snug">{policy.name}</p>
                       <p className="text-xs text-muted-foreground">{policy.insurer.companyName}</p>
                       <p className="font-bold text-primary">

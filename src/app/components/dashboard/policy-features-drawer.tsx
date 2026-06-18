@@ -35,7 +35,10 @@ export function PolicyFeaturesDrawer({
             </p>
             <h2 className="text-xl font-bold">{policy.name}</h2>
             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <InsurerLogo companyName={policy.insurer.companyName} />
+              <InsurerLogo
+                insurer={policy.insurer}
+                className="h-10 w-16 rounded-md border border-border bg-background p-1"
+              />
               <span>{policy.insurer.companyName}</span>
             </div>
             <p className="mt-2 text-lg font-bold text-foreground">

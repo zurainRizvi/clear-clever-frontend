@@ -37,6 +37,7 @@ export interface PurchaseSummary {
     id: string;
     slug: string;
     companyName: string;
+    profilePhotoDataUrl?: string;
     contactEmail?: string;
     contactPhone?: string;
     pacraRating?: string;
@@ -121,6 +122,7 @@ export interface ClaimSummary {
   insurer?: {
     id: string;
     companyName: string;
+    profilePhotoDataUrl?: string;
     contactPhone?: string;
   };
   intelligenceReport?: ClaimIntelligenceReport;
