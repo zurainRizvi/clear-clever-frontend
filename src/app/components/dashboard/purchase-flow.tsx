@@ -29,6 +29,7 @@ import type { PolicyQuestion, PublicPolicy } from "@/lib/types";
 import { ClearCleverLogo } from "../auth/clearclever-logo";
 import { InsurerLogo } from "./insurer-logo";
 import { KycStatusBadge } from "./kyc-verification-ui";
+import { PolicyFeatureSections } from "./policy-feature-sections";
 import { QuestionInput, otherDetailKey } from "./questionnaire-inputs";
 import {
   VehicleRegistrationFields,
