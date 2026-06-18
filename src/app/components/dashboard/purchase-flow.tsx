@@ -420,13 +420,13 @@ export function PurchaseFlow() {
       return;
     }
 
-    if (isAutoPolicy && !validateVehicleRegistration(vehicleDetails)) {
+    if (isAutoPolicy && !validateVehicleStep()) {
       toast.error("Please complete vehicle registration details.");
       setStep("vehicle");
       return;
     }
 
-    if (!validateSchedulingValues(scheduling, { requireSurveyPair: true })) {
+    if (!validateSchedulingStep()) {
       toast.error("Please choose your preferred call schedule.");
       setStep("scheduling");
       return;
@@ -773,7 +773,10 @@ export function PurchaseFlow() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!validateContact()) return;
+                    if (!validateContact()) {
+                      toast.error("Please fix the highlighted fields before continuing.");
+                      return;
+                    }
                     if (
                       questions.length > 0 &&
                       !requiredQuestionsAnswered(questions, answers)
@@ -823,7 +826,9 @@ export function PurchaseFlow() {
                   </div>
                   <div className="rounded-lg bg-muted/40 p-3">
                     <p className="text-muted-foreground text-xs mb-1">Yearly premium</p>
-                    <p className="font-semibold">{formatPkrYearly(policy.premiumYearlyPkr)}</p>
+                    <p className="font-semibold">
+                      {formatPkr(policy.premiumYearlyPkr ?? policy.premiumMonthlyPkr * 12)}
+                    </p>
                   </div>
                   <div className="rounded-lg bg-muted/40 p-3">
                     <p className="text-muted-foreground text-xs mb-1">Deductible</p>
