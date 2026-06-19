@@ -38,9 +38,6 @@ export function useSpeechToText({ onTranscript, disabled = false }: UseSpeechToT
 
   useEffect(() => {
     const prev = prevStatusRef.current;
-    if (prev !== "listening" && status === "listening") {
-      playMicStartTone();
-    }
     if (prev === "listening" && (status === "idle" || status === "processing" || status === "error")) {
       playMicStopTone();
     }
@@ -59,6 +56,7 @@ export function useSpeechToText({ onTranscript, disabled = false }: UseSpeechToT
 
     setErrorMessage(null);
     setInterimPreview(null);
+    playMicStartTone();
 
     await provider.start(
       {
