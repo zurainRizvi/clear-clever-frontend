@@ -129,25 +129,6 @@ export function createWebSpeechProvider(): SpeechToTextProvider {
     };
 
     instance.onend = () => {
-      if (keepListening && sessionOpen && recognition) {
-        try {
-          recognition?.start();
-          callbacksRef?.onStatusChange?.("listening");
-          return;
-        } catch {
-          // Browser may reject immediate restart; brief delay then retry once.
-          window.setTimeout(() => {
-            if (!keepListening || !recognition) return;
-            try {
-              recognition.start();
-              callbacksRef?.onStatusChange?.("listening");
-            } catch {
-              finalizeSession();
-            }
-          }, 120);
-          return;
-        }
-      }
       finalizeSession();
     };
   };
@@ -155,7 +136,7 @@ export function createWebSpeechProvider(): SpeechToTextProvider {
   const createRecognition = (Ctor: SpeechRecognitionConstructor) => {
     const instance = new Ctor();
     instance.lang = activeLanguage;
-    instance.continuous = true;
+    instance.continuous = false;
     instance.interimResults = true;
     instance.maxAlternatives = 1;
     attachHandlers(instance);

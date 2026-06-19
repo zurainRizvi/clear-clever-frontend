@@ -107,7 +107,7 @@ describe("useSpeechToText", () => {
 
     expect(onTranscript).toHaveBeenCalledTimes(1);
     expect(onTranscript).toHaveBeenCalledWith("hello world");
-    expect(mockRecognition.continuous).toBe(true);
+    expect(mockRecognition.continuous).toBe(false);
     expect(mockRecognition.lang).toBe("en-PK");
   });
 

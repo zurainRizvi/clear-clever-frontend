@@ -45,6 +45,7 @@ import {
 } from "@/lib/assistant-launcher-position";
 import { SpeechInputProvider, SpeechListeningBanner, SpeechMicButton, SpeechVoiceLanguageLink } from "../ui/speech-input-button";
 import { SpeechLiveTextarea } from "../ui/speech-live-textarea";
+import { useIsMobile } from "../ui/use-mobile";
 
 type ChatMessage = {
   id: string;
@@ -148,6 +149,7 @@ export function AssistantWidget() {
   const dragCleanupRef = useRef<(() => void) | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   const isOpenRef = useRef(isOpen);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -156,6 +158,15 @@ export function AssistantWidget() {
   useEffect(() => {
     isOpenRef.current = isOpen;
     if (!isOpen) flushAssistantChatStore();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, [isOpen]);
 
   const clampLauncher = useCallback((offset: { x: number; y: number }) => {
@@ -630,6 +641,10 @@ export function AssistantWidget() {
   const panelWidthClass = persistKey
     ? "w-[min(100vw-1.5rem,680px)]"
     : "w-[min(100vw-1.5rem,440px)]";
+  const panelPositionClass = isMobile ? "inset-2" : "bottom-4 right-4 sm:bottom-6 sm:right-6";
+  const panelHeightStyle = isMobile
+    ? { borderRadius: "24px", maxHeight: "calc(100dvh - 1rem)", height: "calc(100dvh - 1rem)" }
+    : { borderRadius: "24px", maxHeight: "min(90vh, 720px)", height: "min(90vh, 720px)" };
 
   const startLauncherDrag = useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -712,12 +727,8 @@ export function AssistantWidget() {
           <div
             ref={panelRef}
             data-assistant-panel
-            className={`fixed bottom-4 right-4 z-50 flex ${panelWidthClass} flex-col overflow-hidden border border-border/80 bg-popover text-popover-foreground shadow-2xl sm:bottom-6 sm:right-6`}
-            style={{
-              borderRadius: "24px",
-              maxHeight: "min(90vh, 720px)",
-              height: "min(90vh, 720px)",
-            }}
+            className={`fixed ${panelPositionClass} z-50 flex ${isMobile ? "w-auto" : panelWidthClass} flex-col overflow-hidden border border-border/80 bg-popover text-popover-foreground shadow-2xl`}
+            style={panelHeightStyle}
             role="dialog"
             aria-modal="true"
             aria-label="ClearClever AI Assistant"
@@ -836,7 +847,7 @@ export function AssistantWidget() {
 
                 <div
                   ref={scrollRef}
-                  className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5 bg-muted"
+                  className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 sm:px-4 sm:py-5 flex flex-col gap-5 bg-muted"
                 >
                   {messages.length === 0 && (
                     <AssistantMessageShell>
@@ -860,7 +871,7 @@ export function AssistantWidget() {
                   )}
 
                   {showSuggestions && (
-                    <div className="flex flex-wrap gap-2 pl-12 pt-1">
+                    <div className="grid grid-cols-1 gap-2 pl-0 pt-1 sm:pl-12 sm:grid-cols-2">
                       {suggestions.map((chip) => {
                         const Icon = chip.icon;
                         return (
@@ -868,7 +879,7 @@ export function AssistantWidget() {
                             key={chip.id}
                             type="button"
                             onClick={() => void sendMessage(chip.prompt)}
-                            className="inline-flex items-center gap-2 rounded-full border border-border bg-popover px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-accent transition-colors"
+                            className="inline-flex min-h-12 w-full items-center gap-2 rounded-2xl border border-border bg-popover px-4 py-3 text-left text-sm font-medium leading-snug text-foreground shadow-sm hover:bg-accent transition-colors"
                           >
                             <Icon className="h-4 w-4 text-primary" />
                             {chip.text}
