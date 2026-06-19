@@ -111,13 +111,17 @@ export function createWebSpeechProvider(): SpeechToTextProvider {
         return;
       }
       if (event.error === "no-speech") {
-        if (keepListening && recognition) {
-          try {
-            recognition.start();
-            return;
-          } catch {
-            // fall through to finalize
-          }
+        if (keepListening && sessionOpen && recognition) {
+          window.setTimeout(() => {
+            if (!keepListening || !sessionOpen || !recognition) return;
+            try {
+              recognition.start();
+              callbacksRef?.onStatusChange?.("listening");
+            } catch {
+              finalizeSession();
+            }
+          }, 120);
+          return;
         }
         finalizeSession();
         return;
@@ -129,6 +133,18 @@ export function createWebSpeechProvider(): SpeechToTextProvider {
     };
 
     instance.onend = () => {
+      if (keepListening && sessionOpen && recognition) {
+        window.setTimeout(() => {
+          if (!keepListening || !sessionOpen || !recognition) return;
+          try {
+            recognition.start();
+            callbacksRef?.onStatusChange?.("listening");
+          } catch {
+            finalizeSession();
+          }
+        }, 120);
+        return;
+      }
       finalizeSession();
     };
   };
@@ -136,7 +152,7 @@ export function createWebSpeechProvider(): SpeechToTextProvider {
   const createRecognition = (Ctor: SpeechRecognitionConstructor) => {
     const instance = new Ctor();
     instance.lang = activeLanguage;
-    instance.continuous = false;
+    instance.continuous = true;
     instance.interimResults = true;
     instance.maxAlternatives = 1;
     attachHandlers(instance);
