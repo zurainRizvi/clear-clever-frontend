@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSpeechToText } from "./use-speech-to-text";
+import { playMicStartTone } from "@/lib/speech-to-text/speech-feedback";
 
 vi.mock("@/lib/speech-to-text/speech-feedback", () => ({
   playMicStartTone: vi.fn(),
@@ -71,9 +72,11 @@ describe("useSpeechToText", () => {
       value: ["en-PK", "en"],
     });
     localStorage.clear();
+    vi.mocked(playMicStartTone).mockClear();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     localStorage.clear();
   });
@@ -107,7 +110,8 @@ describe("useSpeechToText", () => {
 
     expect(onTranscript).toHaveBeenCalledTimes(1);
     expect(onTranscript).toHaveBeenCalledWith("hello world");
-    expect(mockRecognition.continuous).toBe(false);
+    expect(vi.mocked(playMicStartTone)).toHaveBeenCalledTimes(1);
+    expect(mockRecognition.continuous).toBe(true);
     expect(mockRecognition.lang).toBe("en-PK");
   });
 
@@ -130,5 +134,30 @@ describe("useSpeechToText", () => {
     });
 
     expect(mockRecognition.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("restarts after an end event while the user is still speaking", async () => {
+    vi.useFakeTimers();
+    mockRecognition.start = vi.fn(function start(this: MockRecognition) {
+      // The provider should decide when to restart; the mock stays idle here.
+    });
+
+    const onTranscript = vi.fn();
+    const { result } = renderHook(() => useSpeechToText({ onTranscript }));
+
+    await act(async () => {
+      await result.current.startListening();
+    });
+
+    act(() => {
+      mockRecognition.onend?.();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+
+    expect(mockRecognition.start).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
   });
 });
